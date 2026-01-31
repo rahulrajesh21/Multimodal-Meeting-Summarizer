@@ -12,7 +12,7 @@ CHUNK_DURATION = 3.0  # seconds - Duration of each audio chunk
 AUDIO_CHANNELS = 1  # Mono audio
 
 # Transcription Settings
-VAD_FILTER = True  # Voice Activity Detection - filters out silence
+VAD_FILTER = False  # Voice Activity Detection - disabled (requires onnxruntime)
 MIN_SILENCE_DURATION = 500  # ms - Minimum silence duration for VAD
 BEAM_SIZE = 5  # Beam size for transcription (higher = more accurate but slower)
 

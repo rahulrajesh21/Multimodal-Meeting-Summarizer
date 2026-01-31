@@ -180,8 +180,9 @@ class RoleBasedHighlightScorer:
     Scores sentences based on their semantic relevance to specific roles using BERT embeddings.
     """
     
-    def __init__(self, text_analyzer: Optional[TextAnalyzer] = None):
+    def __init__(self, text_analyzer: Optional[TextAnalyzer] = None, temporal_memory=None):
         self.text_analyzer = text_analyzer
+        self.temporal_memory = temporal_memory
         
         # Description for important/substantive meeting content
         # This captures decisions, insights, proposals, concerns - regardless of role
@@ -259,6 +260,16 @@ class RoleBasedHighlightScorer:
             
         # Compute similarity to "important content"
         importance_similarity = 1 - cosine(importance_emb, sent_emb)
+        
+        # Calculate Temporal Boost EARLY
+        temporal_boost = 0.0
+        if self.temporal_memory:
+             boost, _ = self.temporal_memory.get_temporal_boost_for_embedding(sent_emb)
+             # Weight the boost (max 0.4 added to score)
+             temporal_boost = boost * 0.4
+        
+        # Add boost to importance (making it robust against generic filtering)
+        importance_similarity += temporal_boost
         
         # Check against Generic/filler content
         generic_emb = self._get_generic_embedding()

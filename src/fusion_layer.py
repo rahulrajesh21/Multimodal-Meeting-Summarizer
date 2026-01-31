@@ -1,17 +1,19 @@
 """
 Fusion Layer for Multi-Modal Meeting Analysis.
 
-Combines three modalities to compute hyper-relevant importance scores:
+Combines four modalities to compute hyper-relevant importance scores:
 1. Semantic (Text): BERT sentence embeddings capturing meaning
 2. Tonal (Audio): MFCC/prosodic features capturing urgency/emphasis
 3. Role: Static role embeddings for role-specific relevance
+4. Temporal Context: Cross-meeting continuity from Temporal Graph Memory
 
 The fusion produces a single relevance score per segment that reflects
-both WHAT was said (semantic), HOW it was said (tonal), and WHO it matters to (role).
+both WHAT was said (semantic), HOW it was said (tonal), WHO it matters to (role),
+and WHEN/WHERE it was discussed before (temporal context).
 """
 
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 import logging
 
@@ -25,6 +27,14 @@ try:
 except ImportError:
     ML_AVAILABLE = False
     logger.warning("ML Fusion module not found. Falling back to heuristics.")
+
+# Try to import Temporal Graph Memory
+try:
+    from .temporal_graph_memory import TemporalGraphMemory, NodeType, EdgeType
+    TEMPORAL_MEMORY_AVAILABLE = True
+except ImportError:
+    TEMPORAL_MEMORY_AVAILABLE = False
+    logger.warning("Temporal Graph Memory not available.")
 
 
 @dataclass
@@ -44,7 +54,11 @@ class SegmentFeatures:
     semantic_score: float = 0.0
     tonal_score: float = 0.0
     role_relevance: float = 0.0
+    temporal_context_score: float = 0.0  # NEW: Cross-meeting context relevance
     fused_score: float = 0.0
+    
+    # Temporal context (NEW)
+    temporal_context: Optional[Dict[str, Any]] = None  # Context from previous meetings
 
 
 class FusionLayer:
@@ -84,8 +98,8 @@ class FusionLayer:
     └─────────────────────────────────────────────────────────────┘
     
     Fusion Strategies:
-    1. Weighted Sum: α*semantic + β*tonal + γ*role
-    2. Multiplicative: semantic * (1 + tonal_boost) * role_relevance
+    1. Weighted Sum: α*semantic + β*tonal + γ*role + δ*temporal
+    2. Multiplicative: semantic * (1 + tonal_boost) * role_relevance * (1 + temporal_boost)
     3. Attention-based: Learn weights from cross-modal attention
     """
     
@@ -93,6 +107,7 @@ class FusionLayer:
         self,
         text_analyzer=None,
         audio_analyzer=None,
+        temporal_memory: Optional['TemporalGraphMemory'] = None,
         fusion_strategy: str = "weighted",
         weights: Optional[Dict[str, float]] = None
     ):
@@ -102,18 +117,24 @@ class FusionLayer:
         Args:
             text_analyzer: TextAnalyzer instance for semantic embeddings
             audio_analyzer: AudioTonalAnalyzer instance for prosodic features
+            temporal_memory: TemporalGraphMemory instance for cross-meeting context
             fusion_strategy: "weighted", "multiplicative", or "gated"
             weights: Custom weights for fusion (default: balanced)
         """
         self.text_analyzer = text_analyzer
         self.audio_analyzer = audio_analyzer
+        self.temporal_memory = temporal_memory
         self.fusion_strategy = fusion_strategy
         
-        # Default weights (can be tuned)
+        # Current meeting ID (set when processing a meeting)
+        self.current_meeting_id: Optional[str] = None
+        
+        # Default weights (can be tuned) - now includes temporal
         self.weights = weights or {
-            'semantic': 0.5,   # What was said
-            'tonal': 0.2,     # How it was said
-            'role': 0.3       # Who it matters to
+            'semantic': 0.4,    # What was said
+            'tonal': 0.15,      # How it was said
+            'role': 0.25,       # Who it matters to
+            'temporal': 0.2    # Cross-meeting context
         }
         
         # Importance description embedding (cached)
@@ -123,6 +144,7 @@ class FusionLayer:
         self.role_embeddings: Dict[str, np.ndarray] = {}
         
         logger.info(f"FusionLayer initialized with strategy: {fusion_strategy}")
+        logger.info(f"Temporal Memory: {'enabled' if temporal_memory else 'disabled'}")
         
         # ML Model
         self.ml_model = None
@@ -137,6 +159,11 @@ class FusionLayer:
         """Set pre-computed role embeddings."""
         self.role_embeddings = role_embeddings
         logger.info(f"Loaded {len(role_embeddings)} role embeddings")
+
+    def update_fusion_weights(self, new_weights: Dict[str, float]):
+        """Update fusion weights (e.g., from online learning feedback)."""
+        self.weights = new_weights
+        logger.info(f"Updated fusion weights: {new_weights}")
     
     def _get_importance_embedding(self, focus_query: Optional[str] = None) -> Optional[np.ndarray]:
         """
@@ -285,11 +312,53 @@ class FusionLayer:
         
         return float(score)
     
+    def compute_temporal_context_score(
+        self,
+        text: str,
+        text_embedding: Optional[np.ndarray] = None
+    ) -> Tuple[float, Optional[Dict[str, Any]]]:
+        """
+        Compute temporal context score from cross-meeting memory.
+        
+        Higher scores for segments that relate to previous discussions,
+        decisions, or open action items.
+        
+        Args:
+            text: Segment text
+            text_embedding: Pre-computed text embedding
+            
+        Returns:
+            Tuple of (temporal_score, context_dict)
+        """
+        if not self.temporal_memory or not TEMPORAL_MEMORY_AVAILABLE:
+            return 0.0, None
+        
+        # Get context from temporal memory
+        context = self.temporal_memory.get_context_for_segment(
+            text=text,
+            embedding=text_embedding,
+            current_meeting_id=self.current_meeting_id
+        )
+        
+        # The context_score is already computed by the memory
+        temporal_score = context.get('context_score', 0.0)
+        
+        # Boost score if there are open action items related to this segment
+        if context.get('open_action_items'):
+            temporal_score = min(1.0, temporal_score + 0.2)
+        
+        # Boost score if this continues a previous topic
+        if context.get('related_topics'):
+            temporal_score = min(1.0, temporal_score + 0.1)
+        
+        return float(temporal_score), context
+    
     def fuse_scores(
         self,
         semantic_score: float,
         tonal_score: float,
-        role_relevance: float
+        role_relevance: float,
+        temporal_score: float = 0.0
     ) -> float:
         """
         Fuse multi-modal scores into a single relevance score.
@@ -298,29 +367,30 @@ class FusionLayer:
             semantic_score: Semantic importance (0-1)
             tonal_score: Tonal/prosodic importance (0-1)
             role_relevance: Role-specific relevance (0-1)
+            temporal_score: Cross-meeting context relevance (0-1)
             
         Returns:
             Fused score (0-1)
         """
         if self.fusion_strategy == "weighted":
-            # Simple weighted sum
+            # Simple weighted sum (now includes temporal)
             fused = (
                 self.weights['semantic'] * semantic_score +
                 self.weights['tonal'] * tonal_score +
-                self.weights['role'] * role_relevance
+                self.weights['role'] * role_relevance +
+                self.weights['temporal'] * temporal_score
             )
             
         elif self.fusion_strategy == "multiplicative":
-            # Multiplicative with tonal boost
-            # Base score from semantic, boosted by tonal, filtered by role
+            # Multiplicative with tonal and temporal boost
             tonal_boost = 1.0 + (tonal_score * 0.5)  # 1.0 to 1.5x
-            fused = semantic_score * tonal_boost * (0.5 + role_relevance * 0.5)
+            temporal_boost = 1.0 + (temporal_score * 0.3)  # 1.0 to 1.3x
+            fused = semantic_score * tonal_boost * temporal_boost * (0.5 + role_relevance * 0.5)
             
         elif self.fusion_strategy == "gated":
-            # Gated fusion: role acts as a gate
-            # Only high role-relevance content gets through
-            gate = self._sigmoid((role_relevance - 0.5) * 4)  # Sharp gate around 0.5
-            content_score = 0.7 * semantic_score + 0.3 * tonal_score
+            # Gated fusion: role acts as a gate, temporal boosts
+            gate = self._sigmoid((role_relevance - 0.5) * 4)
+            content_score = 0.6 * semantic_score + 0.25 * tonal_score + 0.15 * temporal_score
             fused = content_score * gate
             
         else:
@@ -387,11 +457,21 @@ class FusionLayer:
             role_relevance = 0.5
         segment.role_relevance = role_relevance
         
-        # 4. Fuse scores
+        # 4. Temporal context (cross-meeting relevance)
+        temporal_score = 0.0
+        if text_emb is not None:
+            temporal_score, temporal_context = self.compute_temporal_context_score(
+                text_emb, segment.text
+            )
+            segment.temporal_context_score = temporal_score
+            segment.temporal_context = temporal_context
+        
+        # 5. Fuse scores
         segment.fused_score = self.fuse_scores(
             semantic_score,
             tonal_score,
-            role_relevance
+            role_relevance,
+            temporal_score
         )
         
         return segment

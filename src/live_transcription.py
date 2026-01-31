@@ -198,7 +198,7 @@ class LiveTranscriber:
         if WHISPERX_AVAILABLE:
             try:
                 print(f"Attempting to load WhisperX DiarizationPipeline with token: {hf_token[:4]}...")
-                self.diarize_model = DiarizationPipeline(use_auth_token=hf_token, device=device)
+                self.diarize_model = DiarizationPipeline(token=hf_token, device=device)
                 print(f"DiarizationPipeline returned: {type(self.diarize_model)}")
                 print("Diarization pipeline loaded (via WhisperX)!")
                 model_loaded = True
@@ -212,7 +212,7 @@ class LiveTranscriber:
                 print("Attempting to load pyannote/speaker-diarization-3.1 directly...")
                 self.diarize_model = Pipeline.from_pretrained(
                     "pyannote/speaker-diarization-3.1",
-                    use_auth_token=hf_token
+                    token=hf_token
                 )
                 if self.diarize_model:
                     self.diarize_model.to(torch.device(device))
@@ -320,8 +320,7 @@ class LiveTranscriber:
             audio_array,
             language=self.language,
             beam_size=5,
-            vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500)
+            vad_filter=False  # Disabled - requires onnxruntime
         )
         
         # Note: We don't do diarization for chunks in real-time usually as it's slow
@@ -496,7 +495,7 @@ class LiveTranscriber:
                 audio_array,
                 language=self.language,
                 beam_size=5,
-                vad_filter=True
+                vad_filter=False  # Disabled - requires onnxruntime
             )
             
             # Convert generator to list for processing
