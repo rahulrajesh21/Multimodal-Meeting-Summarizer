@@ -195,7 +195,7 @@ with st.sidebar:
     # Temporal Memory Controls in Sidebar
     if TEMPORAL_MEMORY_AVAILABLE:
         st.divider()
-        st.subheader("📊 Temporal Memory")
+        st.subheader("Temporal Memory")
         
         temporal_mem = get_temporal_memory()
         if temporal_mem:
@@ -205,11 +205,11 @@ with st.sidebar:
             st.metric("Decisions", stats['decisions'])
             st.metric("Action Items", stats['action_items'])
             
-            if st.button("💾 Save Memory", use_container_width=True):
+            if st.button("Save Memory", use_container_width=True):
                 temporal_mem.save()
                 st.success("Memory saved!")
             
-            if st.button("🔄 Clear Memory", use_container_width=True):
+            if st.button("Clear Memory", use_container_width=True):
                 st.session_state.temporal_memory = None
                 st.session_state.current_meeting_id = None
                 st.rerun()
@@ -567,7 +567,7 @@ if TEMPORAL_MEMORY_AVAILABLE:
         col_tm1, col_tm2 = st.columns(2)
         
         with col_tm1:
-            st.subheader("📅 Meeting Management")
+            st.subheader("Meeting Management")
             
             # Create new meeting
             with st.expander("Create New Meeting", expanded=not st.session_state.current_meeting_id):
@@ -598,7 +598,7 @@ if TEMPORAL_MEMORY_AVAILABLE:
                     st.info(f"**Current Meeting:** {meeting_node.content.get('title', 'Untitled')}")
                     
                     # Add segments from current transcript
-                    if st.session_state.scored_segments and st.button("📥 Import Segments to Memory"):
+                    if st.session_state.scored_segments and st.button("Import Segments to Memory"):
                         with st.spinner("Importing segments..."):
                             for seg in st.session_state.scored_segments:
                                 temporal_mem.add_segment(
@@ -620,14 +620,16 @@ if TEMPORAL_MEMORY_AVAILABLE:
                 for m in meetings[-5:]:  # Show last 5
                     title = m.content.get('title', 'Untitled')
                     date = m.timestamp[:10] if m.timestamp else 'Unknown'
-                    if st.button(f"📄 {title} ({date})", key=f"load_{m.node_id}"):
+                    title = m.content.get('title', 'Untitled')
+                    date = m.timestamp[:10] if m.timestamp else 'Unknown'
+                    if st.button(f"{title} ({date})", key=f"load_{m.node_id}"):
                         st.session_state.current_meeting_id = m.node_id
                         st.rerun()
             else:
                 st.caption("No meetings yet.")
         
         with col_tm2:
-            st.subheader("📝 Track Items")
+            st.subheader("Track Items")
             
             if st.session_state.current_meeting_id:
                 # Add Decision
@@ -689,7 +691,7 @@ if TEMPORAL_MEMORY_AVAILABLE:
         
         # Cross-Meeting Context View
         st.markdown("---")
-        st.subheader("🔗 Cross-Meeting Context")
+        st.subheader("Cross-Meeting Context")
         
         col_ctx1, col_ctx2, col_ctx3 = st.columns(3)
         
@@ -712,8 +714,8 @@ if TEMPORAL_MEMORY_AVAILABLE:
                 for a in sorted(all_actions, key=lambda x: x.content.get('priority', 'medium') == 'high', reverse=True)[:5]:
                     assignee = a.content.get('assignee', 'Unassigned')
                     priority = a.content.get('priority', 'medium')
-                    emoji = "🔴" if priority == "high" else "🟡" if priority == "medium" else "🟢"
-                    st.markdown(f"{emoji} [{assignee}] {a.content.get('text', 'No text')[:60]}...")
+                    marker = "[HIGH]" if priority == "high" else "[MED]" if priority == "medium" else "[LOW]"
+                    st.markdown(f"{marker} [{assignee}] {a.content.get('text', 'No text')[:60]}...")
             else:
                 st.caption("No pending action items.")
         
@@ -730,7 +732,7 @@ if TEMPORAL_MEMORY_AVAILABLE:
         
         # Semantic Search in Memory
         st.markdown("---")
-        st.subheader("🔍 Search Memory")
+        st.subheader("Search Memory")
         search_query = st.text_input("Search across all meetings", placeholder="budget decisions, launch timeline...")
         
         if search_query and st.button("Search"):
@@ -744,16 +746,16 @@ if TEMPORAL_MEMORY_AVAILABLE:
                         score = item.get('similarity', 0)
                         
                         if node_type == 'decision':
-                            st.markdown(f"📋 **Decision** (relevance: {score:.2f})")
+                            st.markdown(f"**Decision** (relevance: {score:.2f})")
                             st.caption(item.get('text', 'No text'))
                         elif node_type == 'action_item':
-                            st.markdown(f"✅ **Action Item** (relevance: {score:.2f})")
+                            st.markdown(f"**Action Item** (relevance: {score:.2f})")
                             st.caption(f"{item.get('text', 'No text')} - {item.get('assignee', 'Unassigned')}")
                         elif node_type == 'topic':
-                            st.markdown(f"📌 **Topic** (relevance: {score:.2f})")
+                            st.markdown(f"**Topic** (relevance: {score:.2f})")
                             st.caption(item.get('name', 'Unknown'))
                         elif node_type == 'segment':
-                            st.markdown(f"💬 **Segment** (relevance: {score:.2f})")
+                            st.markdown(f"**Segment** (relevance: {score:.2f})")
                             st.caption(item.get('text', 'No text')[:150] + "...")
                 else:
                     st.info("No matching items found.")
