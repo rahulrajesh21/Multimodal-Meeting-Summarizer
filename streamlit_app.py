@@ -166,8 +166,8 @@ with st.sidebar:
     st.subheader("Model Settings")
     model_type = st.selectbox(
         "Transcription Model",
-        ["faster-whisper", "whisperx", "openai"],
-        help="Select the backend for speech-to-text."
+        ["faster-whisper", "whisperx", "huggingface", "openai"],
+        help="Select the backend for speech-to-text. Use 'huggingface' for Apple Silicon (MPS)."
     )
     
     model_size = st.selectbox(

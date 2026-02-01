@@ -12,6 +12,12 @@ from typing import Optional, Callable, Literal, Iterator
 import time
 import numpy as np
 
+# Import transformers for MPS support
+try:
+    from transformers import pipeline
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
 # Fix for PyTorch 2.6+ weights_only=True security change
 # MUST be applied before importing whisperx or pyannote
 import torch
@@ -78,7 +84,7 @@ class LiveTranscriber:
     
     def __init__(
         self,
-        model_type: Literal["faster-whisper", "openai", "whisperx"] = "faster-whisper",
+        model_type: Literal["faster-whisper", "openai", "whisperx", "huggingface"] = "faster-whisper",
         model_size: str = "base",
         language: Optional[str] = None,
         openai_api_key: Optional[str] = None,
@@ -91,7 +97,7 @@ class LiveTranscriber:
         Initialize the live transcriber.
         
         Args:
-            model_type: Type of model to use ("faster-whisper", "openai", or "whisperx")
+            model_type: Type of model to use ("faster-whisper", "openai", "whisperx", or "huggingface")
             model_size: Model size for faster-whisper/whisperx (tiny, base, small, medium, large-v2, large-v3)
             language: Optional language code (e.g., "en", "es", "fr")
             openai_api_key: OpenAI API key (required if using openai model)
@@ -162,6 +168,31 @@ class LiveTranscriber:
             
             self.client = OpenAI(api_key=openai_api_key)
             print("OpenAI client initialized!")
+            
+        elif model_type == "huggingface":
+            if not TRANSFORMERS_AVAILABLE:
+                raise ImportError("transformers is not installed. Install with: pip install transformers torch")
+                
+            print(f"Loading Hugging Face Whisper model: openai/whisper-{model_size} on {device}...")
+            
+            # Map device string to torch device
+            if device == "cuda":
+                device_arg = "cuda:0"
+            elif device == "mps":
+                device_arg = "mps"
+            else:
+                device_arg = "cpu"
+                
+            try:
+                self.pipe = pipeline(
+                    "automatic-speech-recognition",
+                    model=f"openai/whisper-{model_size}",
+                    chunk_length_s=30,
+                    device=device_arg,
+                )
+                print(f"Hugging Face model loaded successfully on {device_arg}!")
+            except Exception as e:
+                raise RuntimeError(f"Failed to load Hugging Face pipeline: {e}")
         
         else:
             raise ValueError(f"Unknown model type: {model_type}")
@@ -237,6 +268,8 @@ class LiveTranscriber:
             return self._transcribe_with_faster_whisper(audio_data, sample_rate)
         elif self.model_type == "openai":
             return self._transcribe_with_openai(audio_data, sample_rate)
+        elif self.model_type == "huggingface":
+            return self._transcribe_with_huggingface(audio_data, sample_rate)
     
     def _transcribe_with_whisperx(self, audio_data, sample_rate: int) -> str:
         """Transcribe using WhisperX."""
@@ -353,6 +386,48 @@ class LiveTranscriber:
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
+
+    def _transcribe_with_huggingface(self, audio_data, sample_rate: int) -> str:
+        """Transcribe using Hugging Face transformers pipeline."""
+        # Convert to float32 array if needed
+        if isinstance(audio_data, bytes):
+            audio_array = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
+        elif isinstance(audio_data, np.ndarray):
+            if audio_data.dtype != np.float32:
+                audio_array = audio_data.astype(np.float32)
+            else:
+                audio_array = audio_data
+            if audio_array.max() > 1.0 or audio_array.min() < -1.0:
+                audio_array = np.clip(audio_array, -1.0, 1.0)
+        else:
+            raise TypeError(f"audio_data must be bytes or numpy array, got {type(audio_data)}")
+
+        # Helper method for the pipeline
+        def _get_samples():
+            yield audio_array
+
+        try:
+            # We can pass the numpy array directly to the pipeline?
+            # The documentation says it accepts "numpy arrays", "str" (paths), or "bytes"
+            # However, for live streaming chunks, we might want to be careful about format.
+            # Usually strict requirement is sample rate matching the model (16kHz).
+            
+            # Since we are passing raw samples, we should probably wrap it in a dict with sampling_rate
+            # actually the pipeline is flexible.
+            
+            prediction = self.pipe(audio_array, return_timestamps=False)
+            
+            if isinstance(prediction, dict):
+                return prediction.get("text", "").strip()
+            elif isinstance(prediction, list):
+                # Should not happen with return_timestamps=False and short chunk
+                 return " ".join([p.get("text", "") for p in prediction]).strip()
+            else:
+                 return str(prediction).strip()
+
+        except Exception as e:
+            print(f"Hugging Face transcription failed: {e}")
+            return ""
     
     def _assign_speakers(self, segments, audio_array, sample_rate=16000):
         """
@@ -368,6 +443,8 @@ class LiveTranscriber:
                  # Pyannote expects a tensor (channels, time)
                  # audio_array is (time,)
                  waveform = torch.from_numpy(audio_array).float().unsqueeze(0)
+                 if self.device:
+                     waveform = waveform.to(torch.device(self.device))
                  diarization = self.diarize_model({"waveform": waveform, "sample_rate": sample_rate})
             else:
                 # WhisperX pipeline expects numpy array
@@ -376,6 +453,10 @@ class LiveTranscriber:
             # Convert diarization to list of turns
             speaker_turns = []
             
+            # Case 0: Pyannote DiarizeOutput wrapper (new in 3.1+)
+            if hasattr(diarization, "annotation"):
+                diarization = diarization.annotation
+
             # Case 1: Pyannote Annotation object (direct usage)
             if hasattr(diarization, "itertracks"):
                 for turn, _, speaker in diarization.itertracks(yield_label=True):
@@ -555,6 +636,53 @@ class LiveTranscriber:
             finally:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
+        
+        elif self.model_type == "huggingface":
+            # Transcribe with Hugging Face pipeline
+            # Convert audio properly
+             # Convert to float32 array if needed
+            if isinstance(audio_data, bytes):
+                audio_array = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
+            elif isinstance(audio_data, np.ndarray):
+                 if audio_data.dtype != np.float32:
+                    audio_array = audio_data.astype(np.float32)
+                 else:
+                    audio_array = audio_data
+            
+            try:
+                # Enable return_timestamps for full audio
+                result = self.pipe(audio_array, return_timestamps=True)
+                
+                # Result format: {'text': '...', 'chunks': [{'timestamp': (0.0, 4.0), 'text': '...'}]}
+                segments = []
+                if "chunks" in result:
+                    for chunk in result["chunks"]:
+                        start, end = chunk.get("timestamp", (0.0, 0.0))
+                        segments.append({
+                            "start": start,
+                            "end": end,
+                            "text": chunk.get("text", "").strip(),
+                            "speaker": None
+                        })
+                else:
+                    # Fallback if no chunks
+                     segments.append({
+                        "start": 0,
+                        "end": 0, 
+                        "text": result.get("text", "").strip(),
+                        "speaker": None
+                    })
+                
+                # Apply diarization if enabled
+                if self.enable_diarization and self.diarize_model:
+                    print("Running diarization on Hugging Face output...")
+                    segments = self._assign_speakers(segments, audio_array, sample_rate)
+                
+                for segment in segments:
+                    yield segment
+                    
+            except Exception as e:
+                print(f"Hugging Face full transcription failed: {e}")
 
     # ... (rest of the class methods: start_live_transcription, etc.) ...
     def start_live_transcription(self, audio_capture, callback=None):
