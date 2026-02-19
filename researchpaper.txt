@@ -1,0 +1,302 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{Multi-Modal Meeting Summarization with Temporal Graph Memory and Transformer-Based Fusion}
+
+\author{\IEEEauthorblockN{Rahul Rajesh Kumar}
+\IEEEauthorblockA{\textit{Department of Computer Science} \\
+\textit{Amrita Vishwa Vidyapeetham}\\
+Amritapuri, India \\
+email@am.amrita.edu}
+\and
+\IEEEauthorblockN{Nikhil Kumar Mishra}
+\IEEEauthorblockA{\textit{Department of Computer Science} \\
+\textit{Amrita Vishwa Vidyapeetham}\\
+Amritapuri, India \\
+email@am.amrita.edu}
+\and
+\IEEEauthorblockN{Pirajesh M}
+\IEEEauthorblockA{\textit{Department of Computer Science} \\
+\textit{Amrita Vishwa Vidyapeetham}\\
+Amritapuri, India \\
+email@am.amrita.edu}
+}
+
+\maketitle
+
+\begin{abstract}
+Virtual meetings have become ubiquitous in modern organizational workflows, yet extracting actionable insights from lengthy meeting recordings remains challenging. This paper presents a novel multi-modal meeting summarization system that fuses textual, audio, and visual modalities through a Transformer-based architecture to generate role-specific, context-aware summaries. Our approach introduces three key contributions: (1) a Contextual Fusion Transformer that learns optimal modality weights through attention mechanisms, (2) a Temporal Graph Memory structure that maintains cross-meeting continuity by tracking decisions, action items, and discussion threads over time, and (3) a role-aware summarization pipeline that tailors outputs to specific stakeholder needs. The system processes meeting recordings through parallel pipelines extracting semantic embeddings via BERT, prosodic features via MFCC analysis, and visual context via fine-tuned ResNet-50, fusing these representations to compute segment-level importance scores. Experimental evaluation demonstrates the effectiveness of our multi-modal fusion approach in identifying key meeting moments compared to text-only baselines.
+\end{abstract}
+
+\begin{IEEEkeywords}
+multi-modal fusion, meeting summarization, transformer, temporal graph memory, speech recognition, BERT embeddings, attention mechanism
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+\subsection{Background}
+The rapid adoption of remote work and virtual collaboration tools has led to an unprecedented increase in the volume of digital meetings. Organizations now conduct a significant portion of their communications through video conferencing platforms, generating vast amounts of unstructured audio-visual data. According to recent studies, knowledge workers spend approximately 23 hours per week in meetings, with a substantial portion of this time often perceived as unproductive \cite{b1}. The challenge of extracting meaningful, actionable insights from these lengthy recordings has become a critical problem in organizational knowledge management.
+
+Traditional meeting summarization approaches primarily rely on text-based analysis of transcripts, treating the problem as a natural language processing task. However, meetings are inherently multi-modal experiences where the \textit{how} of communication (vocal tone, emphasis, visual cues) carries as much significance as the \textit{what} (spoken content). A project manager raising their voice while discussing a deadline conveys urgency that pure text analysis cannot capture. Similarly, a presenter switching to a slide with critical metrics signals visual importance that transcription alone misses.
+
+\subsection{Motivation}
+The motivation for this research stems from several practical observations. First, different stakeholders require different views of the same meeting---a product manager needs to track feature decisions, while an engineer focuses on technical specifications and action items. Second, meeting context extends beyond individual sessions; discussions reference previous meetings, decisions build upon prior agreements, and action items follow up on earlier commitments. Third, the importance of a meeting segment cannot be determined solely from its textual content; prosodic features like pitch variation, energy levels, and speaking rate provide crucial signals about emphasis and urgency.
+
+Existing commercial solutions such as Otter.ai, Microsoft Teams transcription, and Google Meet summaries provide basic transcription and keyword extraction but lack deep multi-modal understanding. These systems typically process each modality independently without learning the complex interactions between what is said, how it is said, and who it matters to.
+
+\subsection{Research Gap}
+Despite significant advances in both automatic speech recognition (ASR) and natural language summarization, several gaps remain in the meeting summarization domain:
+
+\begin{itemize}
+    \item \textbf{Modality Isolation}: Most existing systems process text, audio, and visual streams independently, failing to capture cross-modal correlations that indicate segment importance.
+    \item \textbf{Temporal Discontinuity}: Current approaches treat each meeting as an isolated event, losing the valuable context of ongoing discussions, recurring topics, and evolving decisions across meeting series.
+    \item \textbf{Role Agnosticism}: Generic summaries fail to address the diverse information needs of different stakeholders, requiring users to manually filter irrelevant content.
+    \item \textbf{Static Fusion Weights}: Rule-based fusion approaches use fixed weights for combining modalities, unable to adapt to varying meeting contexts where different signals carry different importance.
+\end{itemize}
+
+\subsection{Objectives}
+The primary objectives of this research are:
+
+\begin{enumerate}
+    \item To design and implement a multi-modal fusion architecture that combines semantic (text), prosodic (audio), and visual features through learned attention mechanisms.
+    \item To develop a Temporal Graph Memory structure that maintains cross-meeting context, enabling tracking of decisions, action items, and discussion threads over time.
+    \item To create a role-aware summarization pipeline that generates tailored summaries based on stakeholder-specific relevance criteria.
+    \item To evaluate the effectiveness of multi-modal fusion compared to unimodal baselines in identifying key meeting moments.
+\end{enumerate}
+
+\subsection{Paper Structure}
+The remainder of this paper is organized as follows. Section II reviews related work in meeting summarization, multi-modal fusion, and temporal reasoning. Section III presents our proposed methodology, detailing the system architecture, fusion mechanism, and temporal memory design. Section IV describes the experimental setup and presents results. Section V discusses findings and limitations. Section VI concludes the paper and outlines future research directions.
+
+\section{Related Work}
+
+This section reviews the literature across three key areas relevant to our research: automatic meeting summarization, multi-modal fusion techniques, and temporal reasoning in NLP.
+
+\subsection{Meeting Summarization}
+Early approaches to meeting summarization treated the problem as extractive text summarization, selecting important sentences from transcripts based on features like term frequency, speaker turns, and positional information \cite{b2}. Murray et al. \cite{b3} demonstrated that combining prosodic features with lexical features improved extractive summarization performance on the ICSI meeting corpus.
+
+The advent of neural sequence-to-sequence models enabled abstractive summarization, where systems generate novel text rather than selecting existing sentences. Shang et al. \cite{b4} applied attention-based encoder-decoder architectures to meeting transcripts, showing improvements over extractive baselines. More recently, pre-trained language models like BERT \cite{b5} and T5 \cite{b6} have been fine-tuned for summarization tasks, achieving state-of-the-art results on various benchmarks.
+
+However, most neural summarization approaches focus exclusively on textual input, ignoring the rich acoustic and visual information present in meeting recordings. Our work addresses this limitation by incorporating multi-modal features into the importance scoring mechanism.
+
+\subsection{Multi-Modal Fusion}
+Multi-modal learning aims to build models that can process and relate information from multiple modalities \cite{b7}. Fusion strategies can be categorized as early fusion (concatenating raw features), late fusion (combining modality-specific predictions), and hybrid approaches.
+
+Attention mechanisms have proven particularly effective for multi-modal fusion. Vaswani et al. \cite{b8} introduced the Transformer architecture with self-attention, which has since been adapted for cross-modal attention in tasks like visual question answering and video captioning. Lu et al. \cite{b9} proposed ViLBERT, a model that learns joint representations of images and text through co-attentional transformer layers.
+
+In the audio-visual domain, Tao et al. \cite{b10} combined acoustic features with visual cues for sentiment analysis, demonstrating that multi-modal approaches outperform unimodal baselines. For meeting analysis specifically, Nihei et al. \cite{b11} used multi-modal features including gaze patterns and head movements to predict meeting outcomes.
+
+Our Contextual Fusion Transformer builds on these advances, adapting the cross-modal attention paradigm specifically for the meeting summarization domain with three input modalities: semantic embeddings, prosodic features, and visual context.
+
+\subsection{Temporal Reasoning and Memory Networks}
+Maintaining context across time is crucial for understanding meeting discussions that span multiple sessions. Memory-augmented neural networks \cite{b12} introduced external memory mechanisms that allow models to store and retrieve information over extended sequences.
+
+Graph neural networks have emerged as powerful tools for representing relational information. Schlichtkrull et al. \cite{b13} proposed Relational Graph Convolutional Networks for knowledge graph completion. In the temporal domain, Trivedi et al. \cite{b14} developed temporal knowledge graph embeddings that capture the evolution of facts over time.
+
+For dialogue systems, Wu et al. \cite{b15} proposed graph-structured memory networks that track entity states across conversation turns. Their approach inspired our Temporal Graph Memory design, which extends the concept to cross-meeting continuity by maintaining nodes for meetings, topics, decisions, and action items with temporal edges representing their relationships.
+
+\subsection{Role-Aware Summarization}
+Personalized summarization has received increasing attention, with systems adapting output to user preferences or profiles. Yan et al. \cite{b16} developed aspect-based summarization that generates summaries focused on specific topics. In the enterprise context, role-based access to information is well-established, but role-aware summarization---generating different summaries for different stakeholders from the same source---remains underexplored.
+
+Our system addresses this gap by incorporating role embeddings into the fusion mechanism, enabling importance scoring that reflects role-specific relevance criteria.
+
+\section{Proposed Methodology}
+
+This section presents our multi-modal meeting summarization system, detailing the overall architecture, individual components, and the novel Temporal Graph Memory mechanism.
+
+\subsection{System Architecture}
+The proposed system follows a pipeline architecture with four main stages: (1) multi-modal feature extraction, (2) modality-specific encoding, (3) fusion and importance scoring, and (4) role-aware summary generation. Figure \ref{fig:architecture} illustrates the overall system design.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{architecture.png}}
+\caption{Multi-Modal Meeting Summarization System Architecture. Meeting recordings are processed through parallel pipelines for text, audio, and visual analysis. Features are fused through the Contextual Fusion Transformer to compute importance scores, which guide the LLM-based summary generation.}
+\label{fig:architecture}
+\end{figure}
+
+\subsubsection{Input Processing}
+Meeting recordings (video files or live streams) are first processed through automatic speech recognition using WhisperX \cite{b17}, which provides word-level timestamps and speaker diarization. The transcript is segmented into semantically coherent units based on speaker turns and pause detection. Simultaneously, video frames are extracted at regular intervals (every 2 seconds) for visual analysis.
+
+\subsubsection{Multi-Modal Feature Extraction}
+For each transcript segment, we extract features from three modalities:
+
+\textbf{Semantic Features (Text):} We employ the sentence-transformers/all-MiniLM-L6-v2 model to generate 384-dimensional dense embeddings for each segment. These embeddings capture semantic meaning and enable similarity comparisons with role-specific importance criteria.
+
+\textbf{Prosodic Features (Audio):} Using librosa, we extract 13-dimensional Mel-frequency cepstral coefficients (MFCCs) along with prosodic features including:
+\begin{itemize}
+    \item Energy (RMS): Mean and standard deviation of signal energy
+    \item Pitch (F0): Fundamental frequency statistics
+    \item Zero Crossing Rate: Proxy for speech rate
+    \item Urgency Score: Composite metric combining energy and pitch variation
+\end{itemize}
+
+These features are concatenated into a 64-dimensional audio embedding that captures \textit{how} something was said---emphasis, urgency, and emotional tone.
+
+\textbf{Visual Features:} A fine-tuned ResNet-50 model processes video frames to extract 2048-dimensional visual embeddings and classify context as either ``Slide'' (presentation material) or ``Person'' (speaker view). Additionally, EasyOCR extracts text from slides for content alignment with the transcript.
+
+\subsection{Contextual Fusion Transformer}
+The core of our approach is the Contextual Fusion Transformer (CFT), which learns to combine multi-modal features into segment-level importance scores.
+
+\subsubsection{Architecture}
+The CFT consists of three main components:
+
+\textbf{1. Modality Projection Layers:} Each modality is projected to a common dimension ($d_{model} = 256$):
+\begin{align}
+h_{text} &= W_{text} \cdot e_{text} + b_{text} \\
+h_{audio} &= W_{audio} \cdot e_{audio} + b_{audio} \\
+h_{role} &= W_{role} \cdot e_{role} + b_{role}
+\end{align}
+where $e_{text} \in \mathbb{R}^{384}$, $e_{audio} \in \mathbb{R}^{64}$, and $e_{role} \in \mathbb{R}^{384}$ are the input embeddings.
+
+\textbf{2. Additive Fusion:} The projected embeddings are combined through addition, followed by layer normalization:
+\begin{equation}
+h_{fused} = \text{LayerNorm}(h_{text} + h_{audio} + h_{role})
+\end{equation}
+
+\textbf{3. Transformer Encoder:} A 2-layer Transformer encoder with 4 attention heads processes the fused representations, capturing contextual dependencies across segments:
+\begin{equation}
+H_{context} = \text{TransformerEncoder}(h_{fused})
+\end{equation}
+
+\textbf{4. Importance Head:} A two-layer MLP with ReLU activation produces the final importance score:
+\begin{equation}
+s_{importance} = \sigma(\text{MLP}(H_{context}))
+\end{equation}
+where $\sigma$ is the sigmoid function ensuring output in $[0, 1]$.
+
+\subsubsection{Training Objective}
+The model is trained using binary cross-entropy loss with importance labels derived from human annotations:
+\begin{equation}
+\mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N}[y_i \log(s_i) + (1-y_i)\log(1-s_i)]
+\end{equation}
+
+\subsection{Temporal Graph Memory}
+To maintain cross-meeting continuity, we introduce the Temporal Graph Memory (TGM), a graph-based structure that stores and links information across meeting sessions.
+
+\subsubsection{Graph Structure}
+The TGM is a heterogeneous graph $G = (V, E)$ with multiple node types $V = \{V_{meeting}, V_{segment}, V_{topic}, V_{decision}, V_{action}, V_{person}\}$ and edge types representing relationships:
+
+\begin{itemize}
+    \item \textbf{CONTAINS}: Meeting $\rightarrow$ Segment
+    \item \textbf{DISCUSSES}: Segment $\rightarrow$ Topic
+    \item \textbf{DECIDES}: Segment $\rightarrow$ Decision
+    \item \textbf{ASSIGNS}: Segment $\rightarrow$ Action Item
+    \item \textbf{FOLLOWS\_UP}: Action Item $\rightarrow$ Previous Action
+    \item \textbf{CONTINUES\_FROM}: Topic $\rightarrow$ Previous Topic
+    \item \textbf{REFERENCES}: Segment $\rightarrow$ Previous Segment
+\end{itemize}
+
+\subsubsection{Context Retrieval}
+When processing a new meeting segment, the TGM retrieves relevant context through semantic similarity search:
+
+\begin{algorithm}
+\caption{Temporal Context Retrieval}
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} Current segment embedding $e_{curr}$, similarity threshold $\tau$
+\STATE \textbf{Output:} Context nodes $C$, temporal boost $\delta$
+\STATE $C \leftarrow \emptyset$
+\FOR{each node $v \in V_{topic} \cup V_{decision} \cup V_{action}$}
+    \STATE $sim \leftarrow \cos(e_{curr}, e_v)$
+    \IF{$sim > \tau$}
+        \STATE $C \leftarrow C \cup \{(v, sim)\}$
+    \ENDIF
+\ENDFOR
+\STATE Sort $C$ by similarity, keep top-$k$
+\STATE $\delta \leftarrow \frac{1}{|C|}\sum_{(v,s) \in C} s \cdot \text{recency}(v)$
+\RETURN $C$, $\delta$
+\end{algorithmic}
+\end{algorithm}
+
+The temporal boost $\delta$ increases importance scores for segments that reference ongoing discussions, unresolved action items, or related decisions from previous meetings.
+
+\subsubsection{Persistence}
+The TGM is persisted as a JSON structure, enabling incremental updates across sessions without requiring graph database infrastructure. Node embeddings are stored alongside metadata, enabling efficient similarity search through vector operations.
+
+\subsection{Role-Aware Summary Generation}
+The final stage generates natural language summaries tailored to specific stakeholder roles using a fine-tuned LLM (LaMini-Flan-T5-248M).
+
+\subsubsection{Role Embedding}
+Each role (e.g., ``Product Manager'', ``Engineer'', ``Executive'') is represented as a semantic embedding using the same sentence transformer model. The role embedding is incorporated into the fusion layer, biasing importance scores toward role-relevant content.
+
+\subsubsection{Prompt Engineering}
+The LLM receives a structured prompt containing:
+\begin{itemize}
+    \item Target role specification
+    \item High-importance segments (filtered by fused score)
+    \item Temporal context from related previous meetings
+    \item Focus instructions (e.g., ``decisions and action items'')
+\end{itemize}
+
+This approach enables generating multiple role-specific summaries from a single meeting recording without re-processing the source material.
+
+\subsection{Implementation Details}
+The system is implemented in Python using PyTorch for deep learning components. Key implementation choices include:
+
+\begin{itemize}
+    \item \textbf{ASR}: WhisperX with large-v3 model for transcription
+    \item \textbf{Text Embeddings}: sentence-transformers/all-MiniLM-L6-v2
+    \item \textbf{Audio Processing}: librosa for feature extraction
+    \item \textbf{Visual Analysis}: Fine-tuned ResNet-50 on meeting context dataset
+    \item \textbf{Summarization}: MBZUAI/LaMini-Flan-T5-248M
+    \item \textbf{Interface}: Gradio web interface for interactive use
+\end{itemize}
+
+The fusion weights default to $\alpha_{semantic}=0.4$, $\alpha_{tonal}=0.15$, $\alpha_{role}=0.25$, $\alpha_{temporal}=0.2$, which can be adjusted based on meeting type or user preference.
+
+\section*{References}
+
+\begin{thebibliography}{00}
+\bibitem{b1} S. G. Rogelberg, C. Scott, and J. Kello, ``The science and fiction of meetings,'' MIT Sloan Management Review, vol. 48, no. 2, pp. 18--21, 2007.
+
+\bibitem{b2} K. McKeown, J. Hirschberg, M. Galley, and S. Maskey, ``From text to speech summarization,'' in Proc. IEEE Int. Conf. Acoustics, Speech and Signal Processing (ICASSP), 2005, pp. 997--1000.
+
+\bibitem{b3} G. Murray, S. Renals, and J. Carletta, ``Extractive summarization of meeting recordings,'' in Proc. European Conf. Speech Communication and Technology (Interspeech), 2005, pp. 593--596.
+
+\bibitem{b4} G. Shang, W. Ding, Z. Zhang, A. Tixier, P. Meladianos, M. Vazirgiannis, and J.-P. Lorré, ``Unsupervised abstractive meeting summarization with multi-sentence compression and budgeted submodular maximization,'' in Proc. 56th Annual Meeting of the Association for Computational Linguistics (ACL), 2018, pp. 664--674.
+
+\bibitem{b5} J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, ``BERT: Pre-training of deep bidirectional transformers for language understanding,'' in Proc. Conf. North American Chapter of the Association for Computational Linguistics (NAACL), 2019, pp. 4171--4186.
+
+\bibitem{b6} C. Raffel, N. Shazeer, A. Roberts, K. Lee, S. Narang, M. Matena, Y. Zhou, W. Li, and P. J. Liu, ``Exploring the limits of transfer learning with a unified text-to-text transformer,'' Journal of Machine Learning Research, vol. 21, no. 140, pp. 1--67, 2020.
+
+\bibitem{b7} T. Baltrušaitis, C. Ahuja, and L.-P. Morency, ``Multimodal machine learning: A survey and taxonomy,'' IEEE Transactions on Pattern Analysis and Machine Intelligence, vol. 41, no. 2, pp. 423--443, 2019.
+
+\bibitem{b8} A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin, ``Attention is all you need,'' in Advances in Neural Information Processing Systems (NeurIPS), 2017, pp. 5998--6008.
+
+\bibitem{b9} J. Lu, D. Batra, D. Parikh, and S. Lee, ``ViLBERT: Pretraining task-agnostic visiolinguistic representations for vision-and-language tasks,'' in Advances in Neural Information Processing Systems (NeurIPS), 2019, pp. 13--23.
+
+\bibitem{b10} J. Tao, J. Tan, Z. Zhang, and H. Wang, ``Sentiment analysis with contextual multi-modal fusion,'' in Proc. ACM Multimedia, 2020, pp. 1140--1148.
+
+\bibitem{b11} F. Nihei, Y. I. Nakano, and Y. Takase, ``Predicting meeting extracts in group discussions using multimodal convolutional neural networks,'' in Proc. ACM Int. Conf. Multimodal Interaction (ICMI), 2018, pp. 421--425.
+
+\bibitem{b12} A. Graves, G. Wayne, and I. Danihelka, ``Neural turing machines,'' arXiv preprint arXiv:1410.5401, 2014.
+
+\bibitem{b13} M. Schlichtkrull, T. N. Kipf, P. Bloem, R. van den Berg, I. Titov, and M. Welling, ``Modeling relational data with graph convolutional networks,'' in Proc. European Semantic Web Conf. (ESWC), 2018, pp. 593--607.
+
+\bibitem{b14} R. Trivedi, H. Dai, Y. Wang, and L. Song, ``Know-Evolve: Deep temporal reasoning for dynamic knowledge graphs,'' in Proc. Int. Conf. Machine Learning (ICML), 2017, pp. 3462--3471.
+
+\bibitem{b15} C. Wu, A. Fisch, S. Chopra, K. Adams, A. Bordes, and J. Weston, ``StarSpace: Embed all the things!,'' in Proc. AAAI Conf. Artificial Intelligence, 2018, pp. 5569--5577.
+
+\bibitem{b16} R. Yan, L. Kong, C. Huang, X. Wan, X. Li, and Y. Zhang, ``Timeline generation: Tracking individuals on Twitter,'' in Proc. 20th Int. Conf. World Wide Web (WWW), 2011, pp. 517--526.
+
+\bibitem{b17} M. Bain, J. Huh, T. Han, and A. Zisserman, ``WhisperX: Time-accurate speech transcription of long-form audio,'' in Proc. Interspeech, 2023, pp. 4489--4493.
+
+\bibitem{b18} A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and I. Sutskever, ``Robust speech recognition via large-scale weak supervision,'' in Proc. Int. Conf. Machine Learning (ICML), 2023, pp. 28492--28518.
+
+\bibitem{b19} K. He, X. Zhang, S. Ren, and J. Sun, ``Deep residual learning for image recognition,'' in Proc. IEEE Conf. Computer Vision and Pattern Recognition (CVPR), 2016, pp. 770--778.
+
+\bibitem{b20} B. McFee, C. Raffel, D. Liang, D. P. Ellis, M. McVicar, E. Battenberg, and O. Nieto, ``librosa: Audio and music signal analysis in python,'' in Proc. 14th Python in Science Conf., 2015, pp. 18--25.
+
+\end{thebibliography}
+\vspace{12pt}
+
+\end{document}

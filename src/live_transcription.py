@@ -212,18 +212,16 @@ class LiveTranscriber:
         if not hf_token:
             hf_token = os.getenv("HF_TOKEN")
         
-
-        
         if not hf_token:
             print("Warning: Diarization requires HF_TOKEN. Set environment variable or pass hf_token parameter.")
             self.enable_diarization = False
             return
 
         print("Initializing speaker diarization pipeline...")
-        print("Initializing speaker diarization pipeline...")
         
         # Flag to track if we successfully loaded a model
         model_loaded = False
+        self.diarization_backend = None  # Track which backend is used: "whisperx" or "pyannote"
         
         # 1. Try loading via WhisperX (wrapper around pyannote)
         if WHISPERX_AVAILABLE:
@@ -233,6 +231,7 @@ class LiveTranscriber:
                 print(f"DiarizationPipeline returned: {type(self.diarize_model)}")
                 print("Diarization pipeline loaded (via WhisperX)!")
                 model_loaded = True
+                self.diarization_backend = "whisperx"
             except Exception as e:
                 print(f"Warning: Failed to load WhisperX diarization: {e}")
                 print("Falling back to direct pyannote.audio...")
@@ -249,6 +248,7 @@ class LiveTranscriber:
                     self.diarize_model.to(torch.device(device))
                     print("Diarization pipeline loaded (via pyannote)!")
                     model_loaded = True
+                    self.diarization_backend = "pyannote"
                 else:
                     print("Failed to load pyannote pipeline (returned None). Check HF_TOKEN and access rights.")
             except Exception as e:
@@ -315,8 +315,10 @@ class LiveTranscriber:
         # Apply diarization if enabled
         if self.enable_diarization and self.diarize_model and result["segments"]:
             try:
-                diarize_segments = self.diarize_model(audio_array)
-                result = whisperx.assign_word_speakers(diarize_segments, result)
+                # Use helper to ensure correct input format for backend
+                diarize_segments = self._run_diarization_model(audio_array, sample_rate)
+                if diarize_segments is not None:
+                     result = whisperx.assign_word_speakers(diarize_segments, result)
             except Exception as e:
                 print(f"Warning: Diarization failed: {e}")
         
@@ -428,27 +430,57 @@ class LiveTranscriber:
         except Exception as e:
             print(f"Hugging Face transcription failed: {e}")
             return ""
-    
+
+    def _run_diarization_model(self, audio_array, sample_rate=16000):
+        """
+        Run the configured diarization model with correct input format.
+        """
+        if not self.diarize_model:
+            return None
+            
+        try:
+            # WhisperX backend -> expects numpy array
+            if self.diarization_backend == "whisperx":
+                return self.diarize_model(audio_array)
+                
+            # Pyannote backend -> expects torch tensor dict
+            elif self.diarization_backend == "pyannote":
+                # Pyannote expects a tensor (channels, time)
+                # audio_array is typically mono (time,)
+                if len(audio_array.shape) == 1:
+                    waveform = torch.from_numpy(audio_array).float().unsqueeze(0)
+                else:
+                    waveform = torch.from_numpy(audio_array).float()
+                    
+                if self.device:
+                     # Map 'cuda' or 'mps' or 'cpu' correctly
+                     # If device is 'cuda:0', torch.device handles it
+                     dev = torch.device(self.device)
+                     waveform = waveform.to(dev)
+                     
+                return self.diarize_model({"waveform": waveform, "sample_rate": sample_rate})
+            
+            # Fallback/Unknown -> try WhisperX style first as it is simpler
+            else:
+                return self.diarize_model(audio_array)
+                
+        except Exception as e:
+            print(f"Diarization inference failed: {e}")
+            return None
+
     def _assign_speakers(self, segments, audio_array, sample_rate=16000):
         """
-        Manually assign speakers to faster-whisper segments using pyannote.
+        Manually assign speakers to faster-whisper/HF segments using pyannote.
         """
         if not self.diarize_model:
             return segments
             
         try:
-            # Run diarization
-            # Convert numpy to torch tensor if using direct pyannote pipeline
-            if not WHISPERX_AVAILABLE and PYANNOTE_AVAILABLE:
-                 # Pyannote expects a tensor (channels, time)
-                 # audio_array is (time,)
-                 waveform = torch.from_numpy(audio_array).float().unsqueeze(0)
-                 if self.device:
-                     waveform = waveform.to(torch.device(self.device))
-                 diarization = self.diarize_model({"waveform": waveform, "sample_rate": sample_rate})
-            else:
-                # WhisperX pipeline expects numpy array
-                diarization = self.diarize_model(audio_array)
+            # Run diarization using unified helper
+            diarization = self._run_diarization_model(audio_array, sample_rate)
+            
+            if diarization is None:
+                return segments
             
             # Convert diarization to list of turns
             speaker_turns = []
@@ -456,6 +488,13 @@ class LiveTranscriber:
             # Case 0: Pyannote DiarizeOutput wrapper (new in 3.1+)
             if hasattr(diarization, "annotation"):
                 diarization = diarization.annotation
+            elif hasattr(diarization, "speaker_diarization"):
+                diarization = diarization.speaker_diarization
+            
+            # Case 0.5: Tuple/List wrapper (some versions/hooks return (annotation, ...))
+            elif isinstance(diarization, (tuple, list)) and len(diarization) > 0:
+                if hasattr(diarization[0], "itertracks"):
+                    diarization = diarization[0]
 
             # Case 1: Pyannote Annotation object (direct usage)
             if hasattr(diarization, "itertracks"):
