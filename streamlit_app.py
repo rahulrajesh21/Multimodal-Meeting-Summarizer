@@ -29,6 +29,8 @@ from src.visual_analysis import VisualAnalyzer
 from src.audio_analysis import AudioTonalAnalyzer, load_audio_file, LIBROSA_AVAILABLE
 from src.fusion_layer import FusionLayer, SegmentFeatures
 from src.feedback_manager import FeedbackManager
+from src.participant_store import ParticipantStore
+from src.role_hierarchy import get_fallback_weights, get_role_description
 
 # Try to import Temporal Graph Memory
 try:
@@ -68,11 +70,11 @@ def init_session_state():
         'current_meeting_id': None,
         'meeting_topics': [],
         'meeting_decisions': [],
-        'meeting_topics': [],
-        'meeting_decisions': [],
         'meeting_action_items': [],
         'feedback_manager': None,
-        'fusion_weights': None
+        'fusion_weights': None,
+        'participant_store': None,
+        'per_participant_highlights': {},
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -158,6 +160,12 @@ def get_feedback_manager():
         st.session_state.feedback_manager = FeedbackManager()
         st.session_state.fusion_weights = st.session_state.feedback_manager.load_weights()
     return st.session_state.feedback_manager
+
+def get_participant_store():
+    """Get or initialize the ParticipantStore (no LLM pipeline at startup to keep it fast)."""
+    if st.session_state.participant_store is None:
+        st.session_state.participant_store = ParticipantStore(data_dir="data")
+    return st.session_state.participant_store
 
 # --- Sidebar Configuration ---
 with st.sidebar:
@@ -335,6 +343,63 @@ if st.session_state.transcript_text:
         with col_map2:
             st.text_area("Current Transcript", value=st.session_state.transcript_text, height=200, disabled=True)
 
+    # --- Participant Management ---
+    with st.expander("👥 Participant Management", expanded=False):
+        pstore = get_participant_store()
+
+        st.markdown("Register participants so the system uses their real role and weights during analysis.")
+
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            st.markdown("**Add Participant**")
+            p_name  = st.text_input("Name", placeholder="Alice Johnson", key="pm_name")
+            p_role  = st.text_input("Role", placeholder="CTO / Client - ACME / Freelance Advisor", key="pm_role")
+            p_dept  = st.text_input("Department (optional)", key="pm_dept")
+            p_ext   = st.checkbox("External participant", key="pm_ext")
+
+            if st.button("Register Participant", disabled=not (p_name and p_role)):
+                # Try to attach LLM pipeline if already loaded
+                llm_pipeline = None
+                if 'llm_summarizer' in st.session_state and st.session_state.llm_summarizer.is_ready:
+                    llm_pipeline = st.session_state.llm_summarizer.pipeline
+                    pstore.llm_pipeline = llm_pipeline
+
+                profile = pstore.add_participant(
+                    name=p_name, role=p_role,
+                    is_external=p_ext, department=p_dept
+                )
+                source = profile.get("weight_source", "formula")
+                st.success(
+                    f"✅ Registered **{p_name}** as *{p_role}* "
+                    f"(weights via {'🤖 LLM' if source == 'llm' else '📐 formula'})"
+                )
+                st.json(profile["weights"])
+
+            # Unknown role expander
+            with st.expander("🔧 Role not in system? Register custom authority"):
+                cr_role = st.text_input("Role title", key="cr_role")
+                cr_auth = st.slider("Authority score", 0.0, 1.0, 0.5, key="cr_auth")
+                if st.button("Save custom role", key="cr_save"):
+                    pstore.register_custom_role(cr_role, cr_auth)
+                    st.success(f"Saved '{cr_role}' with authority {cr_auth:.2f}")
+
+        with col_p2:
+            st.markdown("**Registered Participants**")
+            participants = pstore.list_participants()
+            if participants:
+                for p in participants:
+                    w = p["weights"]
+                    desc = get_role_description(p["role"], p.get("is_external", False))
+                    st.markdown(
+                        f"**{p['display_name']}** — {p['role']}  \n"
+                        f"_{desc}_  \n"
+                        f"`S:{w['semantic']:.2f}  T:{w['tonal']:.2f}  R:{w['role']:.2f}  H:{w['temporal']:.2f}`  \n"
+                        f"Source: *{p.get('weight_source','formula')}*"
+                    )
+                    st.divider()
+            else:
+                st.caption("No participants registered yet.")
+
 st.divider()
 
 # Section 2: Core Processing
@@ -346,29 +411,39 @@ col_core1, col_core2 = st.columns(2)
 with col_core1:
     target_role = st.selectbox(
         "Target Audience Role",
-        ["Product Manager", "Developer", "Designer", "QA Engineer", "Executive"],
+        ["Product Manager", "Developer", "Designer", "QA Engineer", "Executive", "CEO", "CTO"],
         index=0
     )
     
     fusion_mode = st.radio(
         "Fusion Mode",
-        ["Heuristic (Manual Weights)", "Neural (Transformer Model)"],
+        ["Heuristic (Auto Weights)", "Neural (Transformer Model)"],
         horizontal=True
     )
     
     focus_query = st.text_input("Custom Focus Area (Optional)", placeholder="e.g., budget, deadlines, technical debt")
 
 with col_core2:
-    st.markdown("**Fusion Weights (Heuristic Mode)**")
-    
-    # Load default weights from FeedbackManager if available
-    fm = get_feedback_manager()
-    current_weights = st.session_state.fusion_weights or fm.default_weights
-    
-    w_semantic = st.slider("Semantic (Text)", 0.0, 1.0, current_weights.get('semantic', 0.4))
-    w_tonal = st.slider("Tonal (Audio)", 0.0, 1.0, current_weights.get('tonal', 0.15))
-    w_role = st.slider("Role (Context)", 0.0, 1.0, current_weights.get('role', 0.25))
-    w_temporal = st.slider("Temporal (History)", 0.0, 1.0, current_weights.get('temporal', 0.2))
+    # Auto-weight badge — resolve from participant store or fallback
+    pstore = get_participant_store()
+    profile = pstore.get_participant(target_role)
+    if profile:
+        auto_weights = profile["weights"]
+        weight_source_label = f"🟢 Profile: {profile['display_name']}"
+        role_desc = get_role_description(profile["role"], profile.get("is_external", False))
+    else:
+        auto_weights = get_fallback_weights(target_role, is_external=False)
+        weight_source_label = "🟡 Heuristic (no profile found)"
+        role_desc = get_role_description(target_role)
+
+    st.markdown(f"**Auto Weights** — {weight_source_label}")
+    st.caption(role_desc)
+    st.info(
+        f"Semantic: **{auto_weights['semantic']:.2f}** · "
+        f"Tonal: **{auto_weights['tonal']:.2f}** · "
+        f"Role gate: **{auto_weights['role']:.2f}** · "
+        f"Temporal: **{auto_weights['temporal']:.2f}**"
+    )
 
 if st.button("Run Multimodal Analysis", type="primary"):
     if not st.session_state.transcript_text:
@@ -379,21 +454,14 @@ if st.button("Run Multimodal Analysis", type="primary"):
                 text_analyzer = get_text_analyzer()
                 audio_analyzer = get_audio_analyzer()
                 temporal_memory = get_temporal_memory()
-                
-                # Weights
-                total = w_semantic + w_tonal + w_role + w_temporal
-                weights = {
-                    'semantic': w_semantic/total if total > 0 else 0.4,
-                    'tonal': w_tonal/total if total > 0 else 0.15,
-                    'role': w_role/total if total > 0 else 0.25,
-                    'temporal': w_temporal/total if total > 0 else 0.2
-                }
+                pstore = get_participant_store()
                 
                 fusion_layer = FusionLayer(
                     text_analyzer=text_analyzer,
                     audio_analyzer=audio_analyzer,
-                    weights=weights,
-                    temporal_memory=temporal_memory
+                    weights=auto_weights,
+                    temporal_memory=temporal_memory,
+                    participant_store=pstore,
                 )
                 if st.session_state.role_embeddings:
                     fusion_layer.set_role_embeddings(st.session_state.role_embeddings)
@@ -412,6 +480,12 @@ if st.button("Run Multimodal Analysis", type="primary"):
                     )
                 
                 st.session_state.scored_segments = scored_segments
+                
+                # Show per-speaker badge
+                speakers_seen = {s.speaker for s in scored_segments if s.speaker}
+                for spk in speakers_seen:
+                    st.caption(pstore.get_ui_badge(spk) + f" — {spk}")
+                
                 st.success(f"Analysis Complete. Processed {len(segments)} segments.")
                 
             except Exception as e:
@@ -446,7 +520,11 @@ if st.button("Run Multimodal Analysis", type="primary"):
                                     'temporal': seg.temporal_context_score
                                 }
                                 fm.log_feedback(seg.text, scores, 'like')
-                                new_weights = fm.update_weights(st.session_state.fusion_weights, scores, 1.0)
+                                new_weights = fm.update_weights(
+                                    st.session_state.fusion_weights, scores, 1.0,
+                                    speaker_name=seg.speaker,
+                                    participant_store=get_participant_store(),
+                                )
                                 st.session_state.fusion_weights = new_weights
                                 st.toast("Feedback recorded. Model updated.")
                                 time.sleep(1)
@@ -461,7 +539,11 @@ if st.button("Run Multimodal Analysis", type="primary"):
                                     'temporal': seg.temporal_context_score
                                 }
                                 fm.log_feedback(seg.text, scores, 'dislike')
-                                new_weights = fm.update_weights(st.session_state.fusion_weights, scores, -1.0)
+                                new_weights = fm.update_weights(
+                                    st.session_state.fusion_weights, scores, -1.0,
+                                    speaker_name=seg.speaker,
+                                    participant_store=get_participant_store(),
+                                )
                                 st.session_state.fusion_weights = new_weights
                                 st.toast("Feedback recorded. Model updated.")
                                 time.sleep(1)
@@ -535,26 +617,170 @@ with col_gen1:
                     st.error(f"Generation Error: {e}")
 
 with col_gen2:
-    st.subheader("Text Summary")
-    if st.button("Generate Text Summary"):
-        if not st.session_state.transcript_text:
-            st.warning("No transcript.")
+    st.subheader("Text Summary (Per Participant)")
+    top_n = st.slider("Top segments per person", 3, 10, 5, key="top_n_summary")
+
+    # LLM status badge + reload
+    from src.llm_summarizer import LLMSummarizer as _LLMSummarizer
+    _DEFAULT_MODEL = "facebook/bart-large-cnn"
+
+    # Auto-reinitialize if wrong model is cached
+    if 'llm_summarizer' in st.session_state:
+        cached = st.session_state.llm_summarizer
+        if getattr(cached, 'model_name', None) != _DEFAULT_MODEL:
+            del st.session_state['llm_summarizer']   # force reload
+
+    col_llm1, col_llm2 = st.columns([3, 1])
+    with col_llm1:
+        if 'llm_summarizer' in st.session_state:
+            st.caption(f"LLM: {st.session_state.llm_summarizer.status()}")
         else:
-            with st.spinner("Generating Summary..."):
+            st.caption(f"LLM: ⏳ `{_DEFAULT_MODEL}` — will load on first click")
+    with col_llm2:
+        if st.button("🔄 Reload LLM", key="reload_llm"):
+            if 'llm_summarizer' in st.session_state:
+                del st.session_state['llm_summarizer']
+            st.rerun()
+
+    if st.button("Generate Text Summary"):
+        if not st.session_state.scored_segments:
+            st.warning("Run Analysis first.")
+        else:
+            with st.spinner("Generating per-participant summaries..."):
                 try:
                     from src.llm_summarizer import LLMSummarizer
                     if 'llm_summarizer' not in st.session_state:
-                        st.session_state.llm_summarizer = LLMSummarizer(device=st.session_state.device)
-                    
-                    summary = st.session_state.llm_summarizer.summarize(
-                        st.session_state.transcript_text, target_role, focus_query or "key points"
-                    )
-                    st.session_state.ai_summary = summary
+                        st.session_state.llm_summarizer = LLMSummarizer(
+                            device=st.session_state.device
+                        )
+                    llm = st.session_state.llm_summarizer
+
+                    pstore = get_participant_store()
+                    all_segs = st.session_state.scored_segments
+
+                    # Group segments by speaker
+                    from collections import defaultdict
+                    speaker_segs = defaultdict(list)
+                    for seg in all_segs:
+                        spk = seg.speaker or "Unknown"
+                        speaker_segs[spk].append(seg)
+
+                    per_participant_summaries = {}
+                    per_participant_highlights = {}
+
+                    # Role-specific semantic queries for better re-ranking
+                    ROLE_QUERIES = {
+                        "ceo":              "strategic direction, company priorities, executive decisions, vision",
+                        "cto":              "technical strategy, engineering decisions, architecture, R&D priorities",
+                        "cfo":              "budget, financial decisions, cost, revenue, fiscal direction",
+                        "product manager":  "product roadmap, feature priorities, user needs, sprint planning",
+                        "developer":        "technical implementation, code, bugs, technical debt, estimates",
+                        "designer":         "UX, user experience, design decisions, interface, visual feedback",
+                        "analyst":          "data, metrics, KPIs, performance, reporting, analysis",
+                        "infrastructure":   "infrastructure, deployment, reliability, DevOps, system stability",
+                        "quality":          "quality, testing, QA, defects, release readiness",
+                    }
+
+                    def _role_query(role_str: str) -> str:
+                        low = role_str.lower()
+                        for key, query in ROLE_QUERIES.items():
+                            if key in low:
+                                return query
+                        return "important decisions, key contributions, significant remarks"
+
+                    text_analyzer = get_text_analyzer()
+
+                    for spk, segs in speaker_segs.items():
+                        profile = pstore.get_participant(spk)
+                        role = profile["role"] if profile else spk
+
+                        # Role-specific semantic re-ranking
+                        role_query = focus_query.strip() if focus_query and focus_query.strip() else _role_query(role)
+                        
+                        def _score_seg(seg, query=role_query):
+                            """Compute role-specific semantic similarity for re-ranking."""
+                            try:
+                                if text_analyzer:
+                                    q_emb = text_analyzer.get_embedding(query)
+                                    s_emb = seg.text_embedding if seg.text_embedding is not None \
+                                        else text_analyzer.get_embedding(seg.text)
+                                    if q_emb is not None and s_emb is not None:
+                                        import numpy as _np
+                                        cos = float(_np.dot(q_emb, s_emb) / (
+                                            _np.linalg.norm(q_emb) * _np.linalg.norm(s_emb) + 1e-8
+                                        ))
+                                        return (cos + 1) / 2  # 0-1
+                            except Exception:
+                                pass
+                            return seg.fused_score  # fallback
+
+                        scored = sorted(segs, key=_score_seg, reverse=True)
+                        top_segs = scored[:top_n]
+                        top_segs_sorted = sorted(top_segs, key=lambda s: s.start_time)
+
+                        per_participant_highlights[spk] = top_segs_sorted
+
+                        highlight_text = "\n".join(
+                            f"[{s.start_time:.1f}s] {s.text}" for s in top_segs_sorted
+                        )
+
+                        if llm.is_ready and highlight_text.strip():
+                            summary = llm.summarize(
+                                highlight_text,
+                                role=role,
+                                focus=role_query,
+                            )
+                        else:
+                            summary = "\n".join(
+                                f"• [{s.start_time:.1f}s] {s.text[:120]}{'…' if len(s.text) > 120 else ''}"
+                                for s in top_segs_sorted
+                            )
+
+                        per_participant_summaries[spk] = summary
+
+
+                    st.session_state.ai_summary = per_participant_summaries
+                    st.session_state.per_participant_highlights = per_participant_highlights
+
                 except Exception as e:
                     st.error(f"Summary Error: {e}")
-    
-    if st.session_state.ai_summary:
+                    import traceback
+                    st.code(traceback.format_exc())
+
+    # Display per-participant summaries
+    if st.session_state.ai_summary and isinstance(st.session_state.ai_summary, dict):
+        pstore = get_participant_store()
+        for spk, summary in st.session_state.ai_summary.items():
+            profile = pstore.get_participant(spk)
+            role    = profile["role"] if profile else "Unknown Role"
+            w       = profile["weights"] if profile else {}
+
+            with st.expander(f"{'🟢' if profile else '🟡'}  {spk}  —  {role}", expanded=True):
+                if w:
+                    st.caption(
+                        f"S:{w.get('semantic',0):.2f}  "
+                        f"T:{w.get('tonal',0):.2f}  "
+                        f"R:{w.get('role',0):.2f}  "
+                        f"H:{w.get('temporal',0):.2f}  "
+                        f"| source: {profile.get('weight_source','formula')}"
+                    )
+                st.info(summary)
+
+                # Show which segments contributed
+                highlights = st.session_state.get("per_participant_highlights", {}).get(spk, [])
+                if highlights:
+                    with st.expander("📌 Top segments used", expanded=False):
+                        for seg in highlights:
+                            score_bar = "█" * int(seg.fused_score * 10) + "░" * (10 - int(seg.fused_score * 10))
+                            st.markdown(
+                                f"**[{seg.start_time:.1f}s – {seg.end_time:.1f}s]** "
+                                f"`{score_bar}` `{seg.fused_score:.2f}`  \n{seg.text}"
+                            )
+
+    # Legacy: plain string summary from older sessions
+    elif st.session_state.ai_summary and isinstance(st.session_state.ai_summary, str):
         st.info(st.session_state.ai_summary)
+
 
 # Section 4: Temporal Graph Memory (Cross-Meeting Context)
 if TEMPORAL_MEMORY_AVAILABLE:

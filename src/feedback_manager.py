@@ -5,6 +5,12 @@ import logging
 from typing import Dict, Any, Optional
 import time
 
+# Optional participant store integration
+try:
+    from .participant_store import ParticipantStore
+except ImportError:
+    ParticipantStore = None  # type: ignore
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -99,7 +105,9 @@ class FeedbackManager:
         current_weights: Dict[str, float],
         segment_scores: Dict[str, float],
         feedback_value: float,  # +1.0 for Like, -1.0 for Dislike
-        learning_rate: float = 0.05
+        learning_rate: float = 0.05,
+        speaker_name: Optional[str] = None,
+        participant_store=None,
     ) -> Dict[str, float]:
         """
         Adjust weights based on feedback (Online Learning).
@@ -107,6 +115,9 @@ class FeedbackManager:
         Logic:
         - If Like (+1): Increase weights of components that contributed heavily to the score.
         - If Dislike (-1): Decrease weights of components that contributed heavily (blame them).
+
+        If speaker_name and participant_store are provided, weights are also written back
+        to the participant's profile so learning is per-person, not just global.
         """
         new_weights = current_weights.copy()
         
@@ -140,7 +151,16 @@ class FeedbackManager:
             for key in new_weights:
                 new_weights[key] /= total_weight
                 
-        # Persist changes
+        # Persist globally
         self.save_weights(new_weights)
+
+        # Also persist per-participant if a profile exists
+        if speaker_name and participant_store is not None:
+            updated = participant_store.update_weights(speaker_name, new_weights)
+            if updated:
+                logger.info(
+                    f"FeedbackManager: persisted weights for participant '{speaker_name}'"
+                )
         
         return new_weights
+

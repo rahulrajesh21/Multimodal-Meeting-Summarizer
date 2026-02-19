@@ -36,6 +36,14 @@ except ImportError:
     TEMPORAL_MEMORY_AVAILABLE = False
     logger.warning("Temporal Graph Memory not available.")
 
+# Try to import ParticipantStore
+try:
+    from .participant_store import ParticipantStore
+    PARTICIPANT_STORE_AVAILABLE = True
+except ImportError:
+    PARTICIPANT_STORE_AVAILABLE = False
+    logger.warning("ParticipantStore not available.")
+
 
 @dataclass
 class SegmentFeatures:
@@ -108,6 +116,7 @@ class FusionLayer:
         text_analyzer=None,
         audio_analyzer=None,
         temporal_memory: Optional['TemporalGraphMemory'] = None,
+        participant_store: Optional[Any] = None,
         fusion_strategy: str = "weighted",
         weights: Optional[Dict[str, float]] = None
     ):
@@ -124,6 +133,7 @@ class FusionLayer:
         self.text_analyzer = text_analyzer
         self.audio_analyzer = audio_analyzer
         self.temporal_memory = temporal_memory
+        self.participant_store = participant_store
         self.fusion_strategy = fusion_strategy
         
         # Current meeting ID (set when processing a meeting)
@@ -145,6 +155,7 @@ class FusionLayer:
         
         logger.info(f"FusionLayer initialized with strategy: {fusion_strategy}")
         logger.info(f"Temporal Memory: {'enabled' if temporal_memory else 'disabled'}")
+        logger.info(f"ParticipantStore: {'enabled' if participant_store else 'disabled'}")
         
         # ML Model
         self.ml_model = None
@@ -360,44 +371,63 @@ class FusionLayer:
         role_relevance: float,
         temporal_score: float = 0.0
     ) -> float:
+        """Fuse using the layer-level global weights. Delegates to _fuse_with_weights."""
+        return self._fuse_with_weights(
+            semantic_score, tonal_score, role_relevance, temporal_score, self.weights
+        )
+
+    def _fuse_with_weights(
+        self,
+        semantic_score: float,
+        tonal_score: float,
+        role_relevance: float,
+        temporal_score: float,
+        weights: Dict[str, float]
+    ) -> float:
         """
-        Fuse multi-modal scores into a single relevance score.
-        
+        Fuse multi-modal scores into a single relevance score using explicit weights.
+
+        This is the real implementation. fuse_scores() and score_segment() both
+        delegate here — score_segment may supply per-speaker weights from
+        ParticipantStore instead of the global self.weights.
+
         Args:
             semantic_score: Semantic importance (0-1)
             tonal_score: Tonal/prosodic importance (0-1)
             role_relevance: Role-specific relevance (0-1)
             temporal_score: Cross-meeting context relevance (0-1)
-            
+            weights: Weight dict {semantic, tonal, role, temporal}
+
         Returns:
             Fused score (0-1)
         """
         if self.fusion_strategy == "weighted":
-            # Simple weighted sum (now includes temporal)
             fused = (
-                self.weights['semantic'] * semantic_score +
-                self.weights['tonal'] * tonal_score +
-                self.weights['role'] * role_relevance +
-                self.weights['temporal'] * temporal_score
+                weights['semantic'] * semantic_score +
+                weights['tonal'] * tonal_score +
+                weights['role'] * role_relevance +
+                weights['temporal'] * temporal_score
             )
-            
+
         elif self.fusion_strategy == "multiplicative":
-            # Multiplicative with tonal and temporal boost
-            tonal_boost = 1.0 + (tonal_score * 0.5)  # 1.0 to 1.5x
-            temporal_boost = 1.0 + (temporal_score * 0.3)  # 1.0 to 1.3x
+            tonal_boost = 1.0 + (tonal_score * 0.5)
+            temporal_boost = 1.0 + (temporal_score * 0.3)
             fused = semantic_score * tonal_boost * temporal_boost * (0.5 + role_relevance * 0.5)
-            
+
         elif self.fusion_strategy == "gated":
-            # Gated fusion: role acts as a gate, temporal boosts
             gate = self._sigmoid((role_relevance - 0.5) * 4)
-            content_score = 0.6 * semantic_score + 0.25 * tonal_score + 0.15 * temporal_score
+            content_score = (
+                weights.get('semantic', 0.6) * semantic_score +
+                weights.get('tonal', 0.25) * tonal_score +
+                weights.get('temporal', 0.15) * temporal_score
+            )
             fused = content_score * gate
-            
+
         else:
-            # Default to weighted
             fused = (semantic_score + tonal_score + role_relevance) / 3
-        
+
         return float(min(max(fused, 0.0), 1.0))
+
     
     def score_segment(
         self,
@@ -420,6 +450,16 @@ class FusionLayer:
         Returns:
             SegmentFeatures with all scores populated
         """
+        # 0. Resolve per-speaker weights from ParticipantStore (if available)
+        active_weights = self.weights
+        if self.participant_store and segment.speaker:
+            speaker_weights = self.participant_store.get_weights_for_speaker(segment.speaker)
+            if speaker_weights:
+                active_weights = speaker_weights
+                logger.debug(
+                    f"Using profile weights for speaker '{segment.speaker}': {speaker_weights}"
+                )
+
         # 1. Semantic score
         semantic_score, text_emb = self.compute_semantic_score(
             segment.text,
@@ -466,12 +506,9 @@ class FusionLayer:
             segment.temporal_context_score = temporal_score
             segment.temporal_context = temporal_context
         
-        # 5. Fuse scores
-        segment.fused_score = self.fuse_scores(
-            semantic_score,
-            tonal_score,
-            role_relevance,
-            temporal_score
+        # 5. Fuse scores (use speaker-specific weights if resolved)
+        segment.fused_score = self._fuse_with_weights(
+            semantic_score, tonal_score, role_relevance, temporal_score, active_weights
         )
         
         return segment

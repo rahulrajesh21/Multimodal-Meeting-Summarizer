@@ -1,84 +1,122 @@
 import logging
 from typing import Optional
 import torch
-from transformers import pipeline
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class LLMSummarizer:
     """
-    Generates coherent, role-specific summaries using a local LLM.
+    Generates coherent, role-specific summaries using facebook/bart-large-cnn.
+    Loads the model directly (bypasses the pipeline() task-name API which is
+    broken for seq2seq in newer transformers versions).
     """
-    
-    def __init__(self, device: str = "cpu", model_name: str = "MBZUAI/LaMini-Flan-T5-248M"):
-        """
-        Initialize the LLM summarizer.
-        
-        Args:
-            device: Device to run on ("cpu", "cuda", "mps")
-            model_name: HuggingFace model name (default: LaMini-Flan-T5-248M for speed/quality balance)
-        """
-        self.device = -1
-        if device == "cuda" and torch.cuda.is_available():
-            self.device = 0
-        elif device == "mps" and torch.backends.mps.is_available():
-            self.device = 0 # MPS handling varies, but pipeline often accepts 0 or device object
-            
+
+    def __init__(self, device: str = "cpu", model_name: str = "facebook/bart-large-cnn"):
         self.model_name = model_name
-        self.pipeline = None
+        self.model = None
+        self.tokenizer = None
+        self.pipeline = None   # kept for compatibility checks elsewhere
         self.is_ready = False
-        
+        self.last_error = None
+
+        # Resolve torch device
+        if device == "cuda" and torch.cuda.is_available():
+            self._device = torch.device("cuda")
+        elif device == "mps" and torch.backends.mps.is_available():
+            self._device = torch.device("mps")
+        else:
+            self._device = torch.device("cpu")
+
         self._initialize_model()
-        
+
     def _initialize_model(self):
+        self.last_error = None
         try:
-            logger.info(f"Loading summarization model: {self.model_name}...")
-            # Use text2text-generation for T5
-            self.pipeline = pipeline(
-                "text2text-generation",
-                model=self.model_name,
-                device=self.device,
-                max_length=512,
-                truncation=True
-            )
+            from transformers import BartForConditionalGeneration, BartTokenizer
+            logger.info(f"Loading {self.model_name} tokenizer...")
+            self.tokenizer = BartTokenizer.from_pretrained(self.model_name)
+            logger.info(f"Loading {self.model_name} model...")
+            self.model = BartForConditionalGeneration.from_pretrained(self.model_name)
+            self.model.to(self._device)
+            self.model.eval()
             self.is_ready = True
-            logger.info("LLM Summarizer initialized!")
+            logger.info(f"LLM Summarizer ready on {self._device}.")
         except Exception as e:
+            self.last_error = str(e)
             logger.error(f"Error initializing LLM Summarizer: {e}")
             self.is_ready = False
 
-    def summarize(self, text: str, role: str, focus: str = "key decisions and action items") -> str:
+    def status(self) -> str:
+        """Human-readable load status for UI display."""
+        if self.is_ready:
+            return f"✅ Ready ({self.model_name} on {self._device})"
+        if self.last_error:
+            return f"❌ Failed: {self.last_error[:150]}"
+        return "⏳ Not initialised"
+
+    def summarize(
+        self,
+        text: str,
+        role: str,
+        focus: str = "key decisions and action items",
+    ) -> str:
         """
-        Generate a role-specific summary.
-        
+        Generate a role-specific summary from the given text.
+
         Args:
-            text: The transcript text to summarize
-            role: The target role (e.g., "Product Manager")
-            focus: Specific focus area (optional)
-            
+            text:  Transcript or highlight text to summarise.
+            role:  Target role for context (e.g. "CTO").
+            focus: What to pay attention to.
+
         Returns:
-            Generated summary string
+            Summary string.
         """
         if not self.is_ready or not text:
-            return "Summarizer not available or empty text."
-            
-        # Construct a prompt that guides the model
-        # LaMini-Flan-T5 follows instructions well
-        prompt = f"""
-        You are a {role}. Analyze the following meeting transcript and write a concise summary focusing on {focus}.
-        
-        Transcript:
-        {text[:2000]} 
-        
-        Summary:
-        """
-        # Note: Truncating text to 2000 chars to fit context window if needed, 
-        # but for a real app we might need chunking. For now, simple truncation.
-        
+            reason = self.last_error or "model not loaded"
+            return f"[LLM unavailable — {reason}]"
+
+        # Strip timestamps from segments so BART reads clean prose
+        # e.g. "[11.0s] So I've got..." → "So I've got..."
+        import re
+        clean_lines = []
+        for line in text.strip().splitlines():
+            clean = re.sub(r"^\[\d+\.?\d*s\]\s*", "", line.strip())
+            if clean:
+                clean_lines.append(clean)
+        clean_text = " ".join(clean_lines)
+
+        # BART works purely on the text body — no instruction prefix
+        # (it ignores instructions and just echoes them back into the summary)
+        input_text = clean_text[:1800]
+
         try:
-            output = self.pipeline(prompt, max_length=256, do_sample=False)
-            return output[0]['generated_text']
+            inputs = self.tokenizer(
+                input_text,
+                return_tensors="pt",
+                max_length=1024,
+                truncation=True,
+            ).to(self._device)
+
+            with torch.no_grad():
+                summary_ids = self.model.generate(
+                    inputs["input_ids"],
+                    num_beams=4,
+                    max_length=220,
+                    min_length=60,
+                    length_penalty=2.0,
+                    no_repeat_ngram_size=3,
+                    early_stopping=True,
+                )
+
+            summary = self.tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+
+            # Prepend a small role header so the output still has context
+            header = f"[{role}] "
+            return header + summary
+
         except Exception as e:
             logger.error(f"Summarization failed: {e}")
             return f"Error generating summary: {e}"
+
