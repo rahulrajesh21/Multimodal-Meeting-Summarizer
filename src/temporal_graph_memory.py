@@ -926,10 +926,12 @@ class TemporalGraphMemory:
                 return float(dot / (norm1 * norm2))
         
         # Fallback to keyword overlap
-        words1 = set(node1.content.lower().split())
-        words2 = set(node2.content.lower().split())
+        # Only use words with 4+ characters to avoid trivial matches
+        import re as _re
+        words1 = set(_re.findall(r'\b[a-zA-Z]{4,}\b', node1.content.lower()))
+        words2 = set(_re.findall(r'\b[a-zA-Z]{4,}\b', node2.content.lower()))
         
-        # Remove common stop words
+        # Remove common stop words AND filler words
         stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 
                      'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
                      'would', 'could', 'should', 'may', 'might', 'must', 'shall',
@@ -940,8 +942,23 @@ class TemporalGraphMemory:
                      'neither', 'not', 'only', 'own', 'same', 'than', 'too', 'very',
                      'just', 'also', 'now', 'here', 'there', 'when', 'where', 'why',
                      'how', 'all', 'each', 'few', 'more', 'most', 'other', 'some',
-                     'such', 'no', 'any', 'this', 'that', 'these', 'those', 'i',
-                     'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who'}
+                     'such', 'no', 'any', 'this', 'that', 'these', 'those',
+                     'you', 'she', 'it', 'we', 'they', 'what', 'which', 'who',
+                     # Extended filler/generic words that cause false matches
+                     'that', 'this', 'with', 'have', 'they', 'from', 'some', 'been',
+                     'also', 'just', 'then', 'than', 'into', 'about', 'over',
+                     'your', 'ours', 'their', 'were', 'said', 'says', 'like',
+                     'know', 'think', 'going', 'want', 'need', 'make', 'made',
+                     'come', 'came', 'went', 'take', 'took', 'look', 'because',
+                     'really', 'very', 'actually', 'basically', 'right', 'okay',
+                     'yeah', 'well', 'good', 'great', 'kind', 'sort', 'thing',
+                     'things', 'definitely', 'probably', 'maybe', 'perhaps',
+                     'again', 'still', 'already', 'always', 'never', 'often',
+                     'even', 'back', 'much', 'many', 'most', 'each', 'every',
+                     'other', 'another', 'something', 'anything', 'nothing',
+                     'everything', 'someone', 'anyone', 'hopefully', 'obviously',
+                     'help', 'does', 'doesn', 'team', 'rest', 'effective',
+                     'either', 'folks', 'people'}
         
         words1 = words1 - stop_words
         words2 = words2 - stop_words
@@ -951,6 +968,10 @@ class TemporalGraphMemory:
         
         intersection = words1 & words2
         union = words1 | words2
+        
+        # Require at least 2 overlapping words to count as similar
+        if len(intersection) < 2:
+            return 0.0
         
         return len(intersection) / len(union) if union else 0.0
     
@@ -1239,3 +1260,392 @@ class TemporalGraphMemory:
             'action_items': len(self.nodes_by_type[NodeType.ACTION_ITEM]),
             'persons': len(self.nodes_by_type[NodeType.PERSON])
         }
+
+    # ==================== Auto-Ingestion from Scored Segments ====================
+
+    def ingest_meeting_results(
+        self,
+        meeting_id: str,
+        scored_segments: List[Any],
+        importance_threshold: float = 0.4,
+        auto_extract: bool = True,
+        clear: bool = False
+    ) -> Dict[str, List[str]]:
+        """
+        Auto-populate the graph from a list of SegmentFeatures after fusion analysis.
+
+        Args:
+            meeting_id: Target meeting node ID
+            scored_segments: List of SegmentFeatures or dicts
+            importance_threshold: Minimum fused_score to attempt topic/decision extraction
+            auto_extract: If True, run keyword extraction on important segments
+            clear: If True, remove all existing segments/topics/decisions/action_items
+                   for this meeting before ingesting (prevents stale data accumulation)
+
+        Returns:
+            Dict mapping 'segments', 'topics', 'decisions', 'action_items' to node ID lists.
+        """
+        import re
+
+        # --- Optional: clear existing data for this meeting first ---
+        if clear:
+            remove_types = {NodeType.SEGMENT, NodeType.TOPIC, NodeType.DECISION, NodeType.ACTION_ITEM}
+            nodes_to_remove = [
+                nid for nid, n in list(self.nodes.items())
+                if n.meeting_id == meeting_id and n.type in remove_types
+            ]
+            for nid in nodes_to_remove:
+                # Remove associated edges
+                for eid in list(self.edges_by_source.get(nid, set())):
+                    edge = self.edges.pop(eid, None)
+                    if edge:
+                        self.edges_by_target.get(edge.target_id, set()).discard(eid)
+                        self.edges_by_type.get(edge.type, set()).discard(eid)
+                for eid in list(self.edges_by_target.get(nid, set())):
+                    edge = self.edges.pop(eid, None)
+                    if edge:
+                        self.edges_by_source.get(edge.source_id, set()).discard(eid)
+                        self.edges_by_type.get(edge.type, set()).discard(eid)
+                self.edges_by_source.pop(nid, None)
+                self.edges_by_target.pop(nid, None)
+                node = self.nodes.pop(nid, None)
+                if node:
+                    self.nodes_by_type[node.type].discard(nid)
+                    self.nodes_by_meeting[meeting_id].discard(nid)
+            logger.info(f"Cleared {len(nodes_to_remove)} existing nodes for meeting {meeting_id}")
+
+        created: Dict[str, List[str]] = {
+            'segments': [], 'topics': [], 'decisions': [], 'action_items': []
+        }
+
+        # Patterns for extraction
+        DECISION_PATTERNS = re.compile(
+            r'\b(decided|approved|agreed|confirmed|going with|we will|we are going|'
+            r'final decision|resolved|concluded|chosen|selected)\b',
+            re.IGNORECASE
+        )
+        ACTION_PATTERNS = re.compile(
+            r'\b(action item|follow.?up|will do|needs? to|should|must|please|'
+            r'assigned to|take care|handle this|schedule|set up|create|fix|'
+            r'update|send|review|check|verify|implement|deploy)\b',
+            re.IGNORECASE
+        )
+
+        # Helper to normalise SegmentFeatures OR plain dict
+        def _get(seg, attr, default=None):
+            if isinstance(seg, dict):
+                return seg.get(attr, default)
+            return getattr(seg, attr, default)
+
+        for seg in scored_segments:
+            text = _get(seg, 'text', '')
+            if not text or not text.strip():
+                continue
+
+            start_time  = _get(seg, 'start_time', 0.0) or _get(seg, 'start', 0.0)
+            end_time    = _get(seg, 'end_time',   0.0) or _get(seg, 'end',   0.0)
+            speaker     = _get(seg, 'speaker')
+            fused_score = _get(seg, 'fused_score', 0.0)
+            text_emb    = _get(seg, 'text_embedding')  # numpy array or None
+
+            # Convert numpy embedding to list if needed
+            emb_list = None
+            if text_emb is not None:
+                try:
+                    emb_list = text_emb.tolist()
+                except AttributeError:
+                    emb_list = list(text_emb)
+
+            seg_id = self.add_segment(
+                meeting_id=meeting_id,
+                text=text,
+                start_time=start_time,
+                end_time=end_time,
+                speaker=speaker,
+                importance_score=fused_score
+            )
+            # Manually attach saved embedding to the node
+            if emb_list:
+                self.nodes[seg_id].embedding = emb_list
+            created['segments'].append(seg_id)
+
+            if not auto_extract or fused_score < importance_threshold:
+                continue
+
+            # --- Extract keywords for topic (meaningful words only) ---
+            stop = {
+                'that', 'this', 'with', 'have', 'they', 'from', 'some', 'been',
+                'will', 'what', 'when', 'there', 'more', 'also', 'just', 'then',
+                'than', 'into', 'about', 'over', 'your', 'ours', 'their', 'were',
+                'said', 'says', 'like', 'know', 'think', 'going', 'want', 'need',
+                'make', 'made', 'come', 'came', 'went', 'take', 'took', 'look',
+                'because', 'really', 'very', 'actually', 'basically', 'right',
+                'okay', 'yeah', 'well', 'good', 'great', 'kind', 'sort',
+                'definitely', 'probably', 'maybe', 'perhaps', 'again', 'still',
+                'already', 'always', 'never', 'often', 'could', 'would', 'should',
+                'might', 'must', 'shall', 'does', 'doing', 'done', 'even', 'back',
+                'after', 'before', 'during', 'since', 'between', 'while', 'though',
+                'through', 'without', 'within', 'around', 'along', 'across', 'away',
+                'little', 'much', 'many', 'most', 'each', 'every', 'other', 'another',
+                'something', 'anything', 'nothing', 'everything', 'someone', 'anyone',
+                'want', 'partner', 'demand', 'steve', 'hopefully', 'obviously',
+                'doesn', 'help', 'folks', 'people', 'team', 'rest', 'effective',
+                'either', 'seven', 'carriages', 'texas',
+            }
+
+            # Topic vocabulary — domain words that indicate a substantive topic
+            TOPIC_VOCAB = {
+                'security', 'vulnerability', 'authentication', 'authorization', 'breach',
+                'backend', 'frontend', 'database', 'server', 'infrastructure', 'deployment',
+                'kubernetes', 'docker', 'cloud', 'microservice', 'pipeline', 'latency',
+                'performance', 'scalability', 'monitoring', 'logging', 'cache',
+                'migration', 'downtime', 'incident', 'outage', 'staging', 'production',
+                'release', 'rollout', 'feature', 'sprint', 'milestone', 'roadmap',
+                'architecture', 'refactor', 'technical', 'debugging', 'error', 'exception',
+                'repository', 'dependency', 'version', 'upgrade',
+                'budget', 'cost', 'revenue', 'funding', 'investment', 'profit', 'loss',
+                'contract', 'vendor', 'partnership', 'customer', 'client', 'stakeholder',
+                'deadline', 'timeline', 'priority', 'blocker', 'bottleneck', 'scope',
+                'decision', 'approval', 'strategy', 'planning', 'initiative', 'proposal',
+                'launch', 'rollback', 'delay', 'escalation', 'review', 'audit',
+                'compliance', 'legal', 'regulation', 'policy', 'process', 'workflow',
+                'hiring', 'onboarding', 'resource', 'capacity', 'workload', 'bandwidth',
+                'feedback', 'design', 'research', 'prototype', 'requirement', 'specification',
+            }
+
+            words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
+            vocab_keywords = [w for w in words if w in TOPIC_VOCAB]
+            content_words = [w for w in words if w not in stop and w not in vocab_keywords]
+
+            seen_kw: Set[str] = set()
+            keywords = []
+            for w in vocab_keywords + content_words:
+                if w not in seen_kw:
+                    seen_kw.add(w)
+                    keywords.append(w)
+            keywords = keywords[:8]
+
+            # ── Filler / small-talk filter ──
+            FILLER_PATTERNS = re.compile(
+                r'\b(hopefully|obviously|basically|actually|you know|i mean|'
+                r'kind of|sort of|i guess|i think so|sounds good|'
+                r'good morning|good afternoon|hello everyone|hi everyone|'
+                r'how are you|nice to meet|let me know|'
+                r'carriages|texas)\b',
+                re.IGNORECASE
+            )
+            text_lower = text.lower().strip()
+            is_filler = bool(FILLER_PATTERNS.search(text_lower))
+
+            # Gate: require TOPIC_VOCAB match to create a topic.
+            # Without a vocab match we skip — pure content-word count
+            # allows too much noise ("hopefully the rest of the team").
+            has_strong_vocab = len(vocab_keywords) >= 1
+            has_deep_vocab = len(vocab_keywords) >= 2
+
+            create_topic = False
+            if has_deep_vocab:
+                # Two+ domain words → always create topic
+                create_topic = True
+            elif has_strong_vocab and not is_filler:
+                # One domain word, but not filler → create topic
+                create_topic = True
+            elif not is_filler and len(content_words) >= 7 and fused_score >= 0.6:
+                # No domain vocab but the segment is long, substantive, and high-scoring
+                create_topic = True
+
+            if create_topic:
+                # Use the actual sentence as the topic label — clean timestamps, cap at 80 chars
+                clean_text = re.sub(r'^\[\d+\.?\d*s\]\s*', '', text).strip()
+                if len(clean_text) > 80:
+                    topic_label = clean_text[:77].rsplit(' ', 1)[0] + '…'
+                else:
+                    topic_label = clean_text
+                # Prepend primary vocab keyword as a category hint
+                if vocab_keywords:
+                    topic_label = vocab_keywords[0].capitalize() + ': ' + topic_label
+
+                topic_id = self.add_topic(
+                    meeting_id=meeting_id,
+                    topic_text=topic_label,
+                    keywords=keywords,
+                    segment_ids=[seg_id]
+                )
+                created['topics'].append(topic_id)
+
+            # --- Extract decisions ---
+            if DECISION_PATTERNS.search(text):
+                decision_text = text[:160].strip()
+                dec_id = self.add_decision(
+                    meeting_id=meeting_id,
+                    decision_text=decision_text,
+                    segment_id=seg_id,
+                    participants=[speaker] if speaker else None
+                )
+                created['decisions'].append(dec_id)
+
+            # --- Extract action items ---
+            if ACTION_PATTERNS.search(text):
+                action_text = text[:160].strip()
+                mention = re.search(r'@(\w+)', text)
+                assignee = mention.group(1) if mention else speaker
+                act_id = self.add_action_item(
+                    meeting_id=meeting_id,
+                    action_text=action_text,
+                    assignee=assignee,
+                    segment_id=seg_id
+                )
+                created['action_items'].append(act_id)
+
+        logger.info(
+            f"Ingested meeting {meeting_id}: "
+            f"{len(created['segments'])} segments, "
+            f"{len(created['topics'])} topics, "
+            f"{len(created['decisions'])} decisions, "
+            f"{len(created['action_items'])} action items"
+        )
+        return created
+
+    # ==================== Cross-Meeting Thread Discovery ====================
+
+    def find_cross_meeting_threads(
+        self,
+        min_meetings: int = 2,
+        similarity_threshold: float = 0.70
+    ) -> List[Dict[str, Any]]:
+        """
+        Cluster topics that appear across >= min_meetings into recurring 'threads'.
+
+        Algorithm:
+        1. Fetch all TOPIC nodes.
+        2. Build pairwise similarity (embedding cosine if available, else keyword Jaccard).
+        3. Union-Find greedy clustering: merge nodes with sim >= threshold.
+        4. Filter clusters spanning >= min_meetings unique meetings.
+        5. Sort thread appearances chronologically.
+
+        Returns:
+            List of thread dicts with thread_id, label, first_seen, last_seen,
+            meeting_count, keywords, appearances.
+        """
+        topic_ids = list(self.nodes_by_type[NodeType.TOPIC])
+        if len(topic_ids) < 2:
+            return []
+
+        # --- Union-Find helper ---
+        parent = {tid: tid for tid in topic_ids}
+
+        def find(x):
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def union(a, b):
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[ra] = rb
+
+        # --- Cluster by pairwise similarity ---
+        for i, tid_a in enumerate(topic_ids):
+            node_a = self.nodes[tid_a]
+            for tid_b in topic_ids[i + 1:]:
+                node_b = self.nodes[tid_b]
+                # Skip topics from the same meeting
+                if node_a.meeting_id == node_b.meeting_id:
+                    continue
+                sim = self._compute_similarity(node_a, node_b)
+                if sim >= similarity_threshold:
+                    union(tid_a, tid_b)
+
+        # --- Group into clusters ---
+        clusters: Dict[str, List[str]] = defaultdict(list)
+        for tid in topic_ids:
+            clusters[find(tid)].append(tid)
+
+        # Domain vocab for scoring labels
+        _TOPIC_VOCAB = {
+            'security', 'vulnerability', 'authentication', 'authorization', 'breach',
+            'backend', 'frontend', 'database', 'server', 'infrastructure', 'deployment',
+            'kubernetes', 'docker', 'cloud', 'microservice', 'pipeline', 'latency',
+            'performance', 'scalability', 'monitoring', 'logging', 'cache',
+            'migration', 'downtime', 'incident', 'outage', 'staging', 'production',
+            'release', 'rollout', 'feature', 'sprint', 'milestone', 'roadmap',
+            'architecture', 'refactor', 'technical', 'debugging', 'error', 'exception',
+            'budget', 'cost', 'revenue', 'deadline', 'timeline', 'priority',
+            'decision', 'approval', 'strategy', 'planning', 'design', 'research',
+        }
+
+        def _vocab_score(n):
+            kws = n.metadata.get('keywords', [])
+            return sum(1 for k in kws if k in _TOPIC_VOCAB)
+
+        threads = []
+        for root, members in clusters.items():
+            # Collect unique meeting IDs in this cluster
+            meeting_ids_in_cluster = {
+                self.nodes[tid].meeting_id for tid in members
+                if self.nodes[tid].meeting_id
+            }
+            if len(meeting_ids_in_cluster) < min_meetings:
+                continue
+
+            # Build appearances list (one per topic node, sorted by date)
+            appearances = []
+            all_keywords: Set[str] = set()
+            for tid in members:
+                node = self.nodes[tid]
+                meeting_node = self.nodes.get(node.meeting_id)
+                kws = node.metadata.get('keywords', [])
+                all_keywords.update(kws)
+                appearances.append({
+                    'meeting_id': node.meeting_id,
+                    'meeting_title': meeting_node.content if meeting_node else 'Unknown',
+                    'date': node.timestamp.isoformat(),
+                    'topic': node.content,
+                    'keywords': kws
+                })
+
+            appearances.sort(key=lambda x: x['date'])
+
+            # Label: pick the topic with the most domain-vocab keywords
+            label_node = max(
+                (self.nodes[tid] for tid in members),
+                key=lambda n: (_vocab_score(n), len(n.metadata.get('keywords', [])))
+            )
+
+            threads.append({
+                'thread_id': root,
+                'label': label_node.content,
+                'first_seen': appearances[0]['date'],
+                'last_seen': appearances[-1]['date'],
+                'meeting_count': len(meeting_ids_in_cluster),
+                'keywords': sorted(all_keywords)[:10],
+                'appearances': appearances
+            })
+
+        # Sort threads by most recently active first
+        threads.sort(key=lambda t: t['last_seen'], reverse=True)
+        logger.info(f"Found {len(threads)} cross-meeting threads")
+        return threads
+
+    def get_open_action_items(self) -> List[Dict[str, Any]]:
+        """
+        Return all open action items across all meetings, sorted by meeting date.
+        """
+        items = []
+        for aid in self.nodes_by_type[NodeType.ACTION_ITEM]:
+            node = self.nodes[aid]
+            if node.metadata.get('status', 'open') != 'done':
+                meeting_node = self.nodes.get(node.meeting_id)
+                items.append({
+                    'action_id': aid,
+                    'action': node.content,
+                    'assignee': node.metadata.get('assignee'),
+                    'priority': node.metadata.get('priority', 'medium'),
+                    'status': node.metadata.get('status', 'open'),
+                    'meeting_id': node.meeting_id,
+                    'meeting_title': meeting_node.content if meeting_node else 'Unknown',
+                    'date': node.timestamp.isoformat()
+                })
+        items.sort(key=lambda x: x['date'])
+        return items

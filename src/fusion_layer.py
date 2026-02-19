@@ -62,11 +62,12 @@ class SegmentFeatures:
     semantic_score: float = 0.0
     tonal_score: float = 0.0
     role_relevance: float = 0.0
-    temporal_context_score: float = 0.0  # NEW: Cross-meeting context relevance
+    temporal_context_score: float = 0.0  # Cross-meeting context relevance
     fused_score: float = 0.0
     
-    # Temporal context (NEW)
+    # Temporal context
     temporal_context: Optional[Dict[str, Any]] = None  # Context from previous meetings
+    thread_info: Optional[Dict[str, Any]] = None       # Thread detection result for UI badges
 
 
 class FusionLayer:
@@ -138,6 +139,16 @@ class FusionLayer:
         
         # Current meeting ID (set when processing a meeting)
         self.current_meeting_id: Optional[str] = None
+        
+        # Thread detector (lazily initialised when temporal_memory is set)
+        self._thread_detector = None
+        if temporal_memory is not None and TEMPORAL_MEMORY_AVAILABLE:
+            try:
+                from .thread_detector import ThreadDetector
+                self._thread_detector = ThreadDetector(temporal_memory)
+                logger.info("ThreadDetector initialised inside FusionLayer")
+            except ImportError:
+                logger.warning("thread_detector module not found — thread boost disabled")
         
         # Default weights (can be tuned) - now includes temporal
         self.weights = weights or {
@@ -501,10 +512,34 @@ class FusionLayer:
         temporal_score = 0.0
         if text_emb is not None:
             temporal_score, temporal_context = self.compute_temporal_context_score(
-                text_emb, segment.text
+                text=segment.text, text_embedding=text_emb
             )
             segment.temporal_context_score = temporal_score
             segment.temporal_context = temporal_context
+
+        # 4b. Thread boost — extra weight if segment belongs to a recurring thread
+        if self._thread_detector is not None and text_emb is not None:
+            try:
+                thread = self._thread_detector.get_thread_for_segment(
+                    segment.text, text_emb
+                )
+                if thread:
+                    days_since = thread.days_since_first()
+                    # Boost scales with recency: older threads still get 30 % base boost
+                    recency_factor = max(0.3, 1.0 - days_since / 30.0)
+                    thread_boost = 0.25 * recency_factor * min(thread.meeting_count, 4) / 4
+                    temporal_score = min(1.0, temporal_score + thread_boost)
+                    segment.temporal_context_score = temporal_score
+                    segment.thread_info = {
+                        'thread_id': thread.thread_id,
+                        'label': thread.canonical_label,
+                        'first_seen': thread.first_seen,
+                        'meeting_count': thread.meeting_count,
+                        'annotation': self._thread_detector.generate_thread_annotation(thread),
+                        'keywords': thread.keywords[:5],
+                    }
+            except Exception as e:
+                logger.debug(f"Thread detection skipped: {e}")
         
         # 5. Fuse scores (use speaker-specific weights if resolved)
         segment.fused_score = self._fuse_with_weights(

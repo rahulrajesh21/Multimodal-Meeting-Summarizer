@@ -481,7 +481,26 @@ if st.button("Run Multimodal Analysis", type="primary"):
                 
                 st.session_state.scored_segments = scored_segments
                 
-                # Show per-speaker badge
+                # Auto-ingest into Temporal Memory (if a meeting is active)
+                if temporal_memory and st.session_state.current_meeting_id:
+                    with st.spinner("⏳ Saving to Temporal Memory..."):
+                        temporal_memory.ingest_meeting_results(
+                            meeting_id=st.session_state.current_meeting_id,
+                            scored_segments=scored_segments,
+                            importance_threshold=0.4
+                        )
+                        temporal_memory.save()
+                        # Invalidate thread cache so next render recomputes
+                        try:
+                            from src.thread_detector import ThreadDetector
+                            if hasattr(temporal_memory, '_thread_detector'):
+                                temporal_memory._thread_detector.invalidate_cache()
+                        except Exception:
+                            pass
+                    st.success(
+                        f"✅ Meeting saved to Temporal Memory — "
+                        f"{len(st.session_state.scored_segments)} segments ingested"
+                    )
                 speakers_seen = {s.speaker for s in scored_segments if s.speaker}
                 for spk in speakers_seen:
                     st.caption(pstore.get_ui_badge(spk) + f" — {spk}")
@@ -507,7 +526,17 @@ if st.button("Run Multimodal Analysis", type="primary"):
                         st.markdown(f"**#{i+1}**")
                     with c2:
                         st.markdown(f"_{seg.text}_")
-                        st.caption(f"Score: {seg.fused_score:.2f} (S:{seg.semantic_score:.2f}, T:{seg.tonal_score:.2f}, R:{seg.role_relevance:.2f}, H:{seg.temporal_context_score:.2f})")
+                        score_line = (
+                            f"Score: {seg.fused_score:.2f} "
+                            f"(S:{seg.semantic_score:.2f}, T:{seg.tonal_score:.2f}, "
+                            f"R:{seg.role_relevance:.2f}, H:{seg.temporal_context_score:.2f})"
+                        )
+                        st.caption(score_line)
+                        # Show thread badge if this segment is part of a recurring thread
+                        if getattr(seg, 'thread_info', None):
+                            ann = seg.thread_info.get('annotation', '')
+                            if ann:
+                                st.caption(ann)
                     with c3:
                         cc1, cc2 = st.columns(2)
                         with cc1:
@@ -785,204 +814,325 @@ with col_gen2:
 # Section 4: Temporal Graph Memory (Cross-Meeting Context)
 if TEMPORAL_MEMORY_AVAILABLE:
     st.divider()
-    st.header("4. Temporal Graph Memory")
-    st.markdown("Track decisions, action items, and topics across meetings for cross-meeting continuity.")
-    
+    st.header("🧠 4. Temporal Graph Memory")
+    st.markdown(
+        "Track how decisions, issues, and topics **evolve across multiple meetings**. "
+        "The system automatically detects recurring threads and highlights them in summaries."
+    )
+
     temporal_mem = get_temporal_memory()
-    
+
     if temporal_mem:
-        col_tm1, col_tm2 = st.columns(2)
-        
-        with col_tm1:
-            st.subheader("Meeting Management")
-            
-            # Create new meeting
-            with st.expander("Create New Meeting", expanded=not st.session_state.current_meeting_id):
-                meeting_title = st.text_input("Meeting Title", placeholder="Weekly Standup - Q1 Review")
-                meeting_participants = st.text_input("Participants (comma-separated)", placeholder="Alice, Bob, Charlie")
-                meeting_tags = st.text_input("Tags (comma-separated)", placeholder="standup, planning, q1")
-                
-                if st.button("Create Meeting", type="primary"):
-                    if meeting_title:
-                        participants = [p.strip() for p in meeting_participants.split(',') if p.strip()]
-                        tags = [t.strip() for t in meeting_tags.split(',') if t.strip()]
-                        
-                        meeting_id = temporal_mem.create_meeting(
-                            title=meeting_title,
-                            participants=participants,
-                            tags=tags
+        # --- Tab layout ---
+        tab_hist, tab_threads, tab_search, tab_actions = st.tabs([
+            "📊 Meeting History",
+            "🧵 Cross-Meeting Threads",
+            "🔍 Semantic Search",
+            "✅ Open Action Items",
+        ])
+
+        # ================================================================
+        # TAB 1: Meeting History
+        # ================================================================
+        with tab_hist:
+            st.subheader("Meeting History & Management")
+
+            col_new, col_list = st.columns([1, 1])
+
+            with col_new:
+                with st.expander("➕ Register Current Meeting",
+                                 expanded=not st.session_state.current_meeting_id):
+                    meeting_title = st.text_input(
+                        "Meeting Title", placeholder="Weekly Standup — Feb 20",
+                        key="tm_title"
+                    )
+                    meeting_participants = st.text_input(
+                        "Participants (comma-separated)", placeholder="Alice, Bob, Charlie",
+                        key="tm_participants"
+                    )
+                    meeting_tags = st.text_input(
+                        "Tags (comma-separated)", placeholder="standup, planning, q1",
+                        key="tm_tags"
+                    )
+                    meeting_date_input = st.date_input(
+                        "Meeting Date", key="tm_date"
+                    )
+
+                    if st.button("Create & Set as Current", type="primary", key="tm_create"):
+                        if meeting_title:
+                            from datetime import datetime as _dt
+                            parts = [p.strip() for p in meeting_participants.split(',') if p.strip()]
+                            tags  = [t.strip() for t in meeting_tags.split(',') if t.strip()]
+                            m_date = _dt.combine(meeting_date_input, _dt.min.time()) if meeting_date_input else None
+
+                            mid = temporal_mem.create_meeting(
+                                title=meeting_title,
+                                date=m_date,
+                                participants=parts,
+                                tags=tags,
+                            )
+                            st.session_state.current_meeting_id = mid
+                            temporal_mem.save()
+                            st.success(f"✅ Meeting created (ID: {mid}). It is now the active meeting.")
+                            st.rerun()
+                        else:
+                            st.warning("Please enter a meeting title.")
+
+                # Manual ingest if auto-ingest was skipped (e.g., no meeting was active during analysis)
+                if st.session_state.scored_segments and st.session_state.current_meeting_id:
+                    if st.button("📥 Re-import segments to active meeting", key="tm_reimport"):
+                        with st.spinner("Ingesting (clearing stale data first)..."):
+                            result = temporal_mem.ingest_meeting_results(
+                                meeting_id=st.session_state.current_meeting_id,
+                                scored_segments=st.session_state.scored_segments,
+                                importance_threshold=0.4,
+                                clear=True,
+                            )
+                            temporal_mem.save()
+                        st.success(
+                            f"Imported: {len(result['segments'])} segments, "
+                            f"{len(result['topics'])} topics, "
+                            f"{len(result['decisions'])} decisions, "
+                            f"{len(result['action_items'])} action items."
                         )
-                        st.session_state.current_meeting_id = meeting_id
-                        st.success(f"Meeting created: {meeting_id[:8]}...")
                         st.rerun()
-                    else:
-                        st.warning("Please enter a meeting title.")
-            
-            # Current meeting info
+
+            with col_list:
+                st.markdown("**All Recorded Meetings**")
+                meetings = temporal_mem.get_all_meetings()
+                if meetings:
+                    from src.temporal_graph_memory import NodeType
+                    for m in meetings:
+                        title = m.content  # content is plain string
+                        date_str = m.timestamp.strftime("%Y-%m-%d %H:%M") if m.timestamp else "Unknown date"
+                        is_active = (m.id == st.session_state.current_meeting_id)
+                        badge = " 🟢 **[Active]**" if is_active else ""
+                        tags_str = ", ".join(m.metadata.get('tags', []))
+                        tag_line = f"  `{tags_str}`" if tags_str else ""
+                        # Count topics to show if meeting has been processed
+                        n_topics = sum(
+                            1 for nid in temporal_mem.nodes_by_type.get(NodeType.TOPIC, set())
+                            if temporal_mem.nodes[nid].meeting_id == m.id
+                        )
+                        n_segs = sum(
+                            1 for nid in temporal_mem.nodes_by_type.get(NodeType.SEGMENT, set())
+                            if temporal_mem.nodes[nid].meeting_id == m.id
+                        )
+                        status_icon = "📊" if n_segs > 0 else "⚪"
+                        st.markdown(
+                            f"{status_icon} **{title}**{badge}  \n"
+                            f"_{date_str}_{tag_line}  \n"
+                            f"&nbsp;&nbsp;&nbsp;{n_segs} segments · {n_topics} topics"
+                        )
+                        if not is_active:
+                            if st.button(f"Set as active", key=f"tm_activate_{m.id}"):
+                                st.session_state.current_meeting_id = m.id
+                                st.rerun()
+                        st.divider()
+                else:
+                    st.caption("No meetings recorded yet. Create one above or run analysis with an active meeting.")
+
+            # Active meeting summary
             if st.session_state.current_meeting_id:
-                meeting_node = temporal_mem.nodes.get(st.session_state.current_meeting_id)
-                if meeting_node:
-                    st.info(f"**Current Meeting:** {meeting_node.content.get('title', 'Untitled')}")
-                    
-                    # Add segments from current transcript
-                    if st.session_state.scored_segments and st.button("Import Segments to Memory"):
-                        with st.spinner("Importing segments..."):
-                            for seg in st.session_state.scored_segments:
-                                temporal_mem.add_segment(
-                                    meeting_id=st.session_state.current_meeting_id,
-                                    text=seg.text,
-                                    start_time=seg.start_time,
-                                    end_time=seg.end_time,
-                                    speaker=seg.speaker,
-                                    importance_score=seg.fused_score
+                active_meeting = temporal_mem.nodes.get(st.session_state.current_meeting_id)
+                if active_meeting:
+                    st.markdown("---")
+                    st.subheader(f"📄 Active: {active_meeting.content}")
+                    summary = temporal_mem.get_meeting_summary(st.session_state.current_meeting_id)
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("Segments", len(summary.get("segments", [])))
+                    c2.metric("Topics", len(summary.get("topics", [])))
+                    c3.metric("Decisions", len(summary.get("decisions", [])))
+                    c4.metric("Action Items", len(summary.get("action_items", [])))
+
+        # ================================================================
+        # TAB 2: Cross-Meeting Threads
+        # ================================================================
+        with tab_threads:
+            st.subheader("🧵 Recurring Topic Threads Across Meetings")
+            st.markdown(
+                "Topics that appear in **two or more meetings** are automatically grouped into threads. "
+                "This is how the system detects when something discussed on Wednesday resurfaces on Sunday."
+            )
+
+            # --- Diagnostic: show topic count per meeting so user knows if ready ---
+            from src.temporal_graph_memory import NodeType
+            meetings_with_topics = []
+            for m in temporal_mem.get_all_meetings():
+                n_topics = sum(
+                    1 for nid in temporal_mem.nodes_by_type.get(NodeType.TOPIC, set())
+                    if temporal_mem.nodes[nid].meeting_id == m.id
+                )
+                meetings_with_topics.append((m.content, n_topics))
+
+            if meetings_with_topics:
+                total_meetings_with_data = sum(1 for _, t in meetings_with_topics if t > 0)
+
+                if total_meetings_with_data < 2:
+                    st.warning(
+                        f"💡 **{total_meetings_with_data} of {len(meetings_with_topics)} meetings have been processed** "
+                        f"(have transcribed+analysed video with an active meeting set). "
+                        f"Thread detection needs ≥ 2 processed meetings."
+                    )
+                    st.markdown("**Topic count per meeting:**")
+                    for m_title, n_t in meetings_with_topics:
+                        icon = "✅" if n_t > 0 else "❌"
+                        st.markdown(f"- {icon} **{m_title}**: {n_t} topics")
+                    st.markdown(
+                        "**How to fix:** Set the other meeting as active, then run ‘Run Multimodal Analysis’ "
+                        "on a video — segments will auto-save. Or use ‘Re-import segments’ in Meeting History."
+                    )
+
+            col_thr_btn, col_thr_thresh = st.columns([1, 2])
+            with col_thr_btn:
+                detect_btn = st.button("🔍 Detect Threads", type="primary", key="detect_threads_btn")
+            with col_thr_thresh:
+                similarity_threshold = st.slider(
+                    "Similarity threshold", min_value=0.30, max_value=0.90,
+                    value=0.50, step=0.05,
+                    help="Lower = more threads found (keyword overlap); Higher = only near-identical topics linked",
+                    key="thread_sim_threshold"
+                )
+
+            if detect_btn or st.session_state.get("_threads_detected"):
+                with st.spinner("Clustering topics across meetings..."):
+                    threads = temporal_mem.find_cross_meeting_threads(
+                        min_meetings=2,
+                        similarity_threshold=similarity_threshold
+                    )
+                st.session_state["_threads_detected"] = True
+
+                if not threads:
+                    st.info(
+                        f"📅 No recurring threads detected at threshold {similarity_threshold:.2f}. "
+                        f"Try lowering the similarity threshold slider."
+                    )
+                else:
+                    st.success(f"🎓 Found **{len(threads)}** recurring thread(s) across meetings.")
+                    for thread in threads:
+                        first_date = thread['first_seen'][:10]
+                        last_date  = thread['last_seen'][:10]
+                        n_mtgs     = thread['meeting_count']
+                        kws        = ", ".join(thread.get('keywords', [])[:5])
+                        label      = thread['label']
+
+                        with st.expander(
+                            f"🧵 {label}   —   {n_mtgs} meetings   —   {first_date} → {last_date}",
+                        ):
+                            if kws:
+                                st.caption(f"Keywords: `{kws}`")
+
+                            # Timeline
+                            st.markdown("**Timeline:**")
+                            for i, appearance in enumerate(thread['appearances']):
+                                icon = "🟡" if i == 0 else ("🔴" if i == len(thread['appearances']) - 1 else "🔵")
+                                appr_date = appearance['date'][:16].replace('T', ' ')
+                                st.markdown(
+                                    f"{icon} **{appr_date}** — *{appearance['meeting_title']}*  \n"
+                                    f"&nbsp;&nbsp;&nbsp;&nbsp;{appearance['topic']}"
                                 )
-                            temporal_mem.save()
-                            st.success(f"Imported {len(st.session_state.scored_segments)} segments!")
-            
-            # List past meetings
-            st.markdown("---")
-            st.markdown("**Past Meetings:**")
-            meetings = temporal_mem.get_all_meetings()
-            if meetings:
-                for m in meetings[-5:]:  # Show last 5
-                    title = m.content.get('title', 'Untitled')
-                    date = m.timestamp[:10] if m.timestamp else 'Unknown'
-                    title = m.content.get('title', 'Untitled')
-                    date = m.timestamp[:10] if m.timestamp else 'Unknown'
-                    if st.button(f"{title} ({date})", key=f"load_{m.node_id}"):
-                        st.session_state.current_meeting_id = m.node_id
-                        st.rerun()
-            else:
-                st.caption("No meetings yet.")
-        
-        with col_tm2:
-            st.subheader("Track Items")
-            
-            if st.session_state.current_meeting_id:
-                # Add Decision
-                with st.expander("Add Decision"):
-                    decision_text = st.text_area("Decision", placeholder="We decided to postpone the launch to Q2", key="decision_text")
-                    decision_owner = st.text_input("Owner", placeholder="Product Manager", key="decision_owner")
-                    
-                    if st.button("Add Decision"):
-                        if decision_text:
-                            temporal_mem.add_decision(
-                                meeting_id=st.session_state.current_meeting_id,
-                                decision_text=decision_text,
-                                owner=decision_owner or None
-                            )
-                            temporal_mem.save()
-                            st.success("Decision added!")
-                        else:
-                            st.warning("Please enter decision text.")
-                
-                # Add Action Item
-                with st.expander("Add Action Item"):
-                    action_text = st.text_area("Action Item", placeholder="Update the roadmap document", key="action_text")
-                    action_assignee = st.text_input("Assignee", placeholder="Alice", key="action_assignee")
-                    action_due = st.date_input("Due Date", key="action_due")
-                    action_priority = st.selectbox("Priority", ["low", "medium", "high"], index=1, key="action_priority")
-                    
-                    if st.button("Add Action Item"):
-                        if action_text:
-                            temporal_mem.add_action_item(
-                                meeting_id=st.session_state.current_meeting_id,
-                                action_text=action_text,
-                                assignee=action_assignee or None,
-                                due_date=action_due.isoformat() if action_due else None,
-                                priority=action_priority
-                            )
-                            temporal_mem.save()
-                            st.success("Action item added!")
-                        else:
-                            st.warning("Please enter action item text.")
-                
-                # Add Topic
-                with st.expander("Add Topic"):
-                    topic_name = st.text_input("Topic Name", placeholder="Q2 Launch Planning", key="topic_name")
-                    topic_desc = st.text_area("Description", placeholder="Discussion about launch timeline", key="topic_desc")
-                    
-                    if st.button("Add Topic"):
-                        if topic_name:
-                            temporal_mem.add_topic(
-                                meeting_id=st.session_state.current_meeting_id,
-                                topic_name=topic_name,
-                                description=topic_desc or None
-                            )
-                            temporal_mem.save()
-                            st.success("Topic added!")
-                        else:
-                            st.warning("Please enter topic name.")
-            else:
-                st.info("Create or select a meeting to track items.")
-        
-        # Cross-Meeting Context View
-        st.markdown("---")
-        st.subheader("Cross-Meeting Context")
-        
-        col_ctx1, col_ctx2, col_ctx3 = st.columns(3)
-        
-        with col_ctx1:
-            st.markdown("**Recent Decisions**")
-            all_decisions = [n for n in temporal_mem.nodes.values() 
-                          if hasattr(n, 'type') and n.type.value == 'decision']
-            if all_decisions:
-                for d in sorted(all_decisions, key=lambda x: x.timestamp, reverse=True)[:5]:
-                    st.markdown(f"• {d.content.get('text', 'No text')[:80]}...")
-            else:
-                st.caption("No decisions tracked yet.")
-        
-        with col_ctx2:
-            st.markdown("**Pending Action Items**")
-            all_actions = [n for n in temporal_mem.nodes.values() 
-                         if hasattr(n, 'type') and n.type.value == 'action_item' 
-                         and n.content.get('status') != 'completed']
-            if all_actions:
-                for a in sorted(all_actions, key=lambda x: x.content.get('priority', 'medium') == 'high', reverse=True)[:5]:
-                    assignee = a.content.get('assignee', 'Unassigned')
-                    priority = a.content.get('priority', 'medium')
-                    marker = "[HIGH]" if priority == "high" else "[MED]" if priority == "medium" else "[LOW]"
-                    st.markdown(f"{marker} [{assignee}] {a.content.get('text', 'No text')[:60]}...")
-            else:
-                st.caption("No pending action items.")
-        
-        with col_ctx3:
-            st.markdown("**Active Topics**")
-            all_topics = [n for n in temporal_mem.nodes.values() 
-                        if hasattr(n, 'type') and n.type.value == 'topic']
-            if all_topics:
-                for t in sorted(all_topics, key=lambda x: len(x.edges), reverse=True)[:5]:
-                    mentions = len([e for e in t.edges if e.edge_type.value == 'mentions'])
-                    st.markdown(f"• **{t.content.get('name', 'Unknown')}** ({mentions} mentions)")
-            else:
-                st.caption("No topics tracked yet.")
-        
-        # Semantic Search in Memory
-        st.markdown("---")
-        st.subheader("Search Memory")
-        search_query = st.text_input("Search across all meetings", placeholder="budget decisions, launch timeline...")
-        
-        if search_query and st.button("Search"):
-            with st.spinner("Searching..."):
-                results = temporal_mem.get_context_for_text(search_query, top_k=10)
-                
-                if results:
-                    st.markdown(f"**Found {len(results)} relevant items:**")
+                                if appearance.get('keywords'):
+                                    st.caption("&nbsp;&nbsp;&nbsp;&nbsp;`" + ", ".join(appearance['keywords'][:4]) + "`")
+
+        # ================================================================
+        # TAB 3: Semantic Search
+        # ================================================================
+        with tab_search:
+            st.subheader("🔍 Search Across All Meetings")
+            st.markdown("Semantic search: results are ranked by **meaning similarity**, not just keyword match.")
+
+            search_query = st.text_input(
+                "Search query",
+                placeholder="security issue in backend, budget approval, launch date...",
+                key="tm_search_query"
+            )
+
+            if search_query and st.button("Search", key="tm_search_btn"):
+                with st.spinner("Searching memory..."):
+                    results = temporal_mem.get_context_for_text(search_query, top_k=12)
+
+                if not results:
+                    st.info("No matching items found. Try different keywords, or process more meetings first.")
+                else:
+                    st.markdown(f"**{len(results)} results** for `{search_query}`:")
                     for item in results:
                         node_type = item.get('type', 'unknown')
-                        score = item.get('similarity', 0)
-                        
-                        if node_type == 'decision':
-                            st.markdown(f"**Decision** (relevance: {score:.2f})")
-                            st.caption(item.get('text', 'No text'))
-                        elif node_type == 'action_item':
-                            st.markdown(f"**Action Item** (relevance: {score:.2f})")
-                            st.caption(f"{item.get('text', 'No text')} - {item.get('assignee', 'Unassigned')}")
-                        elif node_type == 'topic':
-                            st.markdown(f"**Topic** (relevance: {score:.2f})")
-                            st.caption(item.get('name', 'Unknown'))
-                        elif node_type == 'segment':
-                            st.markdown(f"**Segment** (relevance: {score:.2f})")
-                            st.caption(item.get('text', 'No text')[:150] + "...")
-                else:
-                    st.info("No matching items found.")
+                        score     = item.get('similarity', 0)
+                        date_str  = (item.get('timestamp') or '')[:10]
+
+                        type_icons = {
+                            'decision': '🟢',
+                            'action_item': '✅',
+                            'topic': '📌',
+                            'segment': '💬',
+                        }
+                        icon = type_icons.get(node_type, '•')
+
+                        col_r1, col_r2 = st.columns([0.1, 0.9])
+                        with col_r1:
+                            st.markdown(icon)
+                        with col_r2:
+                            bar = "█" * int(score * 10) + "░" * (10 - int(score * 10))
+                            st.markdown(f"`{bar}` **{score:.0%}** match  —  `{node_type}` — {date_str}")
+                            content = (
+                                item.get('text') or item.get('name') or
+                                item.get('topic') or 'N/A'
+                            )
+                            st.caption(content[:200])
+                            if item.get('speaker'):
+                                st.caption(f"Speaker: {item['speaker']}")
+                        st.divider()
+
+        # ================================================================
+        # TAB 4: Open Action Items
+        # ================================================================
+        with tab_actions:
+            st.subheader("✅ Open Action Items (All Meetings)")
+
+            open_items = temporal_mem.get_open_action_items()
+
+            if not open_items:
+                st.info("No open action items tracked yet. Run analysis with an active meeting to auto-extract them.")
+            else:
+                priority_order = {'high': 0, 'medium': 1, 'low': 2}
+                open_items.sort(key=lambda x: priority_order.get(x.get('priority', 'medium'), 1))
+
+                # Filter controls
+                filter_col1, filter_col2 = st.columns(2)
+                with filter_col1:
+                    filter_priority = st.selectbox(
+                        "Filter by priority", ["all", "high", "medium", "low"],
+                        key="tm_filter_priority"
+                    )
+                with filter_col2:
+                    filter_assignee = st.text_input("Filter by assignee", key="tm_filter_assignee")
+
+                displayed = [
+                    item for item in open_items
+                    if (filter_priority == "all" or item.get('priority') == filter_priority)
+                    and (not filter_assignee or filter_assignee.lower() in (item.get('assignee') or '').lower())
+                ]
+
+                st.caption(f"Showing {len(displayed)} of {len(open_items)} open items")
+
+                priority_icons = {'high': '🔴', 'medium': '🟡', 'low': '🟢'}
+
+                for item in displayed:
+                    icon = priority_icons.get(item.get('priority', 'medium'), '•')
+                    assignee_str = item.get('assignee') or 'Unassigned'
+                    meeting_str  = item.get('meeting_title', 'Unknown')
+                    date_str     = (item.get('date') or '')[:10]
+
+                    col_a, col_b = st.columns([0.05, 0.95])
+                    with col_a:
+                        st.markdown(icon)
+                    with col_b:
+                        st.markdown(f"**{item['action'][:140]}**")
+                        st.caption(f"👤 {assignee_str}  —  🗓 {date_str}  —  📍 {meeting_str}")
+
+                        if st.button("Mark done", key=f"tm_done_{item['action_id']}"):
+                            temporal_mem.update_action_status(item['action_id'], 'done')
+                            temporal_mem.save()
+                            st.rerun()
+                    st.divider()
+
