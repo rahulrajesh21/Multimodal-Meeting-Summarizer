@@ -164,11 +164,7 @@ with st.sidebar:
     st.title("RoME Configuration")
     
     st.subheader("Model Settings")
-    model_type = st.selectbox(
-        "Transcription Model",
-        ["faster-whisper", "whisperx", "huggingface", "openai"],
-        help="Select the backend for speech-to-text. Use 'huggingface' for Apple Silicon (MPS)."
-    )
+    # model_type is selectable now
     
     model_size = st.selectbox(
         "Model Size",
@@ -182,6 +178,14 @@ with st.sidebar:
         index=0
     )
     st.session_state.device = device
+    
+    backend = st.selectbox(
+        "Transcription Backend",
+        ["faster_whisper", "huggingface"],
+        index=0,
+        help="faster-whisper (CTranslate2) is optimized for CPU/CUDA. Hugging Face supports MPS but may be slower."
+    )
+    st.session_state.backend = backend
     
     enable_diarization = st.checkbox(
         "Enable Speaker Diarization",
@@ -244,17 +248,14 @@ with col2:
         
         try:
             # 1. Initialize Transcriber
-            openai_api_key = os.getenv("OPENAI_API_KEY") if model_type == "openai" else None
-            hf_token = os.getenv("HF_TOKEN") if model_type == "whisperx" else None
-            actual_model_size = "whisper-1" if model_type == "openai" else model_size
+            hf_token = os.getenv("HF_TOKEN")
             
             transcriber = LiveTranscriber(
-                model_type=model_type,
-                model_size=actual_model_size,
-                openai_api_key=openai_api_key,
+                model_size=model_size,
                 hf_token=hf_token,
                 device=device,
-                enable_diarization=enable_diarization
+                enable_diarization=enable_diarization,
+                backend=st.session_state.backend
             )
             st.session_state.transcriber = transcriber
             

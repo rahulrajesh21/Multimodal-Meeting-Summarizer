@@ -20,7 +20,6 @@ def test_hf_diarization():
     # Initialize transcriber
     try:
         transcriber = LiveTranscriber(
-            model_type="huggingface",
             model_size="tiny", # Use tiny for speed
             device="cpu",
             enable_diarization=True

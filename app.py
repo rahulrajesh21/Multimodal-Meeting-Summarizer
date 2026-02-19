@@ -97,7 +97,6 @@ class LiveMeetingApp:
         
     def initialize_components(
         self,
-        model_type: str,
         model_size: str,
         language: str,
         device: str,
@@ -107,8 +106,7 @@ class LiveMeetingApp:
         Initialize audio capture and transcriber components.
         
         Args:
-            model_type: Type of model ("faster-whisper" or "openai")
-            model_size: Model size (for faster-whisper)
+            model_size: Model size
             language: Language code
             device: Device to use ("cpu" or "cuda")
         """
@@ -137,27 +135,13 @@ class LiveMeetingApp:
         
         # State variables
         self.is_recording = False
-        # Get OpenAI API key from environment if using OpenAI
-        openai_api_key = None
-        if model_type == "openai":
-            openai_api_key = os.getenv("OPENAI_API_KEY")
+        # Get HuggingFace token for diarization
+        hf_token = os.getenv("HF_TOKEN")
         
-        # Get HuggingFace token for WhisperX diarization
-        hf_token = None
-        if model_type == "whisperx":
-            hf_token = os.getenv("HF_TOKEN")
-        
-        # Initialize transcriber with appropriate model size
-        # OpenAI uses "whisper-1", WhisperX and faster-whisper use the selected size
-        actual_model_size = model_size
-        if model_type == "openai":
-            actual_model_size = "whisper-1"
-        
+        # Initialize transcriber
         self.transcriber = LiveTranscriber(
-            model_type=model_type,
-            model_size=actual_model_size,
+            model_size=model_size,
             language=language if language != "auto" else None,
-            openai_api_key=openai_api_key,
             hf_token=hf_token,
             device=device,
             enable_diarization=enable_diarization
@@ -182,7 +166,9 @@ class LiveMeetingApp:
         
         try:
             # Initialize components
-            self.initialize_components(model_type, model_size, language, device, enable_diarization)
+        try:
+            # Initialize components
+            self.initialize_components(model_size, language, device, enable_diarization)
             
             # Clear previous transcript
             self.transcript_text = ""
@@ -409,23 +395,11 @@ class LiveMeetingApp:
             self.is_transcribing_video = True
             
             # Initialize transcriber
-            openai_api_key = None
-            if model_type == "openai":
-                openai_api_key = os.getenv("OPENAI_API_KEY")
-            
-            hf_token = None
-            if model_type == "whisperx":
-                hf_token = os.getenv("HF_TOKEN")
-            
-            actual_model_size = model_size
-            if model_type == "openai":
-                actual_model_size = "whisper-1"
+            hf_token = os.getenv("HF_TOKEN")
             
             self.transcriber = LiveTranscriber(
-                model_type=model_type,
-                model_size=actual_model_size,
+                model_size=model_size,
                 language=language if language != "auto" else None,
-                openai_api_key=openai_api_key,
                 hf_token=hf_token,
                 device=device,
                 enable_diarization=enable_diarization

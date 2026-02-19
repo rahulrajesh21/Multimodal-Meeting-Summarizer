@@ -16,7 +16,6 @@ def verify_mac_whisper():
         # Initialize with Hugging Face pipeline on MPS
         print("Initializing Transcriber with model_type='huggingface' and device='mps'...")
         transcriber = LiveTranscriber(
-            model_type="huggingface",
             model_size="tiny", # Use tiny for speed
             device="mps",
             enable_diarization=True
