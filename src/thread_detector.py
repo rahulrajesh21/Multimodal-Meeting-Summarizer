@@ -169,10 +169,8 @@ class ThreadDetector:
             score = 0.0
 
             if text_embedding is not None:
-                # Embedding similarity: compare against all topic nodes in this thread
-                from src.temporal_graph_memory import NodeType
+                # Embedding similarity: compare against entity embeddings in memory
                 for appearance in thread.appearances:
-                    # Look up the topic node in memory by meeting_id + topic text
                     topic_score = self._embedding_similarity_to_memory_topics(
                         text_embedding, appearance.meeting_id, appearance.topic
                     )
@@ -286,19 +284,27 @@ class ThreadDetector:
         topic_text: str,
     ) -> float:
         """
-        Find the best cosine similarity between query_embedding and topic nodes
-        in memory that match the given meeting_id and topic_text.
+        Find the best cosine similarity between query_embedding and entity embeddings
+        in memory that are linked to the given meeting_id.
+        Uses the new EntityMemory-based API (entities_by_type + events_by_entity).
         """
-        from src.temporal_graph_memory import NodeType
         best = 0.0
-        for nid in self.memory.nodes_by_type.get(NodeType.TOPIC, set()):
-            node = self.memory.nodes.get(nid)
-            if not node or node.meeting_id != meeting_id:
+        # Iterate topic-type entities in memory
+        for ent_id in self.memory.entities_by_type.get('topic', []):
+            entity = self.memory.entities.get(ent_id)
+            if not entity or not entity.embedding:
                 continue
-            if node.embedding is None:
+            # Check whether any event for this entity came from the target meeting
+            event_ids = self.memory.events_by_entity.get(ent_id, [])
+            in_meeting = any(
+                self.memory.events[eid].meeting_id == meeting_id
+                for eid in event_ids
+                if eid in self.memory.events
+            )
+            if not in_meeting:
                 continue
-            node_emb = np.array(node.embedding)
-            sim = self._cosine(query_embedding, node_emb)
+            entity_emb = np.array(entity.embedding)
+            sim = self._cosine(query_embedding, entity_emb)
             if sim > best:
                 best = sim
         return best

@@ -31,6 +31,7 @@ from src.fusion_layer import FusionLayer, SegmentFeatures
 from src.feedback_manager import FeedbackManager
 from src.participant_store import ParticipantStore
 from src.role_hierarchy import get_fallback_weights, get_role_description
+from src.speaker_identifier import SpeakerIdentifier, LOW_CONFIDENCE_THRESHOLD
 
 # Try to import Temporal Graph Memory
 try:
@@ -75,6 +76,11 @@ def init_session_state():
         'fusion_weights': None,
         'participant_store': None,
         'per_participant_highlights': {},
+        # Speaker auto-mapping state
+        'speaker_identifier': None,
+        'raw_speaker_mapping': {},        # {SPEAKER_XX: (name, confidence)} from SpeakerIdentifier
+        'confirmed_speaker_mapping': {},  # after user approves / overrides
+        'raw_diarized_segments': [],      # raw segment list from diarization (with SPEAKER_XX labels)
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -119,10 +125,10 @@ def get_temporal_memory():
     if st.session_state.temporal_memory is None:
         with st.spinner("Initializing Temporal Graph Memory..."):
             text_analyzer = get_text_analyzer()
-            memory_path = os.path.join(os.path.dirname(__file__), 'data', 'temporal_memory.json')
+            memory_dir = os.path.join(os.path.dirname(__file__), 'data', 'temporal_memory')
             st.session_state.temporal_memory = TemporalGraphMemory(
                 text_analyzer=text_analyzer,
-                storage_path=memory_path
+                storage_path=memory_dir
             )
     return st.session_state.temporal_memory
 
@@ -166,6 +172,20 @@ def get_participant_store():
     if st.session_state.participant_store is None:
         st.session_state.participant_store = ParticipantStore(data_dir="data")
     return st.session_state.participant_store
+
+
+def get_speaker_identifier() -> SpeakerIdentifier:
+    """Get or initialize the SpeakerIdentifier (lazy — no heavy models loaded at startup)."""
+    if st.session_state.speaker_identifier is None:
+        hf_token = os.getenv("HF_TOKEN")
+        st.session_state.speaker_identifier = SpeakerIdentifier(
+            hf_token=hf_token,
+            device=st.session_state.device,
+        )
+        # Load any previously saved voice prints
+        vp_path = os.path.join(os.path.dirname(__file__), "data", "voice_prints.npz")
+        st.session_state.speaker_identifier.load_voice_prints(vp_path)
+    return st.session_state.speaker_identifier
 
 # --- Sidebar Configuration ---
 with st.sidebar:
@@ -253,11 +273,11 @@ with col1:
 with col2:
     if st.button("Process Video (Transcribe & Diarize)", disabled=not st.session_state.video_audio_path):
         progress_bar = st.progress(0, text="Initializing...")
-        
+
         try:
             # 1. Initialize Transcriber
             hf_token = os.getenv("HF_TOKEN")
-            
+
             transcriber = LiveTranscriber(
                 model_size=model_size,
                 hf_token=hf_token,
@@ -266,7 +286,7 @@ with col2:
                 backend=st.session_state.backend
             )
             st.session_state.transcriber = transcriber
-            
+
             # 2. Extract Audio
             progress_bar.progress(20, text="Extracting Audio Stream...")
             target_fps = 16000
@@ -275,73 +295,209 @@ with col2:
                 '-ar', str(target_fps), '-ac', '1', '-f', 's16le', '-loglevel', 'error', '-'
             ]
             result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-            
-            # 3. Transcribe & Diarize
+
+            # 3. Transcribe & Diarize — store raw segments (SPEAKER_XX labels intact)
             progress_bar.progress(40, text="Transcribing and Diarizing...")
             segments_generator = transcriber.transcribe_full_audio(result.stdout, target_fps)
-            
+
             full_text = ""
             segments = list(segments_generator)
-            
+
+            # ── Store raw diarized segments for auto-mapping step ──
+            st.session_state.raw_diarized_segments = segments
+            # Reset any previous mapping so the new auto-mapping section is shown fresh
+            st.session_state.raw_speaker_mapping = {}
+            st.session_state.confirmed_speaker_mapping = {}
+
+            # Build initial transcript with raw SPEAKER_XX labels
             for i, segment in enumerate(segments):
                 start_time = time.strftime('%H:%M:%S', time.gmtime(segment['start']))
                 text = segment['text']
                 speaker = segment.get('speaker')
-                
+
                 if speaker:
-                    mapped_name = st.session_state.role_mapping.get(speaker, speaker)
-                    line = f"[{start_time}] [{mapped_name}] {text}\n\n"
+                    line = f"[{start_time}] [{speaker}] {text}\n\n"
                 else:
                     line = f"[{start_time}] {text}\n\n"
                 full_text += line
-                
+
                 prog = 40 + int(50 * (i / len(segments)))
                 progress_bar.progress(min(prog, 90), text=f"Processing segment {i+1}...")
-            
+
             st.session_state.transcript_text = full_text
-            
+
             # 4. Cache Audio for Fusion
             if LIBROSA_AVAILABLE:
                 st.session_state.cached_audio_data = load_audio_file(
                     st.session_state.video_audio_path, sample_rate=16000
                 )
-            
+
             progress_bar.progress(100, text="Complete")
-            st.success("Preprocessing Complete")
-            
+            st.success("✅ Transcription complete — see Auto Speaker Mapping below.")
+
         except Exception as e:
             st.error(f"Processing Error: {e}")
 
-# Role Mapping
+
+# ── Auto Speaker Mapping UI ──────────────────────────────────────────────────
 if st.session_state.transcript_text:
-    with st.expander("Speaker Role Mapping", expanded=True):
-        col_map1, col_map2 = st.columns(2)
-        with col_map1:
-            default_mapping = '{\n  "SPEAKER_00": "Product Manager",\n  "SPEAKER_01": "Developer",\n  "SPEAKER_02": "Designer"\n}'
-            mapping_json = st.text_area("Role Map (JSON)", value=default_mapping, height=150)
-            if st.button("Apply Role Mapping"):
-                try:
-                    mapping = json.loads(mapping_json)
-                    st.session_state.role_mapping = mapping
-                    
-                    # Generate Embeddings
-                    analyzer = get_text_analyzer()
-                    for speaker_id, role in mapping.items():
-                        emb = analyzer.get_embedding(role)
+
+    with st.expander("🔎 Auto Speaker Mapping", expanded=True):
+        pstore_map = get_participant_store()
+        registered = pstore_map.list_participants()  # [{display_name, role, ...}]
+        registered_names = [p["display_name"] for p in registered]
+
+        # Detect unique SPEAKER_XX labels in the raw segments
+        raw_segs = st.session_state.raw_diarized_segments
+        unique_speakers = []
+        for seg in raw_segs:
+            spk = seg.get("speaker", "")
+            if spk and spk.startswith("SPEAKER_") and spk not in unique_speakers:
+                unique_speakers.append(spk)
+
+        has_speakers = bool(unique_speakers)
+
+        if not has_speakers:
+            st.info("No diarization labels found in this transcript (diarization may have been disabled).")
+
+        else:
+            col_auto1, col_auto2 = st.columns([2, 1])
+
+            with col_auto1:
+                # ── Run auto-detection ────────────────────────────────────────
+                if st.button("🤖 Auto-Detect Speaker Names", type="primary"):
+                    if not registered_names:
+                        st.warning("No participants registered yet — register them in the Participant Management section below first.")
+                    else:
+                        with st.spinner("Running speaker identification..."):
+                            si = get_speaker_identifier()
+                            audio_np = st.session_state.cached_audio_data
+                            if audio_np is None and st.session_state.video_audio_path:
+                                # Load audio if not cached
+                                import subprocess as _sp
+                                _cmd = ['ffmpeg', '-i', st.session_state.video_audio_path,
+                                        '-vn', '-acodec', 'pcm_s16le', '-ar', '16000',
+                                        '-ac', '1', '-f', 's16le', '-loglevel', 'error', '-']
+                                _res = _sp.run(_cmd, stdout=_sp.PIPE, stderr=_sp.PIPE)
+                                audio_np = np.frombuffer(_res.stdout, dtype=np.int16).astype(np.float32) / 32768.0
+
+                            mapping = si.build_mapping(
+                                diarization_segments=raw_segs,
+                                audio_array=audio_np if audio_np is not None else np.zeros(16000, dtype=np.float32),
+                                sample_rate=16000,
+                                registered_participants=registered_names,
+                                transcript_text=st.session_state.transcript_text,
+                            )
+                            st.session_state.raw_speaker_mapping = mapping
+                            st.success(f"Auto-mapping complete for {len(mapping)} speakers.")
+                            st.rerun()
+
+            with col_auto2:
+                st.caption(f"**{len(unique_speakers)}** speaker(s) detected · **{len(registered_names)}** participant(s) registered")
+
+            # ── Display mapping table ─────────────────────────────────────────
+            raw_map = st.session_state.raw_speaker_mapping
+
+            st.markdown("---")
+            st.markdown("**Review & Confirm Speaker Assignments**")
+            st.caption("✅ High confidence · ⚠️ Low confidence (check) · ❓ Unmatched — use the dropdown to assign")
+
+            # Build dropdowns: ['— Unassigned —'] + registered names
+            dropdown_options = ["— Unassigned —"] + registered_names
+
+            override_map: Dict[str, str] = {}   # will be populated by selectboxes
+
+            for spk in unique_speakers:
+                name, conf = raw_map.get(spk, (None, 0.0))
+                if name and conf >= LOW_CONFIDENCE_THRESHOLD:
+                    badge = "✅"
+                    conf_str = f"{conf*100:.0f}%"
+                elif name:
+                    badge = "⚠️"
+                    conf_str = f"{conf*100:.0f}%"
+                else:
+                    badge = "❓"
+                    conf_str = "N/A"
+
+                row_cols = st.columns([0.15, 0.25, 0.15, 0.45])
+                with row_cols[0]:
+                    st.markdown(f"**{spk}**")
+                with row_cols[1]:
+                    st.markdown(f"{badge} `{name or 'Unknown'}`")
+                with row_cols[2]:
+                    st.caption(f"Conf: {conf_str}")
+                with row_cols[3]:
+                    # Pre-select the auto-detected name when confidence is reasonable
+                    if name and name in dropdown_options:
+                        default_idx = dropdown_options.index(name)
+                    else:
+                        default_idx = 0
+                    chosen = st.selectbox(
+                        f"Assign {spk}",
+                        options=dropdown_options,
+                        index=default_idx,
+                        key=f"spk_override_{spk}",
+                        label_visibility="collapsed",
+                    )
+                    override_map[spk] = chosen if chosen != "— Unassigned —" else None
+
+            st.markdown("---")
+
+            if st.button("✅ Apply Speaker Mapping & Update Transcript", type="primary"):
+                # Build confirmed mapping from overrides
+                confirmed: Dict[str, tuple] = {}
+                for spk in unique_speakers:
+                    resolved = override_map.get(spk)
+                    orig_conf = raw_map.get(spk, (None, 0.0))[1] if raw_map.get(spk) else 0.0
+                    confirmed[spk] = (resolved, orig_conf if resolved else 0.0)
+
+                st.session_state.confirmed_speaker_mapping = confirmed
+
+                # Persist to ParticipantStore
+                pstore_map.save_speaker_mapping(confirmed)
+
+                # Rebuild transcript with resolved names
+                updated_transcript = ""
+                for seg in raw_segs:
+                    start_time = time.strftime('%H:%M:%S', time.gmtime(seg['start']))
+                    text = seg.get('text', '')
+                    raw_spk = seg.get('speaker', '')
+                    resolved_name, _c = confirmed.get(raw_spk, (None, 0.0))
+                    display_name = resolved_name or raw_spk or "Unknown"
+                    if raw_spk:
+                        updated_transcript += f"[{start_time}] [{display_name}] {text}\n\n"
+                    else:
+                        updated_transcript += f"[{start_time}] {text}\n\n"
+
+                st.session_state.transcript_text = updated_transcript
+
+                # Update role_mapping for backward compat + generate embeddings
+                new_role_mapping = {}
+                analyzer = get_text_analyzer()
+                for spk, (name, _) in confirmed.items():
+                    if name:
+                        # Look up the person's role from ParticipantStore
+                        profile = pstore_map.get_participant(name)
+                        role_label = f"{name} ({profile['role']})" if profile else name
+                        new_role_mapping[spk] = role_label
+                        emb = analyzer.get_embedding(role_label)
                         if emb is not None:
-                            st.session_state.role_embeddings[role] = emb
-                    
-                    # Update Transcript
-                    updated = st.session_state.transcript_text
-                    for speaker_id, role in mapping.items():
-                        updated = updated.replace(f"[{speaker_id}]", f"[{role}]")
-                    st.session_state.transcript_text = updated
-                    st.success("Roles Mapped and Embeddings Generated")
-                except Exception as e:
-                    st.error(f"Mapping Error: {e}")
-        
-        with col_map2:
-            st.text_area("Current Transcript", value=st.session_state.transcript_text, height=200, disabled=True)
+                            st.session_state.role_embeddings[role_label] = emb
+
+                st.session_state.role_mapping = new_role_mapping
+                st.success(f"✅ Speaker mapping applied! Transcript updated with {len([v for v in override_map.values() if v])} resolved names.")
+                st.rerun()
+
+        # ── Preview current transcript ────────────────────────────────────────
+        with st.expander("📄 Current Transcript Preview", expanded=False):
+            st.text_area(
+                "Transcript",
+                value=st.session_state.transcript_text,
+                height=200,
+                disabled=True,
+                key="transcript_preview_area",
+            )
+
 
     # --- Participant Management ---
     with st.expander("👥 Participant Management", expanded=False):
@@ -590,7 +746,7 @@ with st.expander("Advanced: Model Training"):
                     from src.llm_summarizer import LLMSummarizer
                     
                     if 'llm_summarizer' not in st.session_state:
-                        st.session_state.llm_summarizer = LLMSummarizer(device=st.session_state.device)
+                        st.session_state.llm_summarizer = LLMSummarizer()
                     
                     trainer = FusionTrainer(st.session_state.llm_summarizer)
                     loss = trainer.train_step(st.session_state.scored_segments, epochs=5)
@@ -679,9 +835,7 @@ with col_gen2:
                 try:
                     from src.llm_summarizer import LLMSummarizer
                     if 'llm_summarizer' not in st.session_state:
-                        st.session_state.llm_summarizer = LLMSummarizer(
-                            device=st.session_state.device
-                        )
+                        st.session_state.llm_summarizer = LLMSummarizer()
                     llm = st.session_state.llm_summarizer
 
                     pstore = get_participant_store()
@@ -901,7 +1055,6 @@ if TEMPORAL_MEMORY_AVAILABLE:
                 st.markdown("**All Recorded Meetings**")
                 meetings = temporal_mem.get_all_meetings()
                 if meetings:
-                    from src.temporal_graph_memory import NodeType
                     for m in meetings:
                         title = m.content  # content is plain string
                         date_str = m.timestamp.strftime("%Y-%m-%d %H:%M") if m.timestamp else "Unknown date"
@@ -909,20 +1062,22 @@ if TEMPORAL_MEMORY_AVAILABLE:
                         badge = " 🟢 **[Active]**" if is_active else ""
                         tags_str = ", ".join(m.metadata.get('tags', []))
                         tag_line = f"  `{tags_str}`" if tags_str else ""
-                        # Count topics to show if meeting has been processed
+                        # Count topics (entity type='topic' with events in this meeting)
                         n_topics = sum(
-                            1 for nid in temporal_mem.nodes_by_type.get(NodeType.TOPIC, set())
-                            if temporal_mem.nodes[nid].meeting_id == m.id
+                            1 for ent_id in temporal_mem.entities_by_type.get('topic', [])
+                            if any(
+                                temporal_mem.events[eid].meeting_id == m.id
+                                for eid in temporal_mem.events_by_entity.get(ent_id, [])
+                                if eid in temporal_mem.events
+                            )
                         )
-                        n_segs = sum(
-                            1 for nid in temporal_mem.nodes_by_type.get(NodeType.SEGMENT, set())
-                            if temporal_mem.nodes[nid].meeting_id == m.id
-                        )
+                        # Count events (segments) in this meeting
+                        n_segs = len(temporal_mem.events_by_meeting.get(m.id, []))
                         status_icon = "📊" if n_segs > 0 else "⚪"
                         st.markdown(
                             f"{status_icon} **{title}**{badge}  \n"
                             f"_{date_str}_{tag_line}  \n"
-                            f"&nbsp;&nbsp;&nbsp;{n_segs} segments · {n_topics} topics"
+                            f"&nbsp;&nbsp;&nbsp;{n_segs} events · {n_topics} topics"
                         )
                         if not is_active:
                             if st.button(f"Set as active", key=f"tm_activate_{m.id}"):
@@ -934,13 +1089,14 @@ if TEMPORAL_MEMORY_AVAILABLE:
 
             # Active meeting summary
             if st.session_state.current_meeting_id:
-                active_meeting = temporal_mem.nodes.get(st.session_state.current_meeting_id)
-                if active_meeting:
+                active_mid = st.session_state.current_meeting_id
+                active_mtg_data = temporal_mem.meetings.get(active_mid)
+                if active_mtg_data:
                     st.markdown("---")
-                    st.subheader(f"📄 Active: {active_meeting.content}")
-                    summary = temporal_mem.get_meeting_summary(st.session_state.current_meeting_id)
+                    st.subheader(f"📄 Active: {active_mtg_data['title']}")
+                    summary = temporal_mem.get_meeting_summary(active_mid)
                     c1, c2, c3, c4 = st.columns(4)
-                    c1.metric("Segments", len(summary.get("segments", [])))
+                    c1.metric("Events", len(summary.get("segments", [])))
                     c2.metric("Topics", len(summary.get("topics", [])))
                     c3.metric("Decisions", len(summary.get("decisions", [])))
                     c4.metric("Action Items", len(summary.get("action_items", [])))
@@ -956,12 +1112,15 @@ if TEMPORAL_MEMORY_AVAILABLE:
             )
 
             # --- Diagnostic: show topic count per meeting so user knows if ready ---
-            from src.temporal_graph_memory import NodeType
             meetings_with_topics = []
             for m in temporal_mem.get_all_meetings():
                 n_topics = sum(
-                    1 for nid in temporal_mem.nodes_by_type.get(NodeType.TOPIC, set())
-                    if temporal_mem.nodes[nid].meeting_id == m.id
+                    1 for ent_id in temporal_mem.entities_by_type.get('topic', [])
+                    if any(
+                        temporal_mem.events[eid].meeting_id == m.id
+                        for eid in temporal_mem.events_by_entity.get(ent_id, [])
+                        if eid in temporal_mem.events
+                    )
                 )
                 meetings_with_topics.append((m.content, n_topics))
 

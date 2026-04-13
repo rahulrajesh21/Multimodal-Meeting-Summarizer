@@ -33,12 +33,14 @@ class FeedbackManager:
         # Ensure data directory exists
         os.makedirs(data_dir, exist_ok=True)
         
-        # Default starting weights (matches FusionLayer defaults)
+        # Default starting weights (matches FusionLayer 6-signal defaults)
         self.default_weights = {
-            'semantic': 0.4,
+            'semantic': 0.35,
             'tonal': 0.15,
-            'role': 0.25,
-            'temporal': 0.2
+            'role': 0.20,
+            'temporal': 0.10,
+            'recurrence': 0.10,
+            'unresolved': 0.10,
         }
         
     def load_weights(self) -> Dict[str, float]:

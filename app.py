@@ -166,8 +166,6 @@ class LiveMeetingApp:
         
         try:
             # Initialize components
-        try:
-            # Initialize components
             self.initialize_components(model_size, language, device, enable_diarization)
             
             # Clear previous transcript

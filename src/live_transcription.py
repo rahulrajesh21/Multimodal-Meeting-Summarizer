@@ -345,9 +345,16 @@ class LiveTranscriber:
             
         return segments
 
-    def transcribe_full_audio(self, audio_data, sample_rate: int = 16000) -> Iterator[dict]:
+    def transcribe_full_audio(self, audio_data, sample_rate: int = 16000, speaker_mapping: Optional[dict] = None) -> Iterator[dict]:
         """
         Transcribe full audio and yield segments with timestamps.
+
+        Args:
+            audio_data:      Raw audio bytes or float32 numpy array.
+            sample_rate:     Sample rate in Hz.
+            speaker_mapping: Optional dict {SPEAKER_XX: (resolved_name, confidence)}
+                             from SpeakerIdentifier. When supplied, diarization labels
+                             are replaced with real names in the emitted segments.
         """
         audio_array = self._prepare_audio(audio_data)
             
@@ -402,7 +409,17 @@ class LiveTranscriber:
             if self.enable_diarization and self.diarize_model:
                 print("Running diarization...")
                 segments = self._assign_speakers(segments, audio_array, sample_rate)
-            
+
+            # Apply resolved speaker name mapping if provided
+            if speaker_mapping:
+                for seg in segments:
+                    raw_spk = seg.get("speaker")
+                    if raw_spk and raw_spk in speaker_mapping:
+                        resolved_name, _conf = speaker_mapping[raw_spk]
+                        if resolved_name:
+                            seg["speaker"] = resolved_name
+                            seg["speaker_id"] = raw_spk   # keep original label for reference
+
             for segment in segments:
                 yield segment
                 

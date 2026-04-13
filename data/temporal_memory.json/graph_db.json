@@ -1,0 +1,46 @@
+{
+  "entities": {},
+  "events": {},
+  "meetings": {
+    "7a710eea": {
+      "_id": "7a710eea",
+      "date": "2026-02-18T00:00:00",
+      "title": "meeting1",
+      "participants": [
+        "Lily",
+        "Craig",
+        "Steve",
+        "Christie",
+        "Brian",
+        "Mek",
+        "Sid",
+        "Eric",
+        "Christopher"
+      ],
+      "tags": [
+        "standup"
+      ],
+      "metadata": {}
+    },
+    "0c374598": {
+      "_id": "0c374598",
+      "date": "2026-02-20T00:00:00",
+      "title": "meeting2",
+      "participants": [
+        "Lily",
+        "Craig",
+        "Steve",
+        "Christie",
+        "Brian",
+        "Mek",
+        "Sid",
+        "Eric",
+        "Christopher"
+      ],
+      "tags": [
+        "standup"
+      ],
+      "metadata": {}
+    }
+  }
+}

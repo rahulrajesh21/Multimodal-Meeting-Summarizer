@@ -12,8 +12,8 @@
       "temporal": 0.16
     },
     "weight_source": "formula",
-    "added_at": "2026-02-19T17:47:05.427497",
-    "updated_at": "2026-02-19T17:47:05.427522"
+    "added_at": "2026-02-20T10:30:33.032351",
+    "updated_at": "2026-02-20T10:30:33.032356"
   },
   "craig": {
     "display_name": "Craig",
@@ -28,11 +28,11 @@
       "temporal": 0.205
     },
     "weight_source": "formula",
-    "added_at": "2026-02-19T17:47:20.606948",
-    "updated_at": "2026-02-19T17:47:20.606974"
+    "added_at": "2026-02-20T10:22:12.688634",
+    "updated_at": "2026-02-20T10:22:12.688636"
   },
   "steve": {
-    "display_name": "Steve ",
+    "display_name": "Steve",
     "role": "Infrastructure",
     "department": "",
     "is_external": false,
@@ -44,8 +44,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-02-19T17:47:37.385329",
-    "updated_at": "2026-02-19T17:47:37.385352"
+    "added_at": "2026-02-20T10:22:12.688817",
+    "updated_at": "2026-02-20T10:22:12.688819"
   },
   "christie": {
     "display_name": "Christie",
@@ -60,8 +60,8 @@
       "temporal": 0.157
     },
     "weight_source": "formula",
-    "added_at": "2026-02-19T17:48:23.737696",
-    "updated_at": "2026-02-19T17:48:23.737720"
+    "added_at": "2026-02-20T10:22:12.688966",
+    "updated_at": "2026-02-20T10:22:12.688968"
   },
   "brian": {
     "display_name": "Brian",
@@ -76,8 +76,8 @@
       "temporal": 0.238
     },
     "weight_source": "formula",
-    "added_at": "2026-02-19T17:48:41.608871",
-    "updated_at": "2026-02-19T17:48:41.608896"
+    "added_at": "2026-02-20T10:22:12.689111",
+    "updated_at": "2026-02-20T10:22:12.689113"
   },
   "mek": {
     "display_name": "Mek",
@@ -92,8 +92,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-02-19T17:49:18.382325",
-    "updated_at": "2026-02-19T17:49:18.382350"
+    "added_at": "2026-02-20T10:22:12.689256",
+    "updated_at": "2026-02-20T10:22:12.689258"
   },
   "sid": {
     "display_name": "Sid",
@@ -108,8 +108,8 @@
       "temporal": 0.2425
     },
     "weight_source": "formula",
-    "added_at": "2026-02-19T17:49:35.726035",
-    "updated_at": "2026-02-19T17:49:35.726060"
+    "added_at": "2026-02-20T10:22:12.689389",
+    "updated_at": "2026-02-20T10:22:12.689391"
   },
   "eric": {
     "display_name": "Eric",
@@ -124,8 +124,8 @@
       "temporal": 0.2395
     },
     "weight_source": "formula",
-    "added_at": "2026-02-19T17:49:53.027183",
-    "updated_at": "2026-02-19T17:49:53.027207"
+    "added_at": "2026-02-20T10:22:12.689526",
+    "updated_at": "2026-02-20T10:22:12.689527"
   },
   "christopher": {
     "display_name": "Christopher",
@@ -140,7 +140,7 @@
       "temporal": 0.16
     },
     "weight_source": "formula",
-    "added_at": "2026-02-19T17:50:08.056350",
-    "updated_at": "2026-02-19T17:50:08.056375"
+    "added_at": "2026-02-20T10:22:12.689659",
+    "updated_at": "2026-02-20T10:22:12.689660"
   }
 }

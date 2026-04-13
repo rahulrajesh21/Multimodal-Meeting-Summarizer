@@ -11,7 +11,7 @@ import os
 import re
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from .role_hierarchy import get_fallback_weights, get_role_description
 
@@ -117,7 +117,9 @@ class ParticipantStore:
         self.llm_pipeline = llm_pipeline
         self._profiles_path = os.path.join(data_dir, "participants.json")
         os.makedirs(data_dir, exist_ok=True)
-        self._profiles: Dict[str, dict] = self._load()
+        self._profiles: Dict[str, dict] = {}
+        self._speaker_id_mapping: Dict[str, dict] = {}   # {SPEAKER_XX: {name, confidence}}
+        self._load()
 
     # ── Public API ─────────────────────────────────────────────────────────
 
@@ -259,6 +261,47 @@ class ParticipantStore:
         """Return all registered participant profiles."""
         return list(self._profiles.values())
 
+    # ── Speaker-ID mapping ─────────────────────────────────────────────────
+
+    def save_speaker_mapping(self, mapping: Dict[str, Tuple]) -> None:
+        """
+        Persist a resolved {SPEAKER_XX: (name, confidence)} mapping.
+
+        Args:
+            mapping: Dict from SpeakerIdentifier.build_mapping() —
+                     {speaker_id: (resolved_name_or_None, confidence_float)}
+        """
+        serialised: Dict[str, dict] = {}
+        for spk, (name, conf) in mapping.items():
+            serialised[spk] = {"name": name, "confidence": round(float(conf), 4)}
+        self._speaker_id_mapping = serialised
+        self._save()
+        logger.info(f"Speaker mapping saved: {serialised}")
+
+    def load_speaker_mapping(self) -> Dict[str, dict]:
+        """
+        Return the persisted speaker mapping.
+
+        Returns:
+            {SPEAKER_XX: {"name": str|None, "confidence": float}}
+        """
+        return dict(self._speaker_id_mapping)
+
+    def get_name_for_speaker(self, speaker_id: str) -> Tuple[Optional[str], float]:
+        """
+        Look up the resolved name and confidence for a diarization label.
+
+        Args:
+            speaker_id: e.g. "SPEAKER_02"
+
+        Returns:
+            (name_or_None, confidence) tuple.
+        """
+        entry = self._speaker_id_mapping.get(speaker_id)
+        if entry is None:
+            return (None, 0.0)
+        return (entry.get("name"), float(entry.get("confidence", 0.0)))
+
     def get_ui_badge(self, name: str) -> str:
         """
         Returns a short status string for Streamlit display.
@@ -293,15 +336,23 @@ class ParticipantStore:
         cleaned = re.sub(r"[^a-z0-9]+", "_", cleaned)
         return cleaned.strip("_")
 
-    def _load(self) -> Dict[str, dict]:
+    def _load(self) -> None:
         if os.path.exists(self._profiles_path):
             with open(self._profiles_path) as f:
                 try:
-                    return json.load(f)
+                    data = json.load(f)
+                    # Support both old format (flat profiles dict) and new format
+                    if "_speaker_id_mapping" in data:
+                        self._speaker_id_mapping = data.pop("_speaker_id_mapping", {})
+                    self._profiles = data
+                    return
                 except json.JSONDecodeError:
                     logger.warning("participants.json corrupted — starting fresh.")
-        return {}
+        self._profiles = {}
+        self._speaker_id_mapping = {}
 
     def _save(self) -> None:
+        payload = dict(self._profiles)  # copy
+        payload["_speaker_id_mapping"] = self._speaker_id_mapping
         with open(self._profiles_path, "w") as f:
-            json.dump(self._profiles, f, indent=2)
+            json.dump(payload, f, indent=2)

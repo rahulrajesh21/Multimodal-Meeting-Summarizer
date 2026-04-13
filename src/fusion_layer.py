@@ -30,7 +30,7 @@ except ImportError:
 
 # Try to import Temporal Graph Memory
 try:
-    from .temporal_graph_memory import TemporalGraphMemory, NodeType, EdgeType
+    from .temporal_graph_memory import TemporalGraphMemory, NodeType
     TEMPORAL_MEMORY_AVAILABLE = True
 except ImportError:
     TEMPORAL_MEMORY_AVAILABLE = False
@@ -63,6 +63,8 @@ class SegmentFeatures:
     tonal_score: float = 0.0
     role_relevance: float = 0.0
     temporal_context_score: float = 0.0  # Cross-meeting context relevance
+    recurrence_score: float = 0.0
+    unresolved_score: float = 0.0
     fused_score: float = 0.0
     
     # Temporal context
@@ -150,12 +152,14 @@ class FusionLayer:
             except ImportError:
                 logger.warning("thread_detector module not found — thread boost disabled")
         
-        # Default weights (can be tuned) - now includes temporal
+        # Default weights (can be tuned) - now includes explicit temporal signals
         self.weights = weights or {
-            'semantic': 0.4,    # What was said
+            'semantic': 0.35,    # What was said
             'tonal': 0.15,      # How it was said
-            'role': 0.25,       # Who it matters to
-            'temporal': 0.2    # Cross-meeting context
+            'role': 0.20,       # Who it matters to
+            'temporal': 0.10,    # General cross-meeting references
+            'recurrence': 0.10,  # Specific recurrence signal
+            'unresolved': 0.10   # Unresolved state signal
         }
         
         # Importance description embedding (cached)
@@ -380,11 +384,13 @@ class FusionLayer:
         semantic_score: float,
         tonal_score: float,
         role_relevance: float,
-        temporal_score: float = 0.0
+        temporal_score: float = 0.0,
+        recurrence_score: float = 0.0,
+        unresolved_score: float = 0.0
     ) -> float:
         """Fuse using the layer-level global weights. Delegates to _fuse_with_weights."""
         return self._fuse_with_weights(
-            semantic_score, tonal_score, role_relevance, temporal_score, self.weights
+            semantic_score, tonal_score, role_relevance, temporal_score, recurrence_score, unresolved_score, self.weights
         )
 
     def _fuse_with_weights(
@@ -393,6 +399,8 @@ class FusionLayer:
         tonal_score: float,
         role_relevance: float,
         temporal_score: float,
+        recurrence_score: float,
+        unresolved_score: float,
         weights: Dict[str, float]
     ) -> float:
         """
@@ -407,30 +415,36 @@ class FusionLayer:
             tonal_score: Tonal/prosodic importance (0-1)
             role_relevance: Role-specific relevance (0-1)
             temporal_score: Cross-meeting context relevance (0-1)
-            weights: Weight dict {semantic, tonal, role, temporal}
+            recurrence_score: Dynamic recurrence tracked across graphs
+            unresolved_score: High if item is a problem left open
+            weights: Weight dict
 
         Returns:
             Fused score (0-1)
         """
         if self.fusion_strategy == "weighted":
             fused = (
-                weights['semantic'] * semantic_score +
-                weights['tonal'] * tonal_score +
-                weights['role'] * role_relevance +
-                weights['temporal'] * temporal_score
+                weights.get('semantic', 0.35) * semantic_score +
+                weights.get('tonal', 0.15) * tonal_score +
+                weights.get('role', 0.20) * role_relevance +
+                weights.get('temporal', 0.10) * temporal_score +
+                weights.get('recurrence', 0.10) * recurrence_score +
+                weights.get('unresolved', 0.10) * unresolved_score
             )
 
         elif self.fusion_strategy == "multiplicative":
             tonal_boost = 1.0 + (tonal_score * 0.5)
-            temporal_boost = 1.0 + (temporal_score * 0.3)
+            temporal_boost = 1.0 + (temporal_score * 0.3) + (recurrence_score * 0.2) + (unresolved_score * 0.2)
             fused = semantic_score * tonal_boost * temporal_boost * (0.5 + role_relevance * 0.5)
 
         elif self.fusion_strategy == "gated":
             gate = self._sigmoid((role_relevance - 0.5) * 4)
             content_score = (
-                weights.get('semantic', 0.6) * semantic_score +
-                weights.get('tonal', 0.25) * tonal_score +
-                weights.get('temporal', 0.15) * temporal_score
+                weights.get('semantic', 0.5) * semantic_score +
+                weights.get('tonal', 0.2) * tonal_score +
+                weights.get('temporal', 0.1) * temporal_score +
+                weights.get('recurrence', 0.1) * recurrence_score +
+                weights.get('unresolved', 0.1) * unresolved_score
             )
             fused = content_score * gate
 
@@ -510,12 +524,24 @@ class FusionLayer:
         
         # 4. Temporal context (cross-meeting relevance)
         temporal_score = 0.0
+        recurrence_score = 0.0
+        unresolved_score = 0.0
+        
         if text_emb is not None:
             temporal_score, temporal_context = self.compute_temporal_context_score(
                 text=segment.text, text_embedding=text_emb
             )
             segment.temporal_context_score = temporal_score
             segment.temporal_context = temporal_context
+            
+            # Extract precise signals matching our 4-layer architecture graph output
+            if temporal_context and 'signals' in temporal_context:
+                sig_dict = temporal_context['signals']
+                recurrence_score = sig_dict.get('recurrence_score', 0.0)
+                unresolved_score = sig_dict.get('unresolved_score', 0.0)
+            
+            segment.recurrence_score = recurrence_score
+            segment.unresolved_score = unresolved_score
 
         # 4b. Thread boost — extra weight if segment belongs to a recurring thread
         if self._thread_detector is not None and text_emb is not None:
@@ -543,7 +569,7 @@ class FusionLayer:
         
         # 5. Fuse scores (use speaker-specific weights if resolved)
         segment.fused_score = self._fuse_with_weights(
-            semantic_score, tonal_score, role_relevance, temporal_score, active_weights
+            semantic_score, tonal_score, role_relevance, temporal_score, recurrence_score, unresolved_score, active_weights
         )
         
         return segment
