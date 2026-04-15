@@ -809,6 +809,128 @@ async def process_teams_meeting(body: dict, background_tasks: BackgroundTasks):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+#  MEETING CHAT
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/meetings/{job_id}/chat")
+async def chat_with_meeting(job_id: str, body: dict):
+    """
+    Chat with a meeting using LLM.  Sends full meeting context to LM Studio.
+    Body: { "message": "...", "history": [...] }
+    """
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Meeting not found")
+    if job.get("status") != "done":
+        raise HTTPException(400, "Meeting is still processing")
+
+    user_msg = (body.get("message") or "").strip()
+    if not user_msg:
+        raise HTTPException(400, "message is required")
+
+    history = body.get("history", [])[-10:]  # Keep last 10 exchanges
+
+    # ── Build meeting context ──────────────────────────────────────────────
+    ctx_parts: list[str] = []
+
+    # 1. Metadata
+    ctx_parts.append(f"Meeting Title: {job.get('title', 'Untitled')}")
+    ctx_parts.append(f"Date: {job.get('created_at', 'Unknown')}")
+    participants = job.get("participants", [])
+    if participants:
+        names = ", ".join(
+            p.get("name", "?") + f" ({p.get('role', 'Attendee')})"
+            for p in participants
+        )
+        ctx_parts.append(f"Participants: {names}")
+
+    # 2. Per-speaker summaries (compact but rich)
+    summaries = job.get("summaries", {})
+    if summaries:
+        ctx_parts.append("\n--- SPEAKER SUMMARIES ---")
+        for speaker, summary in summaries.items():
+            ctx_parts.append(f"{speaker}:\n{summary}")
+
+    # 3. Graph events (decisions, problems, ideas with timestamps)
+    mid = job.get("meeting_id")
+    if mid:
+        tm = get_temporal_memory()
+        event_ids = tm.events_by_meeting.get(mid, [])
+        if event_ids:
+            ctx_parts.append("\n--- KEY EVENTS ---")
+            for eid in event_ids[:50]:
+                ev = tm.events.get(eid)
+                if ev:
+                    line = f"[{ev.start_time:.0f}s] [{ev.event_type}] {ev.speaker}: {ev.summary}"
+                    if ev.is_screen_sharing:
+                        line += " (screen share)"
+                    if ev.ocr_text:
+                        line += f" [Screen text: {ev.ocr_text[:100]}]"
+                    ctx_parts.append(line)
+
+    # 4. Visual context overview
+    screen_share_count = job.get("screen_share_frames", 0)
+    total_frames = job.get("visual_context_count", 0)
+    if total_frames > 0:
+        ctx_parts.append(
+            f"\nVisual Analysis: {screen_share_count}/{total_frames} "
+            f"frames had screen sharing detected"
+        )
+
+    # 5. Full transcript (cap to ~1000 words to fit model window of 4096 tokens)
+    transcript = job.get("transcript", "")
+    if transcript:
+        words = transcript.split()
+        if len(words) > 1000:
+            transcript = " ".join(words[:1000]) + "\n... (transcript truncated to fit LLM window)"
+        ctx_parts.append(f"\n--- FULL TRANSCRIPT ---\n{transcript}")
+
+    meeting_context = "\n".join(ctx_parts)
+
+    system_prompt = f"""/no_think
+You are an AI assistant that answers questions about a specific meeting.
+You have access to the complete meeting transcript, speaker summaries,
+key events, and visual context (screen sharing detection).
+
+{meeting_context}
+
+Answer the user's question based ONLY on the meeting data above. Be specific
+— cite speakers by name, reference timestamps when relevant, and mention
+screen-sharing or visual content if the user asks about what was on screen.
+Keep your answer concise and focused. If the information is not available
+in the meeting data, say so honestly."""
+
+    # ── Build conversation history ─────────────────────────────────────────
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    for turn in history[-5:]:
+        role = turn.get("role", "user")
+        content = turn.get("content", "")
+        # role in OpenAI is 'user' or 'assistant'
+        messages.append({"role": role if role in ['user', 'assistant'] else 'user', "content": content})
+
+    messages.append({"role": "user", "content": user_msg})
+
+    # ── Call LM Studio ─────────────────────────────────────────────────────
+    try:
+        from src.llm_summarizer import LLMSummarizer
+        llm = LLMSummarizer()
+        if not llm.is_ready:
+            raise HTTPException(503, "LLM (LM Studio) is not available")
+
+        loop = asyncio.get_event_loop()
+        reply = await loop.run_in_executor(
+            None, lambda: llm._call_ollama(messages, temperature=0.4)
+        )
+        return {"reply": reply.strip()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Chat failed: {e}")
+        raise HTTPException(500, f"Chat failed: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 #  CROSS-MEETING THREADS / GRAPH
 # ═══════════════════════════════════════════════════════════════════════════
 

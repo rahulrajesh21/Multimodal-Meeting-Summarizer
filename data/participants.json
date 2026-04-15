@@ -156,8 +156,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-15T08:53:10.647172",
-    "updated_at": "2026-04-15T08:53:10.647178"
+    "added_at": "2026-04-15T17:27:33.783935",
+    "updated_at": "2026-04-15T17:27:33.783940"
   },
   "sid_sijbrandij_ceo": {
     "display_name": "Sid Sijbrandij (CEO)",
@@ -172,8 +172,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-15T08:53:10.647537",
-    "updated_at": "2026-04-15T08:53:10.647539"
+    "added_at": "2026-04-15T17:27:33.784382",
+    "updated_at": "2026-04-15T17:27:33.784384"
   },
   "lily_data_program_management": {
     "display_name": "Lily (Data/Program Management)",
@@ -188,8 +188,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-15T08:53:10.647804",
-    "updated_at": "2026-04-15T08:53:10.647806"
+    "added_at": "2026-04-15T17:27:33.784657",
+    "updated_at": "2026-04-15T17:27:33.784659"
   },
   "christopher_lefelhocz_vp_of_development": {
     "display_name": "Christopher Lefelhocz (VP of Development)",
@@ -204,8 +204,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-15T08:53:10.648055",
-    "updated_at": "2026-04-15T08:53:10.648056"
+    "added_at": "2026-04-15T17:27:33.784907",
+    "updated_at": "2026-04-15T17:27:33.784909"
   },
   "steve_abt_director_of_infrastructure": {
     "display_name": "Steve Abt (Director of Infrastructure)",
@@ -220,8 +220,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-15T08:53:10.648292",
-    "updated_at": "2026-04-15T08:53:10.648294"
+    "added_at": "2026-04-15T17:27:33.785156",
+    "updated_at": "2026-04-15T17:27:33.785158"
   },
   "mac_cohen_director_of_quality": {
     "display_name": "Mac Cohen (Director of Quality)",
@@ -236,8 +236,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-15T08:53:10.648525",
-    "updated_at": "2026-04-15T08:53:10.648527"
+    "added_at": "2026-04-15T17:27:33.785400",
+    "updated_at": "2026-04-15T17:27:33.785402"
   },
   "craig_gomes_director_of_product": {
     "display_name": "Craig Gomes (Director of Product)",
@@ -252,8 +252,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-15T08:53:10.648757",
-    "updated_at": "2026-04-15T08:53:10.648758"
+    "added_at": "2026-04-15T17:27:33.785659",
+    "updated_at": "2026-04-15T17:27:33.785660"
   },
   "christie_lunn_vp_of_ux": {
     "display_name": "Christie Lunn (VP of UX)",
@@ -268,8 +268,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-15T08:53:10.648989",
-    "updated_at": "2026-04-15T08:53:10.648991"
+    "added_at": "2026-04-15T17:27:33.785895",
+    "updated_at": "2026-04-15T17:27:33.785896"
   },
   "_speaker_id_mapping": {
     "SPEAKER_07": {

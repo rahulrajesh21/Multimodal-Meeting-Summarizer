@@ -36,6 +36,13 @@ except ImportError:
     LLM_AVAILABLE = False
     logger.warning("LLM Summarizer not found, Event Extraction will be mocked.")
 
+try:
+    from .topic_classifier import TopicClassifier
+    BERT_CLASSIFIER_AVAILABLE = True
+except ImportError:
+    BERT_CLASSIFIER_AVAILABLE = False
+    logger.warning("TopicClassifier not found, will fall back to LLM classification.")
+
 
 class EventType(Enum):
     PROBLEM = "problem"
@@ -185,6 +192,17 @@ class TemporalGraphMemory:
             self.llm_extractor = LLMSummarizer()
         else:
             self.llm_extractor = None
+
+        # Load fine-tuned BERT topic classifier (preferred over LLM)
+        if BERT_CLASSIFIER_AVAILABLE:
+            self.topic_classifier = TopicClassifier()
+            if self.topic_classifier.is_ready:
+                logger.info("Using BERT topic classifier for segment classification")
+            else:
+                logger.info("BERT model not trained yet, will fall back to LLM")
+                self.topic_classifier = None
+        else:
+            self.topic_classifier = None
 
         # Data Stores
         self.entities: Dict[str, EntityMemory] = {}
@@ -617,10 +635,18 @@ class TemporalGraphMemory:
 
         classifications: Dict[int, str] = {}
         valid_types = {'decision', 'problem', 'update', 'idea', 'deadline', 'metric', 'discussion', 'risk'}
-        BATCH_SIZE = 10
 
-        if self.llm_extractor and candidate_texts:
-            # Re-check connection if it failed at startup
+        # ── BERT-based classification (replaces LLM) ──────────────────────────
+        if self.topic_classifier and self.topic_classifier.is_ready and candidate_texts:
+            texts_only = [item[1] for item in candidate_texts]
+            results = self.topic_classifier.classify_batch(texts_only)
+            for i, (label, confidence) in enumerate(results):
+                idx = candidate_texts[i][0]
+                classifications[idx] = label if label in valid_types else 'discussion'
+            logger.info(f"BERT classified {len(classifications)}/{len(candidate_texts)} segments")
+        elif self.llm_extractor and candidate_texts:
+            # Fallback to LLM if BERT model is not available
+            BATCH_SIZE = 10
             if not self.llm_extractor.is_ready:
                 self.llm_extractor._check_connection()
             if self.llm_extractor.is_ready:
@@ -648,7 +674,6 @@ class TemporalGraphMemory:
                     )
                     try:
                         raw = self.llm_extractor._call_ollama(prompt, format_json=False, temperature=0.1)
-                        # Parse numbered list: "1. decision\n2. problem\n..."
                         lines = raw.strip().split('\n')
                         for line in lines:
                             m = re.match(r'\d+\.\s*(\w+)', line.strip())

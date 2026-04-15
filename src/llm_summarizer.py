@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 class LLMSummarizer:
     """
     Generates coherent, role-specific summaries and extracts structured JSON
-    using Qwen 3.5 via a local Ollama instance.
+    using a local LM Studio instance (OpenAI-compatible API).
     """
 
-    def __init__(self, model_name: str = "qwen3:4b", endpoint: str = "http://localhost:11434/api/generate"):
+    def __init__(self, model_name: str = "qwen3-4b", endpoint: str = "http://localhost:1234/v1/chat/completions"):
         self.model_name = model_name
         self.endpoint = endpoint
         self.is_ready = False
@@ -22,54 +22,68 @@ class LLMSummarizer:
         self._check_connection()
 
     def _check_connection(self):
-        """Check if the Ollama endpoint is running."""
+        """Check if the LM Studio endpoint is running."""
         self.last_error = None
         try:
-            # We just do a quick health check or assume it's there
-            response = requests.get(self.endpoint.replace('/api/generate', '/'), timeout=2)
+            # Hit the /v1/models endpoint to verify LM Studio is running
+            base_url = self.endpoint.rsplit('/v1/', 1)[0]
+            response = requests.get(f"{base_url}/v1/models", timeout=2)
             if response.status_code == 200:
                 self.is_ready = True
-                logger.info(f"LLM Summarizer ready (Ollama {self.model_name})")
+                logger.info(f"LLM Summarizer ready (LM Studio: {self.model_name})")
             else:
                 self.is_ready = False
-                self.last_error = "Ollama endpoint returned non-200 status"
+                self.last_error = "LM Studio endpoint returned non-200 status"
         except Exception as e:
-            # It might not be running yet, but we'll try at runtime anyway
-            self.last_error = f"Connection to Ollama failed: {str(e)[:100]}"
+            self.last_error = f"Connection to LM Studio failed: {str(e)[:100]}"
             self.is_ready = False
-            logger.warning(f"Ollama connection check failed: {e}. Ensure Ollama is running.")
+            logger.warning(f"LM Studio connection check failed: {e}. Ensure LM Studio is running.")
 
     def status(self) -> str:
         """Human-readable load status for UI display."""
-        # Re-check on status request just in case
         self._check_connection()
         if self.is_ready:
-            return f"✅ Ready (Ollama: {self.model_name})"
+            return f"✅ Ready (LM Studio: {self.model_name})"
         if self.last_error:
             return f"❌ Failed: {self.last_error}"
         return "⏳ Not initialised"
 
-    def _call_ollama(self, prompt: str, format_json: bool = False, temperature: float = 0.3) -> str:
-        """Make a raw POST request to the Ollama generate endpoint."""
-        payload = {
-            "model": self.model_name,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "temperature": temperature
-            }
-        }
+    def _call_ollama(self, prompt, format_json: bool = False, temperature: float = 0.3) -> str:
+        """Make a request to LM Studio's OpenAI-compatible chat completions endpoint."""
         
+        # Determine the model name. Try to get the first running model, fallback to local-model
+        model_name = "local-model"
+        try:
+            base_url = self.endpoint.rsplit('/v1/', 1)[0]
+            models_resp = requests.get(f"{base_url}/v1/models", timeout=2)
+            if models_resp.status_code == 200 and models_resp.json().get("data"):
+                model_name = models_resp.json()["data"][0]["id"]
+        except Exception:
+            pass
+
+        payload = {
+            "model": model_name,
+            "temperature": temperature,
+            "stream": False,
+        }
+
+        if isinstance(prompt, list):
+            payload["messages"] = prompt
+        else:
+            payload["messages"] = [
+                {"role": "user", "content": prompt}
+            ]
+
         if format_json:
-            payload["format"] = "json"
+            payload["response_format"] = {"type": "json_object"}
 
         try:
-            response = requests.post(self.endpoint, json=payload, timeout=60)
+            response = requests.post(self.endpoint, json=payload, timeout=120)
             response.raise_for_status()
             data = response.json()
-            return data.get("response", "")
+            return data["choices"][0]["message"]["content"]
         except Exception as e:
-            logger.error(f"Ollama generation failed: {e}")
+            logger.error(f"LM Studio generation failed: {e}")
             raise e
 
     def extract_json_events(self, text: str, speaker: Optional[str] = None, timestamp: Optional[str] = None) -> Dict:

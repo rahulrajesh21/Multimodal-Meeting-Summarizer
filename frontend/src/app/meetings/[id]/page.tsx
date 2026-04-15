@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { fetchMeeting, teamsVideoUrl, patchSpeakers, reprocessMeeting, Job, TEAMS_API } from '@/lib/api';
+import { fetchMeeting, teamsVideoUrl, patchSpeakers, reprocessMeeting, chatWithMeeting, Job, ChatMessage, TEAMS_API } from '@/lib/api';
 import Link from 'next/link';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -212,12 +212,114 @@ function SpeakerSummaryCard({ name, role, summary, expanded, onToggle }: {
     );
 }
 
+/* ── Chat Panel ── */
+function ChatPanel({ jobId }: { jobId: string }) {
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [input, setInput] = useState('');
+    const [loading, setLoading] = useState(false);
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    }, [messages]);
+
+    const send = async () => {
+        const text = input.trim();
+        if (!text || loading) return;
+
+        const userMsg: ChatMessage = { role: 'user', content: text };
+        const updated = [...messages, userMsg];
+        setMessages(updated);
+        setInput('');
+        setLoading(true);
+
+        try {
+            const { reply } = await chatWithMeeting(jobId, text, updated);
+            setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+        } catch (e: any) {
+            setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message || 'Failed to get response'}` }]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {/* Messages */}
+            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {messages.length === 0 && (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 20px' }}>
+                        <div style={{ fontSize: '32px', marginBottom: '12px' }}>💬</div>
+                        <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Chat with this meeting</div>
+                        <div style={{ fontSize: '13px', lineHeight: 1.5 }}>
+                            Ask questions about the transcript, who said what,<br />
+                            decisions made, screen shares, and more.
+                        </div>
+                    </div>
+                )}
+                {messages.map((msg, i) => (
+                    <div key={i} style={{
+                        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                        maxWidth: '85%',
+                        background: msg.role === 'user'
+                            ? 'linear-gradient(135deg, #7c6ff7, #6366f1)'
+                            : 'var(--bg-surface)',
+                        color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                        border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
+                        borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                        padding: '10px 14px',
+                        fontSize: '13px',
+                        lineHeight: 1.55,
+                        whiteSpace: 'pre-wrap',
+                    }}>
+                        {msg.content}
+                    </div>
+                ))}
+                {loading && (
+                    <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                        <span className="spinner" style={{ width: 16, height: 16 }} />
+                        Thinking…
+                    </div>
+                )}
+            </div>
+
+            {/* Input */}
+            <div style={{
+                padding: '12px 16px',
+                borderTop: '1px solid var(--border)',
+                display: 'flex',
+                gap: '8px',
+                background: 'var(--bg-primary)',
+                flexShrink: 0,
+            }}>
+                <input
+                    className="input"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                    placeholder="Ask about this meeting…"
+                    disabled={loading}
+                    style={{ flex: 1, padding: '10px 14px', fontSize: '13px', borderRadius: '10px' }}
+                />
+                <button
+                    className="btn btn-primary btn-sm"
+                    onClick={send}
+                    disabled={loading || !input.trim()}
+                    style={{ padding: '10px 16px', borderRadius: '10px', fontSize: '14px' }}
+                >
+                    ↑
+                </button>
+            </div>
+        </div>
+    );
+}
+
 /* ══ Main Page ══ */
 export default function MeetingDetailPage() {
     const { id } = useParams<{ id: string }>();
     const [job, setJob] = useState<Job | null>(null);
     const [loading, setLoading] = useState(true);
-    const [rightTab, setRightTab] = useState<'transcript' | 'summary' | 'insights'>('transcript');
+    const [rightTab, setRightTab] = useState<'transcript' | 'summary' | 'insights' | 'chat'>('transcript');
     const [expandedSpeaker, setExpandedSpeaker] = useState<string | null>(null);
     const [speakerFilter, setSpeakerFilter] = useState('all');
     const [topicFilter, setTopicFilter] = useState('all');
@@ -488,6 +590,7 @@ export default function MeetingDetailPage() {
                             <div className={`tab${rightTab === 'transcript' ? ' active' : ''}`} style={{ fontSize: '13px' }} onClick={() => setRightTab('transcript')}>📝 Transcript</div>
                             <div className={`tab${rightTab === 'summary' ? ' active' : ''}`} style={{ fontSize: '13px' }} onClick={() => setRightTab('summary')}>🧠 Summaries</div>
                             <div className={`tab${rightTab === 'insights' ? ' active' : ''}`} style={{ fontSize: '13px' }} onClick={() => setRightTab('insights')}>📌 Events</div>
+                            {job.status === 'done' && <div className={`tab${rightTab === 'chat' ? ' active' : ''}`} style={{ fontSize: '13px' }} onClick={() => setRightTab('chat')}>💬 Chat</div>}
                         </div>
                     </div>
 
@@ -589,6 +692,10 @@ export default function MeetingDetailPage() {
                                 </div>
                             );
                         })()}
+
+                        <div style={{ display: rightTab === 'chat' ? 'block' : 'none', height: '100%' }}>
+                            {job.status === 'done' && <ChatPanel jobId={id} />}
+                        </div>
                     </div>
                 </div>
             </div>
