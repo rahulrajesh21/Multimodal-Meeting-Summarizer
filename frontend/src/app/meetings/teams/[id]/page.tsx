@@ -1,15 +1,18 @@
 'use client';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
     fetchTeamsMeeting,
     fetchVttSegments,
+    fetchMeeting,
+    processTeamsMeeting,
     teamsVideoUrl,
     teamsTranscriptUrl,
     TeamsMeeting,
     TeamsTranscript,
     TeamsRecording,
     VttSegment,
+    Job,
     TEAMS_API,
 } from '@/lib/api';
 import Link from 'next/link';
@@ -144,16 +147,61 @@ function DiarizationCard({ transcript }: { transcript: TeamsTranscript }) {
 /* ══ Main page ══════════════════════════════════════════════════════════════ */
 export default function TeamsMeetingDetailPage() {
     const { id } = useParams<{ id: string }>();
-    const [meeting, setMeeting]           = useState<TeamsMeeting | null>(null);
-    const [segments, setSegments]         = useState<VttSegment[]>([]);
-    const [loadingMeta, setLoadingMeta]   = useState(true);
-    const [loadingVtt, setLoadingVtt]     = useState(false);
-    const [activeIdx, setActiveIdx]       = useState<number | null>(null);
+    const router = useRouter();
+    const [meeting, setMeeting] = useState<TeamsMeeting | null>(null);
+    const [segments, setSegments] = useState<VttSegment[]>([]);
+    const [loadingMeta, setLoadingMeta] = useState(true);
+    const [loadingVtt, setLoadingVtt] = useState(false);
+    const [activeIdx, setActiveIdx] = useState<number | null>(null);
     const [speakerFilter, setSpeakerFilter] = useState('all');
-    const [rightTab, setRightTab]         = useState<'transcript' | 'info'>('transcript');
+    const [rightTab, setRightTab] = useState<'transcript' | 'info'>('transcript');
     const [selectedTranscript, setSelectedTranscript] = useState<TeamsTranscript | null>(null);
-    const [selectedRecording, setSelectedRecording]   = useState<TeamsRecording  | null>(null);
+    const [selectedRecording, setSelectedRecording] = useState<TeamsRecording | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+
+    // ── Processing state ──
+    const [processingJobId, setProcessingJobId] = useState<string | null>(null);
+    const [processingJob, setProcessingJob] = useState<Job | null>(null);
+    const [processError, setProcessError] = useState<string | null>(null);
+    const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const isProcessing = processingJob?.status === 'queued' || processingJob?.status === 'processing';
+    const isDone = processingJob?.status === 'done';
+    const isFailed = processingJob?.status === 'error';
+
+    // Poll for processing progress
+    useEffect(() => {
+        if (!processingJobId) return;
+        const poll = async () => {
+            try {
+                const j = await fetchMeeting(processingJobId);
+                setProcessingJob(j);
+                if (j.status === 'done' || j.status === 'error') {
+                    if (pollingRef.current) clearInterval(pollingRef.current);
+                }
+            } catch { }
+        };
+        poll();
+        pollingRef.current = setInterval(poll, 2000);
+        return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+    }, [processingJobId]);
+
+    const handleProcess = async () => {
+        if (isProcessing || !meeting) return;
+        setProcessError(null);
+        setProcessingJob(null);
+        try {
+            const result = await processTeamsMeeting({
+                teams_meeting_id: meeting.id,
+                transcript_id: selectedTranscript?.id,
+                recording_id: selectedRecording?.id,
+            });
+            // Redirect to Dashboard so user sees the job in the processing queue
+            router.push('/');
+        } catch (e: any) {
+            setProcessError(e.message || 'Failed to start processing');
+        }
+    };
 
     const load = useCallback(async () => {
         try {
@@ -273,7 +321,7 @@ export default function TeamsMeetingDetailPage() {
                         {meeting.recordings?.length ?? 0} recording{meeting.recordings?.length !== 1 ? 's' : ''}
                     </span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     {selectedTranscript && (
                         <a
                             href={teamsTranscriptUrl(meeting.id, selectedTranscript.id)}
@@ -294,8 +342,63 @@ export default function TeamsMeetingDetailPage() {
                             ⬇ Video
                         </a>
                     )}
+                    {isDone ? (
+                        <Link href={`/meetings/${processingJobId}`}>
+                            <button className="btn btn-sm" style={{
+                                background: 'rgba(34,197,94,0.15)', color: '#22c55e',
+                                border: '1px solid rgba(34,197,94,0.3)',
+                                fontWeight: 600,
+                            }}>✓ View Results →</button>
+                        </Link>
+                    ) : (
+                        <button
+                            className="btn btn-primary btn-sm"
+                            onClick={handleProcess}
+                            disabled={isProcessing || !selectedTranscript}
+                            style={{
+                                opacity: (!selectedTranscript || isProcessing) ? 0.5 : 1,
+                                cursor: (!selectedTranscript || isProcessing) ? 'not-allowed' : 'pointer',
+                            }}
+                        >
+                            {isProcessing ? (
+                                <><span className="spinner" style={{ width: 14, height: 14 }} /> Processing…</>
+                            ) : (
+                                '🚀 Process Meeting'
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
+
+            {/* ── Processing progress bar ── */}
+            {(isProcessing || isFailed || processError) && (
+                <div style={{
+                    padding: '12px 24px',
+                    borderBottom: '1px solid var(--border)',
+                    background: isFailed || processError ? 'rgba(239,68,68,0.06)' : 'rgba(124,111,247,0.06)',
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{
+                            fontSize: '13px', fontWeight: 600,
+                            color: isFailed || processError ? 'var(--danger)' : 'var(--accent)',
+                        }}>
+                            {processError
+                                ? `❌ ${processError}`
+                                : isFailed
+                                    ? `❌ ${processingJob?.error || 'Processing failed'}`
+                                    : `⚡ ${processingJob?.stage || 'Starting…'}`}
+                        </span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                            {processingJob?.progress ?? 0}%
+                        </span>
+                    </div>
+                    {isProcessing && (
+                        <div className="progress-bar">
+                            <div className="progress-fill" style={{ width: `${processingJob?.progress ?? 0}%` }} />
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ── Body: 60/40 ── */}
             <div style={{

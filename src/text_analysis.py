@@ -11,13 +11,17 @@ class TextAnalyzer:
     Analyzer for extracting insights from text using BERT-based models.
     """
     
-    def __init__(self, device: str = "cpu"):
+    def __init__(self, device: str = None):
         """
         Initialize the text analyzer.
         
         Args:
-            device: Device to use ("cpu" or "cuda" or "mps")
+            device: Device to use ("cpu" or "cuda" or "mps"). Auto-detects if not specified.
         """
+        if device is None:
+            from src.device_utils import get_best_device
+            device = get_best_device()
+
         self.device = -1  # CPU by default
         if device == "cuda" and torch.cuda.is_available():
             self.device = 0

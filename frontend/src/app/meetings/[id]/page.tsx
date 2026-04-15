@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { fetchMeeting, videoUrl, patchSpeakers, reprocessMeeting, Job } from '@/lib/api';
+import { fetchMeeting, teamsVideoUrl, patchSpeakers, reprocessMeeting, Job, TEAMS_API } from '@/lib/api';
 import Link from 'next/link';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -164,6 +164,10 @@ function TranscriptLine({ ev, isActive, onClick }: { ev: any; isActive: boolean;
                             {ev.event_type}
                         </span>
                     )}
+                    {ev.is_screen_sharing && (
+                        <span title={ev.ocr_text ? `Screen text: ${ev.ocr_text}` : 'Screen sharing detected'}
+                            style={{ fontSize: '12px', cursor: 'help', opacity: 0.8 }}>🖥️</span>
+                    )}
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
                         {((ev.confidence || 0) * 100).toFixed(0)}% relevance
                     </span>
@@ -171,6 +175,11 @@ function TranscriptLine({ ev, isActive, onClick }: { ev: any; isActive: boolean;
                 <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
                     {ev.summary}
                 </div>
+                {ev.is_screen_sharing && ev.ocr_text && (
+                    <div style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '4px', fontStyle: 'italic', opacity: 0.7 }}>
+                        🖥️ {ev.ocr_text.length > 100 ? ev.ocr_text.slice(0, 100) + '…' : ev.ocr_text}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -232,57 +241,76 @@ export default function MeetingDetailPage() {
     }, [load]);
 
     const events = useMemo(() => job?.graph_events || [], [job]);
-    const participants = job?.participants || [];
     const summaries = job?.summaries || {};
 
+    // Parse raw transcript lines for fallback data
+    const rawTranscriptLines = useMemo(() => {
+        if (events.length > 0) return [];
+        const raw = job?.transcript || '';
+        return raw.split('\n').filter((l: string) => l.trim()).map((line: string) => {
+            const idx = line.indexOf(':');
+            return {
+                speaker: idx > 0 ? line.slice(0, idx).trim() : 'Unknown',
+                text: idx > 0 ? line.slice(idx + 1).trim() : line,
+            };
+        });
+    }, [events, job]);
+
+    // Derive participants: use job.participants, or fall back to summaries keys
+    const participants = useMemo(() => {
+        if (job?.participants && job.participants.length > 0) return job.participants;
+        return Object.keys(summaries).map(name => ({ name, role: 'Attendee' }));
+    }, [job, summaries]);
+
     const speakers = useMemo(() => {
-        const s = new Set<string>(events.map((e: any) => e.speaker || 'Unknown'));
-        return ['all', ...Array.from(s)];
-    }, [events]);
+        if (events.length > 0) {
+            const s = new Set<string>(events.map((e: any) => e.speaker || 'Unknown'));
+            return ['all', ...Array.from(s)];
+        }
+        const s = new Set<string>(rawTranscriptLines.map(l => l.speaker));
+        return s.size > 0 ? ['all', ...Array.from(s)] : ['all'];
+    }, [events, rawTranscriptLines]);
 
     const topics = useMemo(() => {
-        const seen = new Set<string>();
-        const out: string[] = [];
+        const typeSet = new Set<string>();
         for (const ev of events) {
-            if (ev.event_type === 'decision') {
-                const label = (ev.summary || '').split(' ').slice(0, 3).join(' ').toUpperCase();
-                if (label && !seen.has(label)) { seen.add(label); out.push(label); }
-            }
+            if (ev.event_type) typeSet.add(ev.event_type);
         }
-        if (out.length < 2) {
-            const freq: Record<string, number> = {};
-            for (const ev of events) {
-                const w = (ev.summary || '').split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '');
-                if (w.length > 3) freq[w] = (freq[w] || 0) + 1;
-            }
-            Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5).forEach(([w]) => { if (!seen.has(w)) { seen.add(w); out.push(w); } });
-        }
-        return out.slice(0, 6);
+        return Array.from(typeSet).sort();
     }, [events]);
 
     const speakerStats = useMemo(() => {
         const counts: Record<string, number> = {};
-        for (const ev of events) {
-            const s = ev.speaker || 'Unknown';
-            counts[s] = (counts[s] || 0) + 1;
+        if (events.length > 0) {
+            for (const ev of events) {
+                const s = ev.speaker || 'Unknown';
+                counts[s] = (counts[s] || 0) + 1;
+            }
+        } else {
+            for (const l of rawTranscriptLines) {
+                counts[l.speaker] = (counts[l.speaker] || 0) + 1;
+            }
         }
         const total = Math.max(1, Object.values(counts).reduce((a, b) => a + b, 0));
         return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([name, count]) => ({
             name, count, pct: Math.round((count / total) * 100), secs: count * 8,
         }));
-    }, [events]);
+    }, [events, rawTranscriptLines]);
 
     const filteredEvents = useMemo(() => {
         return events.filter((ev: any) => {
             if (speakerFilter !== 'all' && ev.speaker !== speakerFilter) return false;
-            if (topicFilter !== 'all' && !(ev.summary || '').toUpperCase().includes(topicFilter)) return false;
+            if (topicFilter !== 'all' && ev.event_type !== topicFilter) return false;
             return true;
         });
     }, [events, speakerFilter, topicFilter]);
 
     const seekToEvent = (i: number) => {
         setActiveEvent(i);
-        if (videoRef.current) videoRef.current.currentTime = i * 8;
+        const ev = filteredEvents[i];
+        if (videoRef.current && ev) {
+            videoRef.current.currentTime = ev.start_time || i * 8;
+        }
     };
 
     const exportSummary = () => {
@@ -352,9 +380,21 @@ export default function MeetingDetailPage() {
                                     <div className="progress-fill" style={{ width: `${job.progress}%` }} />
                                 </div>
                             </div>
-                        ) : (
-                            <video ref={videoRef} controls style={{ width: '100%', maxHeight: '380px', display: 'block' }} src={videoUrl(id)} />
-                        )}
+                        ) : (() => {
+                            // Determine video source: Teams recording or local upload
+                            const videoSrc = job.teams_meeting_id && job.teams_recording_id
+                                ? teamsVideoUrl(job.teams_meeting_id, job.teams_recording_id)
+                                : job.video_filename
+                                    ? `${API_BASE}/api/meetings/${job.job_id}/video`
+                                    : null;
+                            return videoSrc ? (
+                                <video ref={videoRef} controls style={{ width: '100%', maxHeight: '380px', display: 'block' }} src={videoSrc} />
+                            ) : (
+                                <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+                                    No video available
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     {/* Event timeline scrubber */}
@@ -466,13 +506,41 @@ export default function MeetingDetailPage() {
                     )}
 
                     <div style={{ flex: 1, overflowY: 'auto', padding: '12px 0' }}>
-                        {rightTab === 'transcript' && (
-                            filteredEvents.length === 0
-                                ? <div className="empty-state"><div className="empty-icon">📝</div><div className="empty-title">No transcript yet</div></div>
-                                : filteredEvents.map((ev: any, i: number) => (
+                        {rightTab === 'transcript' && (() => {
+                            if (filteredEvents.length > 0) {
+                                return filteredEvents.map((ev: any, i: number) => (
                                     <TranscriptLine key={i} ev={ev} isActive={activeEvent === i} onClick={() => seekToEvent(i)} />
-                                ))
-                        )}
+                                ));
+                            }
+                            // Fallback: show raw transcript text when graph_events are empty
+                            const rawTranscript = job.transcript || '';
+                            if (rawTranscript.trim()) {
+                                const lines = rawTranscript.split('\n').filter((l: string) => l.trim());
+                                return (
+                                    <div style={{ padding: '4px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        {lines.map((line: string, i: number) => {
+                                            const colonIdx = line.indexOf(':');
+                                            const speaker = colonIdx > 0 ? line.slice(0, colonIdx).trim() : 'Unknown';
+                                            const text = colonIdx > 0 ? line.slice(colonIdx + 1).trim() : line;
+                                            return (
+                                                <div key={i} style={{ display: 'flex', gap: '12px', padding: '8px 14px', borderRadius: '8px' }}>
+                                                    <div style={{
+                                                        width: 32, height: 32, borderRadius: '50%', background: avatarColor(speaker),
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: '11px', fontWeight: 700, flexShrink: 0,
+                                                    }}>{initials(speaker)}</div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '2px' }}>{speaker}</div>
+                                                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.55 }}>{text}</div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            }
+                            return <div className="empty-state"><div className="empty-icon">📝</div><div className="empty-title">No transcript yet</div></div>;
+                        })()}
 
                         {rightTab === 'summary' && (
                             Object.keys(summaries).length === 0
@@ -489,30 +557,38 @@ export default function MeetingDetailPage() {
                                 </div>
                         )}
 
-                        {rightTab === 'insights' && (
-                            filteredEvents.length === 0
-                                ? <div className="empty-state"><div className="empty-icon">📌</div><div className="empty-title">No events yet</div></div>
-                                : <div style={{ padding: '4px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {filteredEvents.map((ev: any, i: number) => {
-                                        const typeColor: Record<string, string> = { decision: 'badge-purple', problem: 'badge-red', discussion: 'badge-cyan' };
-                                        return (
-                                            <div key={i} onClick={() => seekToEvent(i)} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 14px', cursor: 'pointer', transition: 'border-color 0.15s' }}
-                                                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-bright)')}
-                                                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
-                                                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: avatarColor(ev.speaker || '?'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, flexShrink: 0 }}>
-                                                        {initials(ev.speaker || '?')}
-                                                    </div>
-                                                    <span style={{ fontWeight: 600, fontSize: '13px' }}>{ev.speaker}</span>
-                                                    <span className={`badge ${typeColor[ev.event_type] || 'badge-muted'}`} style={{ fontSize: '10px', padding: '1px 7px' }}>{ev.event_type}</span>
-                                                    <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-muted)' }}>{((ev.confidence || 0) * 100).toFixed(0)}%</span>
+                        {rightTab === 'insights' && (() => {
+                            // Use graph_events if available, otherwise fall back to raw transcript
+                            const eventData = filteredEvents.length > 0
+                                ? filteredEvents
+                                : rawTranscriptLines
+                                    .filter(l => (speakerFilter === 'all' || l.speaker === speakerFilter) && l.text.length > 20)
+                                    .map(l => ({ speaker: l.speaker, summary: l.text, event_type: 'discussion', confidence: 0 }));
+
+                            if (eventData.length === 0) {
+                                return <div className="empty-state"><div className="empty-icon">📌</div><div className="empty-title">No events yet</div></div>;
+                            }
+                            const typeColor: Record<string, string> = { decision: 'badge-purple', problem: 'badge-red', discussion: 'badge-cyan' };
+                            return (
+                                <div style={{ padding: '4px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {eventData.map((ev: any, i: number) => (
+                                        <div key={i} onClick={() => seekToEvent(i)} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 14px', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                                            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-bright)')}
+                                            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
+                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
+                                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: avatarColor(ev.speaker || '?'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, flexShrink: 0 }}>
+                                                    {initials(ev.speaker || '?')}
                                                 </div>
-                                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{(ev.summary || '').slice(0, 140)}</div>
+                                                <span style={{ fontWeight: 600, fontSize: '13px' }}>{ev.speaker}</span>
+                                                <span className={`badge ${typeColor[ev.event_type] || 'badge-muted'}`} style={{ fontSize: '10px', padding: '1px 7px' }}>{ev.event_type}</span>
+                                                {ev.confidence > 0 && <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--text-muted)' }}>{((ev.confidence || 0) * 100).toFixed(0)}%</span>}
                                             </div>
-                                        );
-                                    })}
+                                            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{(ev.summary || '').slice(0, 140)}</div>
+                                        </div>
+                                    ))}
                                 </div>
-                        )}
+                            );
+                        })()}
                     </div>
                 </div>
             </div>

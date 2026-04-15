@@ -68,7 +68,7 @@ class EntityMemory:
     aliases: List[str] = field(default_factory=list)
     first_seen: datetime = field(default_factory=datetime.now)
     last_seen: datetime = field(default_factory=datetime.now)
-    mention_count: int = 1
+    mention_count: int = 0
     
     # Computed Temporal Signals
     recurrence_score: float = 0.0
@@ -125,9 +125,12 @@ class EventMemory:
     summary: str
     sentiment: float = 0.0
     confidence: float = 0.0
+    is_screen_sharing: bool = False
+    ocr_text: str = ""
+    start_time: float = 0.0  # seconds offset from start of meeting
 
     def to_dict(self) -> Dict:
-        return {
+        d = {
             '_id': self._id,
             'entity_id': self.entity_id,
             'meeting_id': self.meeting_id,
@@ -136,8 +139,13 @@ class EventMemory:
             'event_type': self.event_type,
             'summary': self.summary,
             'sentiment': self.sentiment,
-            'confidence': self.confidence
+            'confidence': self.confidence,
+            'is_screen_sharing': bool(self.is_screen_sharing),
+            'start_time': self.start_time,
         }
+        if self.ocr_text:
+            d['ocr_text'] = self.ocr_text
+        return d
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'EventMemory':
@@ -150,7 +158,10 @@ class EventMemory:
             event_type=data.get('event_type', 'discussion'),
             summary=data.get('summary', ''),
             sentiment=data.get('sentiment', 0.0),
-            confidence=data.get('confidence', 0.0)
+            confidence=data.get('confidence', 0.0),
+            is_screen_sharing=data.get('is_screen_sharing', False),
+            ocr_text=data.get('ocr_text', ''),
+            start_time=data.get('start_time', 0.0)
         )
 
 
@@ -163,7 +174,7 @@ class TemporalGraphMemory:
     def __init__(
         self,
         storage_path: str = "meeting_memory",
-        similarity_threshold: float = 0.82,
+        similarity_threshold: float = 0.75,
         text_analyzer=None
     ):
         self.storage_path = storage_path
@@ -559,6 +570,20 @@ class TemporalGraphMemory:
         Creates EntityMemory (topic nodes) and EventMemory (edges) from scored segments.
         Falls back to direct embedding-based canonicalization when LLM is not used.
         """
+        # Debug: log score distribution
+        scores = []
+        for s in scored_segments:
+            if isinstance(s, dict):
+                scores.append(s.get('fused_score', s.get('score', 0.0)))
+            else:
+                scores.append(getattr(s, 'fused_score', 0.0))
+        if scores:
+            logger.info(
+                f"ingest_meeting_results: {len(scores)} segments, "
+                f"score range: {min(scores):.4f}-{max(scores):.4f}, "
+                f"above {importance_threshold}: {sum(1 for s in scores if s >= importance_threshold)}, "
+                f"threshold: {importance_threshold}"
+            )
         if clear:
             # Drop older events for this meeting
             to_remove = list(self.events_by_meeting.get(meeting_id, []))
@@ -575,8 +600,69 @@ class TemporalGraphMemory:
         ingested_topics = []
         ingested_decisions = []
         ingested_actions = []
+        # ── LLM batch classification ──────────────────────────────────────────
+        # Collect candidate texts for classification (only those above threshold)
+        candidate_texts: List[Tuple[int, str, str]] = []  # (index, text, speaker)
+        for idx, seg in enumerate(scored_segments):
+            if isinstance(seg, dict):
+                fs = seg.get('fused_score', seg.get('score', 0.0))
+                txt = seg.get('text', '')
+                spk = seg.get('speaker', None) or 'Unknown'
+            else:
+                fs = getattr(seg, 'fused_score', 0.0)
+                txt = getattr(seg, 'text', '')
+                spk = getattr(seg, 'speaker', None) or 'Unknown'
+            if fs >= importance_threshold and txt and txt.strip():
+                candidate_texts.append((idx, txt.strip()[:200], spk))
 
-        for seg in scored_segments:
+        classifications: Dict[int, str] = {}
+        valid_types = {'decision', 'problem', 'update', 'idea', 'deadline', 'metric', 'discussion', 'risk'}
+        BATCH_SIZE = 10
+
+        if self.llm_extractor and candidate_texts:
+            # Re-check connection if it failed at startup
+            if not self.llm_extractor.is_ready:
+                self.llm_extractor._check_connection()
+            if self.llm_extractor.is_ready:
+                import re
+                for batch_start in range(0, len(candidate_texts), BATCH_SIZE):
+                    batch = candidate_texts[batch_start:batch_start + BATCH_SIZE]
+                    numbered = "\n".join(
+                        f"{i+1}. [{item[2]}]: {item[1]}" for i, item in enumerate(batch)
+                    )
+                    prompt = (
+                        "/no_think\n"
+                        "Classify each meeting transcript line into exactly ONE type: "
+                        "decision, problem, discussion, update, idea, risk\n\n"
+                        "Rules:\n"
+                        "- decision: a choice or agreement was made\n"
+                        "- problem: an issue, bug, blocker, or concern raised\n"
+                        "- update: status report or progress info\n"
+                        "- idea: a suggestion or proposal\n"
+                        "- risk: a potential future issue\n"
+                        "- discussion: general conversation (default)\n\n"
+                        f"Lines:\n{numbered}\n\n"
+                        "Reply with ONLY a numbered list like:\n"
+                        "1. decision\n2. problem\n3. discussion\n\n"
+                        f"Classify all {len(batch)} lines:"
+                    )
+                    try:
+                        raw = self.llm_extractor._call_ollama(prompt, format_json=False, temperature=0.1)
+                        # Parse numbered list: "1. decision\n2. problem\n..."
+                        lines = raw.strip().split('\n')
+                        for line in lines:
+                            m = re.match(r'\d+\.\s*(\w+)', line.strip())
+                            if m:
+                                line_num = int(re.match(r'(\d+)', line.strip()).group(1)) - 1
+                                if 0 <= line_num < len(batch):
+                                    t = m.group(1).lower().strip()
+                                    classifications[batch[line_num][0]] = t if t in valid_types else 'discussion'
+                    except Exception as e:
+                        logger.warning(f"LLM batch classification failed: {e}")
+                logger.info(f"LLM classified {len(classifications)}/{len(candidate_texts)} segments")
+        # ── End classification ─────────────────────────────────────────────────
+
+        for idx, seg in enumerate(scored_segments):
             if isinstance(seg, dict):
                 fused_score = seg.get('fused_score', seg.get('score', 0.0))
                 text = seg.get('text', '')
@@ -610,22 +696,35 @@ class TemporalGraphMemory:
             elif emb is None:
                 emb = []
 
-            # Determine event type from scores
-            if unresolved > 0.6:
-                event_type = 'problem'
-            elif semantic > 0.7:
-                event_type = 'decision'
-            else:
-                event_type = 'discussion'
+            # Event type will be filled by LLM classification (computed below)
+            event_type = classifications.get(idx, 'discussion')
 
-            # Canonicalize entity (topic) — use first 80 chars as entity name
-            topic_label = text.strip()[:80]
-            entity_node = self.resolve_entity(topic_label, 'topic')
+            # Map event type → entity node type for graph coloring
+            entity_type_map = {
+                'decision': 'decision', 'problem': 'problem', 'risk': 'problem',
+                'idea': 'topic', 'update': 'topic', 'deadline': 'topic',
+                'metric': 'topic', 'discussion': 'topic',
+            }
+            entity_type = entity_type_map.get(event_type, 'topic')
+
+            # Canonicalize entity (topic) — truncate at word boundary
+            raw = text.strip()
+            if len(raw) > 80:
+                cut = raw[:80].rfind(' ')
+                topic_label = raw[:cut] + '…' if cut > 20 else raw[:80] + '…'
+            else:
+                topic_label = raw
+            entity_node = self.resolve_entity(topic_label, entity_type)
             entity_node.speaker_stats[speaker] = entity_node.speaker_stats.get(speaker, 0) + 1
             entity_node.mention_count += 1
             entity_node.last_seen = datetime.now()
 
-            # Create EventMemory record
+            # Create EventMemory record — summary also truncated at word boundary
+            if len(raw) > 200:
+                scut = raw[:200].rfind(' ')
+                summary_text = raw[:scut] + '…' if scut > 40 else raw[:200] + '…'
+            else:
+                summary_text = raw
             new_event = EventMemory(
                 _id=self._generate_id(),
                 entity_id=entity_node._id,
@@ -633,9 +732,12 @@ class TemporalGraphMemory:
                 timestamp=datetime.now(),
                 speaker=speaker,
                 event_type=event_type,
-                summary=text.strip()[:200],
+                summary=summary_text,
                 sentiment=getattr(seg, 'tonal_score', 0.0) - 0.5,  # tonal → rough sentiment proxy
-                confidence=fused_score
+                confidence=fused_score,
+                is_screen_sharing=getattr(seg, 'is_screen_sharing', False),
+                ocr_text=getattr(seg, 'ocr_text', ''),
+                start_time=float(start_time)
             )
             self.events[new_event._id] = new_event
             self.events_by_entity[entity_node._id].append(new_event._id)

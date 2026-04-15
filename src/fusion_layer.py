@@ -71,6 +71,12 @@ class SegmentFeatures:
     temporal_context: Optional[Dict[str, Any]] = None  # Context from previous meetings
     thread_info: Optional[Dict[str, Any]] = None       # Thread detection result for UI badges
 
+    # Visual analysis
+    is_screen_sharing: bool = False
+    screen_share_confidence: float = 0.0
+    ocr_text: str = ""
+    visual_embedding: Optional[np.ndarray] = None
+
 
 class FusionLayer:
     """

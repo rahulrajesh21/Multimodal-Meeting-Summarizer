@@ -1,0 +1,175 @@
+WEBVTT
+
+00:00:00.000 --> 00:01:04.000
+<v Eric Johnson (CTO)>Hi, this is Eric Johnson. It's February 18, 2021. And this is the engineering key review at GitLab. So I've got number four in the agenda, which is a proposal to break up this meeting into four department key reviews. So currently this is engineering—development, quality, security, and UX. Infrastructure and support do their own key reviews already. I have the reasons why: increased visibility, able to go deeper, increased the objectivity with which my reports can manage their groups, allow me more time to focus on new markets, and allow me to shift into more of a question-asker mode than generating content and answering questions in these meetings. And to avoid adding three net new meetings to stakeholders' calendars, I'd propose we do a sort of two-month rotation. So month one, development and quality go; month two, security and UX would go. How do people feel about that proposal?
+
+00:01:04.000 --> 00:01:29.000
+<v Sid Sijbrandij (CEO)>I think in the group conversations, it's working really well. So I'm supportive. And this is the smallest thing. Maybe we need four meetings a month. Like it's the biggest department, it's super essential. But you proposed this, I don't—I could see either way, so let's stick with the proposal.
+
+00:01:29.000 --> 00:02:07.000
+<v Eric Johnson (CTO)>Cool, we'll try it and we'll be flexible. I mean, development is larger, maybe they go more frequently or something, but we'll see how it goes. All right, and then I've got number five, which is we've got R&D overall MR rate, and we also have R&D wider MR rate, both as top-level KPIs for engineering. So the difference between them in the simplest sense is that R&D wider MR rate includes both community contributions and community MRs.
+
+00:02:07.000 --> 00:02:23.000
+<v Eric Johnson (CTO)>The problems I see with this are that one, the wider MR rate—the one that includes internal and external MRs—it duplicates the overall MR rate.
+
+00:02:23.000 --> 00:02:44.000
+<v Sid Sijbrandij (CEO)>The wider MR rate should just be external, right? And an overall should be narrow plus wider. Oh, yeah. It's like we say the "wider community."
+
+00:02:44.000 --> 00:02:50.000
+<v Eric Johnson (CTO)>Right, right, okay. So there's—I have to check the taxonomy. Lily, can you confirm? So that's Sid's reasoning, is my understanding as well.
+
+00:02:50.000 --> 00:02:59.000
+<v Lily (Data/Program Management)>Yeah, I believe wider MR rate just captures community contributions only and no internal.
+
+00:02:59.000 --> 00:03:09.000
+<v Sid Sijbrandij (CEO)>Yeah, and the reason we measure that is that like one of the most likely failure modes is that we lose the community.
+
+00:03:09.000 --> 00:03:32.000
+<v Eric Johnson (CTO)>Yeah. So where it gets goofy is when you look at a specific team within the company, there could be contributions outside of that that aren't community contributions. They would be viewed as community contributions by that group, but effectively they're not from outside the company. So that's why we use "wider" to kind of reflect that. And "narrow" is very specific to the team.
+
+00:03:32.000 --> 00:03:39.000
+<v Sid Sijbrandij (CEO)>Are you saying that if someone in Plan contributes to Verify, it's viewed as wider?
+
+00:03:39.000 --> 00:04:04.000
+<v Eric Johnson (CTO)>Not quite that. Plan and Verify are just fine. It's when you look at like development versus infrastructure. Infrastructure will oftentimes contribute to development's work, but it won't be counted as MRs.
+
+00:04:04.000 --> 00:04:40.000
+<v Eric Johnson (CTO)>Okay, that's a potential bit of funkiness that we should talk about separately. I didn't have that in my sort of critique of this, but that doesn't necessarily make intuitive sense to me. So then I think part of my critique of this can be thrown out because it's not as duplicative as I thought, but I still think there's a problem with R&D wider MR rate, which is this thing doesn't really move in part because it's a rate. So it feels like the way to drive this up is to specifically drive community authors to contribute more than one MR per month. That's how this moves up because it's a productivity rate like we use internally, and that doesn't necessarily feel like the right thing.
+
+00:04:40.000 --> 00:05:10.000
+<v Sid Sijbrandij (CEO)>Wait, wait, wait a second—so you're saying that R&D wider MR rate is number of MRs per external contributor? Oh my goodness, that should not be the thing. It should be contributions per GitLab team member. So the thing above the division is the external ones; the thing below is the number of team members at GitLab. Is that the case, Lily?
+
+00:05:10.000 --> 00:05:29.000
+<v Lily (Data/Program Management)>I'm checking right now. I think it's still in our numerals for team members. Unless we start calling people outside the company team members, then it shouldn't be done.
+
+00:05:29.000 --> 00:06:22.000
+<v Sid Sijbrandij (CEO)>Yeah, just clarifying here. So our numerator is community contributions, and then our denominator is GitLab team members. So what we're doing there, Eric, is we're not trying to say how many MRs someone sends; we're saying how many MRs from external do we get for the size of our organization? Sorry, I have a childhood emergency outside the door.
+
+00:06:22.000 --> 00:06:45.000
+<v Eric Johnson (CTO)>So maybe explain the context behind this. The context is, as we grow as a company, we should make sure we keep the community up. The logical thing is for the community to flatline and the size of the org to grow, and before you know it, you've outgrown the wider community.
+
+00:06:45.000 --> 00:07:14.000
+<v Eric Johnson (CTO)>Yeah, and what I'm seeing is we created this pre-sophisticated taxonomy with prefixes and post-fixes. But in reality, we've only got two of them, and we have a hard time discussing this thing. So I'd rather just name them simply—two names for what they are. But also, like in point F, I have this proposal of, like, what if we just track as a KPI the percentage of total MRs that come from the community over time? And we would see that drop.
+
+00:07:14.000 --> 00:07:37.000
+<v Sid Sijbrandij (CEO)>I love that. I love that. Let's do that instead. But the thing why we have this complex thing is because you can game that. You just produce fewer MRs with the engineers at GitLab. So if you drive that really hard and say this is your number one goal, it's very easy to achieve—you just tell all your engineers to produce half.
+
+00:07:37.000 --> 00:07:53.000
+<v Eric Johnson (CTO)>Yeah, so we have different metrics to prevent that from happening. Simplifying this would make these conversations go much better. If you as our CTO don't even understand them, we went overboard.
+
+00:07:53.000 --> 00:08:10.000
+<v Sid Sijbrandij (CEO)>I'm supportive. I was reviewing this stuff this morning and I'm like, there's a problem with this, and then you just remind me of the context. So yeah, percentage that come from the community—I love that. It's what all our investors ask about. Let's do that.
+
+00:08:10.000 --> 00:08:41.000
+<v Eric Johnson (CTO)>Okay, cool. So, Lily, if you can work with Max to make that transition, that would be great. I'm on the call, sorry I was a bit late. Timeline—we do have PIs on the raw number of community MRs, and we can make the shift.
+
+00:08:41.000 --> 00:08:47.000
+<v Eric Johnson (CTO)>Cool. All right, so number six then, Christopher.
+
+00:08:47.000 --> 00:09:23.000
+<v Christopher Lefelhocz (VP of Development)>Sorry, I was looking up to see if I had the percentage graph because I think we played around with this at one point. Just an FYI, the month of February, if you were looking at any particular metrics, particularly in development, we haven't had updates in four days. There's apparently a lag issue that's been problematic for the data team to get updated metrics and they're working on that.
+
+00:09:23.000 --> 00:09:41.000
+<v Eric Johnson (CTO)>I'm sorry. Mac, you got the next one.
+
+00:09:41.000 --> 00:10:15.000
+<v Eric Johnson (CTO)>Wait, I wanted to just touch on the Postgres replication issue there real quick. I've been trying to get my arms wrapped around it. Do we have the right attention to this? I'm not quite sure whose responsibility it is to focus on getting a handle on some of the constraints we have in replication.
+
+00:10:15.000 --> 00:10:31.000
+<v Eric Johnson (CTO)>Yeah, what I was mentioning in the product key review is sort of unrelated. So I think the DRI needs to be your kind of data engineering team, but of course there's a dependency on infrastructure because that's where the data is being piped from.
+
+00:10:31.000 --> 00:11:02.000
+<v Steve Abt (Director of Infrastructure)>Yeah, I'll say for the replication lag on that secondary host where the data is being pulled from, the infrastructure would be the DRI for that. Any escalations, well, I'll own those. And I know we have an action plan for that as far as creating another dedicated host just for the data team to pull from.
+
+00:11:02.000 --> 00:11:25.000
+<v Steve Abt (Director of Infrastructure)>I saw that issue and I did talk to Craig Gomes a little bit as well on the database side just to see if there's some database improvements. I'm still trying to figure out if it's truly just a dedicated computational sort of resource or if there's actually some database tuning that needs to occur.
+
+00:11:25.000 --> 00:12:27.000
+<v Steve Abt (Director of Infrastructure)>There's three different things: it's having a dedicated host, there are some tuning improvements, and then there's also the overall demand on the database layer from com activities. One of the most specific actions we're going to take though is separating out and having a dedicated host so we're just dealing with the profile of the data engineering traffic on there.
+
+00:12:27.000 --> 00:12:55.000
+<v Steve Abt (Director of Infrastructure)>And Steve, I definitely want to partner with you on this one because I think the demand on those databases is only going to increase. I think if the computational resource dedication—that's going to be a good thing.
+
+00:12:55.000 --> 00:13:05.000
+<v Steve Abt (Director of Infrastructure)>Okay. I'll tell you what, I'll put an update into the infra key review for next week on this issue. Thank you, Steve.
+
+00:13:05.000 --> 00:13:13.000
+<v Eric Johnson (CTO)>So then back to Mac on seven.
+
+00:13:13.000 --> 00:14:15.000
+<v Mac Cohen (Director of Quality)>Thank you. Number seven—just to provide an update on previous conversations. We continue to improve defect tracking against SLOs. There is a first iteration PI that we are experimenting with to show a percentage of defects meeting the SLOs. Key findings: S1s are hovering at 80%, S2 at 60%. We've been focused mostly on S1 and S2 at this point, hence why S3 and S4 are lower. We are also in point B working on the measurement for average open bug age.
+
+00:14:15.000 --> 00:14:20.000
+<v Eric Johnson (CTO)>Craig on S2?
+
+00:14:20.000 --> 00:14:31.000
+<v Craig Gomes (Director of Product)>Yeah, I just—I was looking through the charts and I noted that there was a spike in mean time to close, and just wanted to see if you had any insight into that for us.
+
+00:14:31.000 --> 00:14:54.000
+<v Mac Cohen (Director of Quality)>This is where the point B on age helps. I haven't seen a dip in age nor the count overall. I think we need to dig in a bit deeper. Christie, you have some insights?
+
+00:14:54.000 --> 00:15:15.000
+<v Christie Lunn (VP of UX)>Yeah, I'm just wondering if part of this could be the fact that we changed the severity across the board for MRs to S2. And so we may have some older bugs in there that hadn't been addressed because they were at a lower severity. Now we've moved them to S2 and maybe that caused a little spike.
+
+00:15:15.000 --> 00:15:31.000
+<v Mac Cohen (Director of Quality)>That could be the case. We also iterated after that to P9 priority, since product owns prioritization. I wouldn't account it entirely to that.
+
+00:15:31.000 --> 00:15:47.000
+<v Eric Johnson (CTO)>I mean, this isn't the infra key review, but I know that they've gotten backed up on those issues. So if some good portion of those are infra-related, then that might be lifting it as well.
+
+00:15:47.000 --> 00:16:11.000
+<v Mac Cohen (Director of Quality)>I can take the deeper dig and then provide an update next time.
+
+00:16:11.000 --> 00:17:00.000
+<v Sid Sijbrandij (CEO)>Yeah, we are now measuring S1 and S2 SLO achievement with closed bugs. But if you look at the number of bugs, it's exponential growth. It would be trivial to achieve 100% SLO achievement if you just look at closed bugs. As long as I only close ones that are still within the SLO, I'll have great achievement. I think we should be looking at open bugs—the entire population, or the percentage of those that are within the SLO time. I think we're doing it the wrong way.
+
+00:17:00.000 --> 00:17:26.000
+<v Mac Cohen (Director of Quality)>Thanks for the feedback, Sid. Hence why we wanted to have the average age to measure what's outside in the open. We are more than happy to adjust.
+
+00:17:26.000 --> 00:17:39.000
+<v Sid Sijbrandij (CEO)>Average age would get closer to it, but it's not what I'm proposing. What I'm proposing is: of the open bugs, what percentage is outside of SLO? Display it as a percentage about the open bugs, not the closed ones.
+
+00:17:39.000 --> 00:17:41.000
+<v Mac Cohen (Director of Quality)>Got it. Okay. The exceeding SLO for open bugs.
+
+00:17:41.000 --> 00:18:01.000
+<v Sid Sijbrandij (CEO)>Yeah, or open bugs that are within SLO. So you have a chart that should go up and to the right, like everything else.
+
+00:18:01.000 --> 00:18:32.000
+<v Eric Johnson (CTO)>These are a little tricky, Mac. You'll have to figure out how to historically reconstruct these if we need to. When tickets close out, you need to go through their history to figure out if they breached the SLO or not.
+
+00:18:32.000 --> 00:18:37.000
+<v Eric Johnson (CTO)>Cool. Nine, Craig.
+
+00:18:37.000 --> 00:18:49.000
+<v Craig Gomes (Director of Product)>Yeah, I just wanted to ask the team—I went through all the key meeting metrics, everything looked in line with prior periods. Is there anything the team wants to call out?
+
+00:18:49.000 --> 00:20:17.000
+<v Christie Lunn (VP of UX)>Yeah, I'll call out SUS. In Q4, we had our smallest decline over several quarters. We only went down by a tenth of a point. The quarter before that was a full point. So we see this as an improvement, even though it was still a decline. Obviously, we want this tracking upward. I'm optimistic. I think the work that we've done is actually catching up and getting noticed in SUS.
+
+00:20:17.000 --> 00:20:43.000
+<v Eric Johnson (CTO)>The bug discussion above just points out that we have an underlying problem right now in our metrics measurement. We need to get more security work prioritized. We're hearing that from the team, but that activity is not currently reflected in our security metrics.
+
+00:20:43.000 --> 00:20:47.000
+<v Eric Johnson (CTO)>Back to you, Sid. 10.
+
+00:20:47.000 --> 00:20:57.000
+<v Sid Sijbrandij (CEO)>Yeah, the narrow MR rate seems significantly below target. I hope that it would bounce back from December. Any context there?
+
+00:20:57.000 --> 00:21:52.000
+<v Christopher Lefelhocz (VP of Development)>Yeah, so with family and friends days, we actually had some heavier vacation days in January. One thing to note is that we are actually at a higher narrow MR rate than we were in the same months last year. So comparatively to last year, we're between a half point and 1.5 points above where we were.
+
+00:21:52.000 --> 00:21:56.000
+<v Sid Sijbrandij (CEO)>That's great context. Thank you, Christopher. Good work.
+
+00:21:56.000 --> 00:22:31.000
+<v Christopher Lefelhocz (VP of Development)>The expectation is that February is a short month. Power outages in Texas didn't help things either for the folks working in Texas. But March is when I'm expecting to see a real rebound, much like we did last year.
+
+00:22:31.000 --> 00:23:28.000
+<v Eric Johnson (CTO)>The other context I'll give is we now do time series targets. In our FY22 direction, we decided to hold the line at productivity (10 MRs) but start to raise other things related to quality, security, and availability. That's why we brought the target back down to 10. 10 will be the target going forward.
+
+00:23:28.000 --> 00:23:55.000
+<v Sid Sijbrandij (CEO)>Cool. And I just want to call out that a higher MR rate should also help address security and quality because you're more productive, so you can fix more things. But I agree—let's hold the line. 10 is a great number.
+
+00:23:55.000 --> 00:24:05.000
+<v Eric Johnson (CTO)>All right, that's it for the agenda. Anyone want to vocalize anything else? Great, well thanks everybody. I'm going to go check on my four-year-old and see if she got whatever she needed. Cheers and talk soon.

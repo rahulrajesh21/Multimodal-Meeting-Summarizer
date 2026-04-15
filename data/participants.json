@@ -142,5 +142,163 @@
     "weight_source": "formula",
     "added_at": "2026-02-20T10:22:12.689659",
     "updated_at": "2026-02-20T10:22:12.689660"
+  },
+  "eric_johnson_cto": {
+    "display_name": "Eric Johnson (CTO)",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-15T08:53:10.647172",
+    "updated_at": "2026-04-15T08:53:10.647178"
+  },
+  "sid_sijbrandij_ceo": {
+    "display_name": "Sid Sijbrandij (CEO)",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-15T08:53:10.647537",
+    "updated_at": "2026-04-15T08:53:10.647539"
+  },
+  "lily_data_program_management": {
+    "display_name": "Lily (Data/Program Management)",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-15T08:53:10.647804",
+    "updated_at": "2026-04-15T08:53:10.647806"
+  },
+  "christopher_lefelhocz_vp_of_development": {
+    "display_name": "Christopher Lefelhocz (VP of Development)",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-15T08:53:10.648055",
+    "updated_at": "2026-04-15T08:53:10.648056"
+  },
+  "steve_abt_director_of_infrastructure": {
+    "display_name": "Steve Abt (Director of Infrastructure)",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-15T08:53:10.648292",
+    "updated_at": "2026-04-15T08:53:10.648294"
+  },
+  "mac_cohen_director_of_quality": {
+    "display_name": "Mac Cohen (Director of Quality)",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-15T08:53:10.648525",
+    "updated_at": "2026-04-15T08:53:10.648527"
+  },
+  "craig_gomes_director_of_product": {
+    "display_name": "Craig Gomes (Director of Product)",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-15T08:53:10.648757",
+    "updated_at": "2026-04-15T08:53:10.648758"
+  },
+  "christie_lunn_vp_of_ux": {
+    "display_name": "Christie Lunn (VP of UX)",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-15T08:53:10.648989",
+    "updated_at": "2026-04-15T08:53:10.648991"
+  },
+  "_speaker_id_mapping": {
+    "SPEAKER_07": {
+      "name": "Eric",
+      "confidence": 0.0
+    },
+    "SPEAKER_08": {
+      "name": "Lily",
+      "confidence": 0.0
+    },
+    "SPEAKER_00": {
+      "name": "Lily",
+      "confidence": 0.0
+    },
+    "SPEAKER_06": {
+      "name": null,
+      "confidence": 0.0
+    },
+    "SPEAKER_02": {
+      "name": "Steve",
+      "confidence": 0.0
+    },
+    "SPEAKER_05": {
+      "name": null,
+      "confidence": 0.0
+    },
+    "SPEAKER_03": {
+      "name": "Christie",
+      "confidence": 0.0
+    }
   }
 }

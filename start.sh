@@ -15,7 +15,7 @@ sleep 1
 
 # 1. FastAPI backend
 echo "  → Starting API on :8000"
-"$ROOT/venv/bin/uvicorn" api.main:app --host 0.0.0.0 --port 8000 &
+"$ROOT/venv/bin/uvicorn" api.main:app --host 0.0.0.0 --port 8000 --reload &
 API_PID=$!
 
 # 2. Next.js frontend (needs Node 20)

@@ -182,6 +182,11 @@ async def upload_transcript(
 
     # Parse speaker count from VTT (quick heuristic)
     vtt_text  = dest.read_text(errors="replace")
+    
+    if "WEBVTT" not in vtt_text[:100]:
+        vtt_text = _convert_txt_to_vtt(vtt_text)
+        dest.write_text(vtt_text)
+        
     speakers  = _parse_vtt_speakers(vtt_text)
     segments  = _parse_vtt_segments(vtt_text)
 
@@ -355,6 +360,57 @@ def delete_recording(mid: str, rid: str):
 # ═══════════════════════════════════════════════════════════════════════════════
 #  VTT HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
+
+def _convert_txt_to_vtt(text: str) -> str:
+    """Converts a Teams TXT transcript to WebVTT format."""
+    import re
+    if "WEBVTT" in text[:100]:
+        return text
+    
+    parts = re.split(r"(\[\d{2}:\d{2}:\d{2}\]\s+[^:]+:)", text)
+    segments = []
+    for i in range(1, len(parts), 2):
+        header = parts[i]
+        content = parts[i+1].strip() if i+1 < len(parts) else ""
+        m = re.match(r"\[(\d{2}:\d{2}:\d{2})\]\s+([^:]+):", header)
+        if m:
+            segments.append({
+                "time": m.group(1),
+                "speaker": m.group(2).strip(),
+                "text": content
+            })
+            
+    if not segments:
+        return text
+        
+    vtt = ["WEBVTT", ""]
+    for i, seg in enumerate(segments):
+        start = f"{seg['time']}.000"
+        if len(start) == 9:
+            start = f"00:{start}"
+            
+        if i + 1 < len(segments):
+            end = f"{segments[i+1]['time']}.000"
+            if len(end) == 9:
+                end = f"00:{end}"
+        else:
+            parts_time = start.split(':')
+            h, m, s = int(parts_time[0]), int(parts_time[1]), float(parts_time[2])
+            s += 10.0
+            if s >= 60:
+                s -= 60
+                m += 1
+            if m >= 60:
+                m -= 60
+                h += 1
+            end = f"{h:02d}:{m:02d}:{s:06.3f}"
+            
+        vtt.append(f"{start} --> {end}")
+        vtt.append(f"<v {seg['speaker']}>{seg['text']}")
+        vtt.append("")
+        
+    return "\n".join(vtt)
+
 
 def _parse_vtt_speakers(vtt: str) -> list[str]:
     """Extract unique speaker labels from a VTT file."""
