@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { fetchMeeting, teamsVideoUrl, patchSpeakers, reprocessMeeting, chatWithMeeting, Job, ChatMessage, TEAMS_API } from '@/lib/api';
+import { fetchMeeting, teamsVideoUrl, patchSpeakers, reprocessMeeting, chatWithMeeting, Job, ChatMessage, AgentStep, TEAMS_API } from '@/lib/api';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -213,6 +213,100 @@ function SpeakerSummaryCard({ name, role, summary, expanded, onToggle }: {
     );
 }
 
+/* ── Agent Steps Panel (collapsible thinking + tool calls) ── */
+function AgentStepsPanel({ steps, model }: { steps: AgentStep[]; model?: string }) {
+    const [open, setOpen] = useState(false);
+    const thinkingSteps = steps.filter(s => s.type === 'thinking');
+    const toolCalls = steps.filter(s => s.type === 'tool_call');
+    const toolResults = steps.filter(s => s.type === 'tool_result');
+
+    return (
+        <div style={{
+            fontSize: '12px',
+            borderRadius: '10px',
+            border: '1px solid var(--border)',
+            background: 'rgba(124,111,247,0.04)',
+            overflow: 'hidden',
+        }}>
+            <div
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '8px 12px', cursor: 'pointer',
+                    color: 'var(--text-muted)', userSelect: 'none',
+                }}
+            >
+                <span style={{ fontSize: '14px', transition: 'transform 0.2s', display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none' }}>›</span>
+                <span style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {thinkingSteps.length > 0 && <span title="Model reasoning">💭 Thinking</span>}
+                    {toolCalls.map((tc, i) => (
+                        <span key={i} style={{
+                            background: 'rgba(124,111,247,0.12)',
+                            borderRadius: '6px', padding: '2px 8px',
+                            color: 'var(--accent)', fontWeight: 600,
+                        }}>
+                            🔧 {tc.name}({tc.args ? Object.values(tc.args).join(', ') : ''})
+                        </span>
+                    ))}
+                    {model && <span style={{ marginLeft: 'auto', opacity: 0.5 }}>⚡ {model.split('/').pop()}</span>}
+                </span>
+            </div>
+
+            {open && (
+                <div style={{ padding: '0 12px 10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {steps.map((step, i) => {
+                        if (step.type === 'thinking') return (
+                            <div key={i} style={{
+                                background: 'rgba(250,204,21,0.07)',
+                                border: '1px solid rgba(250,204,21,0.2)',
+                                borderRadius: '8px', padding: '8px 10px',
+                                color: 'var(--text-secondary)', lineHeight: 1.5,
+                                whiteSpace: 'pre-wrap', maxHeight: '200px', overflowY: 'auto',
+                            }}>
+                                <strong style={{ color: 'var(--text-muted)' }}>💭 Thinking</strong>
+                                <div style={{ marginTop: '4px' }}>{step.content}</div>
+                            </div>
+                        );
+                        if (step.type === 'tool_call') return (
+                            <div key={i} style={{
+                                background: 'rgba(124,111,247,0.07)',
+                                border: '1px solid rgba(124,111,247,0.2)',
+                                borderRadius: '8px', padding: '8px 10px',
+                            }}>
+                                <strong style={{ color: 'var(--accent)' }}>🔧 {step.name}</strong>
+                                {step.args && (
+                                    <pre style={{
+                                        margin: '4px 0 0', fontSize: '11px',
+                                        color: 'var(--text-secondary)',
+                                        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                                    }}>{JSON.stringify(step.args, null, 2)}</pre>
+                                )}
+                                {step.error && <div style={{ color: '#ef4444', marginTop: '4px' }}>❌ {step.error}</div>}
+                            </div>
+                        );
+                        if (step.type === 'tool_result') return (
+                            <div key={i} style={{
+                                background: 'rgba(34,197,94,0.05)',
+                                border: '1px solid rgba(34,197,94,0.2)',
+                                borderRadius: '8px', padding: '8px 10px',
+                                maxHeight: '150px', overflowY: 'auto',
+                            }}>
+                                <strong style={{ color: '#22c55e' }}>📋 Result from {step.name}</strong>
+                                <pre style={{
+                                    margin: '4px 0 0', fontSize: '11px',
+                                    color: 'var(--text-secondary)',
+                                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                                }}>{step.result}</pre>
+                            </div>
+                        );
+                        return null;
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 /* ── Chat Panel ── */
 const SUGGESTED_PROMPTS = [
     '🎯 What were the key decisions?',
@@ -225,11 +319,12 @@ function ChatPanel({ jobId, onSeek }: { jobId: string, onSeek?: (time: number) =
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [liveSteps, setLiveSteps] = useState<AgentStep[]>([]);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    }, [messages, loading]);
+    }, [messages, loading, liveSteps]);
 
     const send = async (text?: string) => {
         const msg = (text || input).trim();
@@ -240,11 +335,17 @@ function ChatPanel({ jobId, onSeek }: { jobId: string, onSeek?: (time: number) =
         setMessages(updated);
         setInput('');
         setLoading(true);
+        setLiveSteps([]);
 
         try {
-            const { reply } = await chatWithMeeting(jobId, msg, updated);
-            setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+            const { reply, steps, model } = await chatWithMeeting(
+                jobId, msg, updated,
+                (steps) => setLiveSteps(steps),
+            );
+            setLiveSteps([]);
+            setMessages(prev => [...prev, { role: 'assistant', content: reply, steps, model }]);
         } catch (e: any) {
+            setLiveSteps([]);
             setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message || 'Failed to get response'}` }]);
         } finally {
             setLoading(false);
@@ -303,66 +404,71 @@ function ChatPanel({ jobId, onSeek }: { jobId: string, onSeek?: (time: number) =
                                 fontSize: '14px', marginTop: '2px',
                             }}>🧠</div>
                         )}
-                        {/* Bubble */}
-                        <div style={{
-                            maxWidth: '88%',
-                            background: msg.role === 'user'
-                                ? 'linear-gradient(135deg, #7c6ff7, #6366f1)'
-                                : 'var(--bg-surface)',
-                            color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
-                            border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
-                            borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
-                            padding: msg.role === 'user' ? '10px 14px' : '12px 16px',
-                            fontSize: '13px',
-                            lineHeight: 1.55,
-                            overflowX: 'auto',
-                        }}>
-                            {msg.role === 'user' ? (
-                                <span>{msg.content}</span>
-                            ) : (
-                                <div className="markdown-body">
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            a: ({ node, ...props }) => {
-                                                if (props.href?.startsWith('#cite:')) {
-                                                    const fullCitation = decodeURIComponent(props.href.replace('#cite:', ''));
-                                                    return (
-                                                        <span
-                                                            className="citation-pill"
-                                                            title={fullCitation}
-                                                            onClick={() => {
-                                                                const timeMatch = fullCitation.match(/(\d+):(\d+)(?::(\d+))?/);
-                                                                if (timeMatch && onSeek && !fullCitation.includes('Meeting')) {
-                                                                    let secs = 0;
-                                                                    if (timeMatch[3]) secs = parseInt(timeMatch[1]) * 3600 + parseInt(timeMatch[2]) * 60 + parseInt(timeMatch[3]);
-                                                                    else secs = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
-                                                                    onSeek(Math.max(0, secs - 2));
-                                                                } else {
-                                                                    alert(`Source Context:\n${fullCitation}`);
-                                                                }
-                                                            }}
-                                                        >
-                                                            {props.children}
-                                                        </span>
-                                                    );
-                                                }
-                                                return <a {...props} target="_blank" rel="noopener noreferrer" />;
-                                            }
-                                        }}
-                                    >
-                                        {msg.content.replace(/\(\s*(?:AMI\s+)?(?:Meeting|Speaker_)[^)]+\)/gi, (match) => {
-                                            const pText = match.split(',')[0].replace('(', '').trim();
-                                            return `[${pText} +1](#cite:${encodeURIComponent(match)})`;
-                                        })}
-                                    </ReactMarkdown>
-                                </div>
+                        {/* Bubble with steps */}
+                        <div style={{ maxWidth: '88%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {/* Agent Steps (thinking + tool calls) */}
+                            {msg.role === 'assistant' && msg.steps && msg.steps.length > 0 && (
+                                <AgentStepsPanel steps={msg.steps} model={msg.model} />
                             )}
+                            <div style={{
+                                background: msg.role === 'user'
+                                    ? 'linear-gradient(135deg, #7c6ff7, #6366f1)'
+                                    : 'var(--bg-surface)',
+                                color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                                border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
+                                borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
+                                padding: msg.role === 'user' ? '10px 14px' : '12px 16px',
+                                fontSize: '13px',
+                                lineHeight: 1.55,
+                                overflowX: 'auto',
+                            }}>
+                                {msg.role === 'user' ? (
+                                    <span>{msg.content}</span>
+                                ) : (
+                                    <div className="markdown-body">
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
+                                            components={{
+                                                a: ({ node, ...props }) => {
+                                                    if (props.href?.startsWith('#cite:')) {
+                                                        const fullCitation = decodeURIComponent(props.href.replace('#cite:', ''));
+                                                        return (
+                                                            <span
+                                                                className="citation-pill"
+                                                                title={fullCitation}
+                                                                onClick={() => {
+                                                                    const timeMatch = fullCitation.match(/(\d+):(\d+)(?::(\d+))?/);
+                                                                    if (timeMatch && onSeek && !fullCitation.includes('Meeting')) {
+                                                                        let secs = 0;
+                                                                        if (timeMatch[3]) secs = parseInt(timeMatch[1]) * 3600 + parseInt(timeMatch[2]) * 60 + parseInt(timeMatch[3]);
+                                                                        else secs = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+                                                                        onSeek(Math.max(0, secs - 2));
+                                                                    } else {
+                                                                        alert(`Source Context:\n${fullCitation}`);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {props.children}
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return <a {...props} target="_blank" rel="noopener noreferrer" />;
+                                                }
+                                            }}
+                                        >
+                                            {msg.content.replace(/\(\s*(?:AMI\s+)?(?:Meeting|Speaker_)[^)]+\)/gi, (match) => {
+                                                const pText = match.split(',')[0].replace('(', '').trim();
+                                                return `[${pText} +1](#cite:${encodeURIComponent(match)})`;
+                                            })}
+                                        </ReactMarkdown>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ))}
 
-                {/* Typing indicator */}
+                {/* Live streaming indicator */}
                 {loading && (
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                         <div style={{
@@ -371,14 +477,71 @@ function ChatPanel({ jobId, onSeek }: { jobId: string, onSeek?: (time: number) =
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: '14px',
                         }}>🧠</div>
-                        <div style={{
-                            background: 'var(--bg-surface)', border: '1px solid var(--border)',
-                            borderRadius: '4px 16px 16px 16px', padding: '14px 18px',
-                            display: 'flex', gap: '5px', alignItems: 'center',
-                        }}>
-                            <span className="typing-dot" style={{ animationDelay: '0ms' }} />
-                            <span className="typing-dot" style={{ animationDelay: '150ms' }} />
-                            <span className="typing-dot" style={{ animationDelay: '300ms' }} />
+                        <div style={{ maxWidth: '88%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {/* Live steps as they stream in */}
+                            {liveSteps.length > 0 ? (
+                                <div style={{
+                                    fontSize: '12px', borderRadius: '10px',
+                                    border: '1px solid var(--border)',
+                                    background: 'rgba(124,111,247,0.04)',
+                                    padding: '10px 12px',
+                                    display: 'flex', flexDirection: 'column', gap: '8px',
+                                }}>
+                                    {liveSteps.map((step, i) => {
+                                        if (step.type === 'thinking') return (
+                                            <div key={i} style={{
+                                                display: 'flex', alignItems: 'center', gap: '8px',
+                                                color: 'var(--text-secondary)',
+                                            }}>
+                                                <span style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>💭</span>
+                                                <span>Thinking...</span>
+                                            </div>
+                                        );
+                                        if (step.type === 'tool_call') return (
+                                            <div key={i} style={{
+                                                display: 'flex', alignItems: 'center', gap: '8px',
+                                                background: 'rgba(124,111,247,0.08)',
+                                                borderRadius: '8px', padding: '6px 10px',
+                                            }}>
+                                                <span style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>🔧</span>
+                                                <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                                                    Calling {step.name}({step.args ? Object.values(step.args).join(', ') : ''})
+                                                </span>
+                                            </div>
+                                        );
+                                        if (step.type === 'tool_result') return (
+                                            <div key={i} style={{
+                                                display: 'flex', alignItems: 'center', gap: '8px',
+                                                color: '#22c55e',
+                                            }}>
+                                                <span>✅</span>
+                                                <span>Got results from {step.name}</span>
+                                            </div>
+                                        );
+                                        return null;
+                                    })}
+                                    {/* Still waiting for more */}
+                                    <div style={{
+                                        display: 'flex', gap: '5px', alignItems: 'center',
+                                        color: 'var(--text-muted)', marginTop: '4px',
+                                    }}>
+                                        <span className="typing-dot" style={{ animationDelay: '0ms' }} />
+                                        <span className="typing-dot" style={{ animationDelay: '150ms' }} />
+                                        <span className="typing-dot" style={{ animationDelay: '300ms' }} />
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Initial loading state before any steps arrive */
+                                <div style={{
+                                    background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                                    borderRadius: '4px 16px 16px 16px', padding: '14px 18px',
+                                    display: 'flex', gap: '5px', alignItems: 'center',
+                                }}>
+                                    <span className="typing-dot" style={{ animationDelay: '0ms' }} />
+                                    <span className="typing-dot" style={{ animationDelay: '150ms' }} />
+                                    <span className="typing-dot" style={{ animationDelay: '300ms' }} />
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -459,6 +622,7 @@ export default function MeetingDetailPage() {
     const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [rightWidth, setRightWidth] = useState(440);
     const dragging = useRef(false);
+    const [extractingVideo, setExtractingVideo] = useState(false);
 
     const load = useCallback(async () => {
         try {
@@ -587,6 +751,35 @@ export default function MeetingDetailPage() {
         URL.revokeObjectURL(url);
     };
 
+    const extractVideo = async () => {
+        setExtractingVideo(true);
+        try {
+            const res = await fetch(`${API_BASE}/api/meetings/${id}/extract-video`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ speaker: speakerFilter, topic: topicFilter })
+            });
+            let data;
+            try {
+                data = await res.json();
+            } catch (err) {
+                data = { detail: await res.text() };
+            }
+            if (!res.ok) throw new Error(data.detail || 'Extract failed');
+
+            const url = `${API_BASE}/api/meetings/${id}/download-video/${data.filename}`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = data.filename;
+            a.click();
+        } catch (e: any) {
+            alert(`Failed to extract video: ${e.message}`);
+        } finally {
+            setExtractingVideo(false);
+        }
+    };
+
+
     if (loading) return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
             <div style={{ textAlign: 'center' }}>
@@ -616,6 +809,11 @@ export default function MeetingDetailPage() {
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <Link href={`/meetings/${id}/graph`}><button className="btn btn-secondary btn-sm">🕸️ Graph</button></Link>
                     <button className="btn btn-primary btn-sm" onClick={exportSummary}>⬇ Export Summary</button>
+                    {job.status === 'done' && (
+                        <button className="btn btn-primary btn-sm" onClick={extractVideo} disabled={extractingVideo} title="Download a shortened video combining only the highlighted regions currently filtered.">
+                            {extractingVideo ? <><span className="spinner" /> Generating...</> : '✂️ Extract Highlights'}
+                        </button>
+                    )}
                 </div>
             </div>
 

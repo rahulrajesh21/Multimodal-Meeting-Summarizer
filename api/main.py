@@ -453,6 +453,88 @@ def stream_video(job_id: str):
     return FileResponse(str(path), media_type="video/mp4",
                         filename=job.get("video_filename", "meeting.mp4"))
 
+@app.post("/api/meetings/{job_id}/extract-video")
+async def extract_meeting_video(job_id: str, body: dict):
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Meeting not found")
+        
+    speaker_filter = body.get("speaker", "all")
+    topic_filter = body.get("topic", "all")
+    
+    mid = job.get("meeting_id")
+    if not mid:
+        raise HTTPException(400, "Meeting not fully processed yet")
+        
+    tm = get_temporal_memory()
+    events = [tm.events[eid] for eid in tm.events_by_meeting.get(mid, []) if eid in tm.events]
+    
+    # Filter
+    if speaker_filter != 'all':
+        events = [e for e in events if getattr(e, 'speaker', None) == speaker_filter]
+    if topic_filter != 'all':
+        events = [e for e in events if getattr(e, 'event_type', None) == topic_filter]
+        
+    if not events:
+        raise HTTPException(400, "No highlighted events match the current filter")
+        
+    time_ranges = []
+    # Build a rough time range.
+    for e in events:
+        start = getattr(e, 'start_time', 0.0)
+        end = getattr(e, 'end_time', start + 6.0)
+        time_ranges.append((start, end))
+        
+    try:
+        from src.video_processing import VideoSummarizer
+        class DummyScorer:
+            def score_sentence(self, text, role): return 1.0
+        
+        summarizer = VideoSummarizer(highlight_scorer=DummyScorer())
+        
+        # Merge overlapping time ranges
+        merged_ranges = []
+        time_ranges.sort(key=lambda x: x[0])
+        for r in time_ranges:
+            if not merged_ranges:
+                merged_ranges.append(r)
+            else:
+                last_start, last_end = merged_ranges[-1]
+                if r[0] <= last_end + 2.0:
+                    merged_ranges[-1] = (last_start, max(last_end, r[1]))
+                else:
+                    merged_ranges.append(r)
+                    
+        # Determine output file
+        exports_dir = ROOT / "exports"
+        exports_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"highlight_{job_id}_{int(time.time())}.mp4"
+        output_path = exports_dir / filename
+        
+        # Get video source
+        video_src = job.get("video_path")
+            
+        if not video_src or not Path(video_src).exists():
+            raise HTTPException(400, f"Source video not found on disk at {video_src}")
+            
+        status = summarizer.create_summary_video(str(video_src), merged_ranges, str(output_path))
+        
+        if "No valid clips" in status or "Error" in status:
+             raise HTTPException(500, f"Failed to generate video: {status}")
+             
+        return {"filename": filename}
+    except Exception as e:
+        logger.exception(f"Extract video error: {e}")
+        raise HTTPException(500, f"Failed to extract video: {e}")
+
+@app.get("/api/meetings/{job_id}/download-video/{filename}")
+def download_extracted_video(job_id: str, filename: str):
+    path = ROOT / "exports" / filename
+    if not path.exists():
+        raise HTTPException(404, "Video file not found")
+    return FileResponse(str(path), media_type="video/mp4", filename=filename)
+
+
 
 @app.post("/api/meetings/{job_id}/reprocess")
 async def reprocess_meeting(job_id: str, background_tasks: BackgroundTasks):
@@ -879,7 +961,27 @@ async def chat_with_meeting(job_id: str, body: dict):
             f"frames had screen sharing detected"
         )
 
-    # 5. Full transcript (cap to ~1000 words to fit model window of 4096 tokens)
+    # 5. Global Meeting Directory
+    tm = get_temporal_memory()
+    available_meetings = []
+    # Deduplicate titles to keep the prompt clean if names repeat
+    seen_titles = set()
+    for m in tm.meetings.values():
+        title = m.get('title', m.get('_id'))
+        if title not in seen_titles:
+            date_str = m.get('date', '')[:10]
+            if date_str:
+                available_meetings.append(f"- {title} ({date_str})")
+            else:
+                available_meetings.append(f"- {title}")
+            seen_titles.add(title)
+            
+    if available_meetings:
+        ctx_parts.append("\n--- GLOBAL KNOWLEDGE GRAPH DIRECTORY ---")
+        ctx_parts.append("The following meetings are available in the system graph database. You can use the 'search_graph' tool to look up decisions or events from these past meetings:")
+        ctx_parts.append("\n".join(available_meetings))
+
+    # 6. Full transcript (cap to ~1000 words to fit model window of 4096 tokens)
     transcript = job.get("transcript", "")
     if transcript:
         words = transcript.split()
@@ -934,14 +1036,53 @@ async def chat_with_meeting(job_id: str, body: dict):
                 if uid not in seen:
                     seen.add(uid)
                     unique_items.append(item)
-                    
-            unique_items.sort(key=lambda x: x['relevance_score'], reverse=True)
+
+            # ── Fallback: search by meeting title ─────────────────────
+            # If entity search found nothing, try matching keywords
+            # against meeting titles and return top events from matches.
+            if not unique_items:
+                for kw in kws[:3]:
+                    kw_lower = kw.lower()
+                    for mid, meta in tm_instance.meetings.items():
+                        title = (meta.get("title") or "").lower()
+                        if kw_lower in title:
+                            event_ids = tm_instance.events_by_meeting.get(mid, [])
+                            for eid in event_ids:
+                                ev = tm_instance.events.get(eid)
+                                if not ev:
+                                    continue
+                                ent = tm_instance.entities.get(ev.entity_id)
+                                ent_name = ent.canonical_name if ent else "Unknown"
+                                minutes = int(ev.start_time // 60)
+                                seconds = int(ev.start_time % 60)
+                                time_str = f"{minutes}:{seconds:02d}"
+                                unique_items.append({
+                                    'entity': ent_name,
+                                    'entity_type': ent.type if ent else 'topic',
+                                    'event_type': ev.event_type,
+                                    'summary': ev.summary,
+                                    'speaker': ev.speaker,
+                                    'meeting_title': meta.get("title", mid[:8]),
+                                    'meeting_id': mid,
+                                    'timestamp': time_str,
+                                    'sentiment': ev.sentiment,
+                                    'unresolved_score': ent.unresolved_score if ent else 0,
+                                    'relevance_score': ev.confidence,
+                                    'citation': f"({meta.get('title', mid[:8])}, {ev.speaker}, {time_str})",
+                                })
+                            break  # found a matching meeting, stop
+
+                # Sort by importance for meeting-title results
+                importance_order = {'decision': 0, 'problem': 1, 'risk': 2, 'idea': 3, 'deadline': 4}
+                unique_items.sort(key=lambda x: (importance_order.get(x['event_type'], 9), -x.get('relevance_score', 0)))
+            else:
+                unique_items.sort(key=lambda x: x['relevance_score'], reverse=True)
             
             if not unique_items:
                 return f"No historical events found for keywords: {keywords}"
                 
             lines = []
-            for item in unique_items[:7]:
+            for item in unique_items[:10]:
                 state = " ⚠️ UNRESOLVED" if item['unresolved_score'] > 0.6 else ""
                 if item['event_type'] == 'decision': state = " ✅ DECIDED"
                 lines.append(
@@ -993,18 +1134,52 @@ IMPORTANT INSTRUCTIONS:
         else:
             messages.append(msg)
 
-    # ── Call Agent Loop ───────────────────────────────────────────────────
-    try:
+    # ── SSE Streaming Agent Loop ──────────────────────────────────────────
+    import queue as _queue      # thread-safe queue for sync→async bridge
+
+    step_queue = _queue.Queue()
+
+    def _step_callback(step: dict):
+        """Called from the sync agent thread — pushes events to the queue."""
+        step_queue.put(step)
+
+    async def _event_stream():
+        """Async generator that yields SSE events."""
         loop = asyncio.get_event_loop()
-        reply = await loop.run_in_executor(
-            None, lambda: llm.agent_chat(messages, tools, tool_handler, max_turns=5)
+
+        # Run agent_chat in a thread (it's synchronous / blocking)
+        fut = loop.run_in_executor(
+            None,
+            lambda: llm.agent_chat(
+                messages, tools, tool_handler,
+                max_turns=5, step_callback=_step_callback,
+            ),
         )
-        return {"reply": reply.strip()}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Chat failed: {e}")
-        raise HTTPException(500, f"Chat failed: {e}")
+
+        # Poll the queue for intermediate steps while the agent runs
+        while not fut.done():
+            await asyncio.sleep(0.1)
+            while not step_queue.empty():
+                step = step_queue.get_nowait()
+                yield f"data: {json.dumps({'type': 'step', 'step': step})}\n\n"
+
+        # Drain any remaining steps
+        while not step_queue.empty():
+            step = step_queue.get_nowait()
+            yield f"data: {json.dumps({'type': 'step', 'step': step})}\n\n"
+
+        # Get the final result
+        try:
+            result = fut.result()
+            yield f"data: {json.dumps({'type': 'reply', 'content': result['reply'].strip(), 'steps': result.get('steps', []), 'model': result.get('model', 'unknown')})}\n\n"
+        except Exception as e:
+            logger.error(f"Chat failed: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    from starlette.responses import StreamingResponse as _SR
+    return _SR(_event_stream(), media_type="text/event-stream")
 
 
 # ═══════════════════════════════════════════════════════════════════════════

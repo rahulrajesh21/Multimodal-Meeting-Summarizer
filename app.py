@@ -554,8 +554,60 @@ class LiveMeetingApp:
             
         return formatted_highlights
 
-
-
+    def extract_shortened_video(self, role: str) -> tuple[str, str]:
+        """
+        Extract a shortened video based on highlights for a specific role.
+        """
+        if not self.video_audio_path or not os.path.exists(self.video_audio_path):
+            return "⚠️ No video loaded. Please upload a video first.", None
+            
+        if not self.transcript_text:
+            return "⚠️ No transcript available.", None
+            
+        try:
+            from src.video_processing import VideoSummarizer
+            
+            # Ensure analyzer is ready
+            if not self.text_analyzer:
+                self.text_analyzer = TextAnalyzer(device=self.device)
+                
+            if not self.highlight_scorer:
+                self.highlight_scorer = RoleBasedHighlightScorer(text_analyzer=self.text_analyzer)
+                
+            summarizer = VideoSummarizer(highlight_scorer=self.highlight_scorer)
+            
+            segments = self._parse_transcript_to_segments()
+            if not segments:
+                return "⚠️ Could not parse transcript segments.", None
+                
+            # Score segments
+            scored = summarizer.score_segments(segments, role)
+            
+            # Filter and smooth into time ranges
+            time_ranges = summarizer.filter_and_smooth(scored, threshold=0.5, min_gap=2.0)
+            
+            if not time_ranges:
+                return f"⚠️ No highlights found for {role} to create a video.", None
+                
+            # Define output path
+            exports_dir = "exports"
+            os.makedirs(exports_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_role = role.replace(" ", "_").replace("/", "_")
+            output_path = os.path.abspath(os.path.join(exports_dir, f"highlight_{safe_role}_{timestamp}.mp4"))
+            
+            # Create summary video
+            status = summarizer.create_summary_video(self.video_audio_path, time_ranges, output_path)
+            
+            if "No valid clips" in status or "Error" in status:
+                return status, None
+                
+            return f"✅ Shortened video for {role} created successfully!", output_path
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return f"❌ Error extracting video: {str(e)}", None
 
 
     def apply_role_mapping(self, json_str: str, current_transcript: str = "") -> tuple[str, str, str]:
@@ -1282,13 +1334,25 @@ def create_gradio_interface():
                         value="Developer"
                     )
                     highlight_btn = gr.Button("✨ Generate Highlights")
+                    extract_video_btn = gr.Button("✂️ Extract Shortened Video")
                 
-                highlights_box = gr.Textbox(label="Highlights", lines=5)
+                with gr.Row():
+                    with gr.Column(scale=2):
+                        highlights_box = gr.Textbox(label="Highlights", lines=5)
+                    with gr.Column(scale=1):
+                        short_video_status = gr.Textbox(label="Video Status", lines=2)
+                        short_video_file = gr.File(label="Download Shortened Video")
                 
                 highlight_btn.click(
                     fn=app.generate_highlights,
                     inputs=[role_dropdown, manual_transcript_box],
                     outputs=[highlights_box]
+                )
+                
+                extract_video_btn.click(
+                    fn=app.extract_shortened_video,
+                    inputs=[role_dropdown],
+                    outputs=[short_video_status, short_video_file]
                 )
                 
                 gr.Markdown("---")

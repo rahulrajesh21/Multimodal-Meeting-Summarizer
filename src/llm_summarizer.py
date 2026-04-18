@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Dict
+from typing import List, Optional, Dict
 import requests
 import json
 import re
@@ -101,71 +101,181 @@ class LLMSummarizer:
             logger.error(f"LM Studio generation failed: {e}")
             raise e
 
-    def agent_chat(self, messages: List[Dict], tools: List[Dict], tool_handler: callable, max_turns: int = 5) -> str:
+    def agent_chat(self, messages: List[Dict], tools: List[Dict], tool_handler: callable, max_turns: int = 5, step_callback: callable = None) -> Dict:
         """
-        Agent orchestration loop.
-        Sends messages and tools to the LLM. If the LLM returns tool_calls, it executes the tool_handler,
-        appends the tool response, and recurses until the LLM returns a plain text response or max_turns is reached.
+        Agent orchestration loop with real-time streaming.
+        Uses stream=True to get token-by-token reasoning and content.
+        Returns a dict: { "reply": str, "steps": [...], "model": str }
+        If step_callback is provided, each step is emitted in real-time.
         """
         import json
+        import re as _re
         
-        # Target reasoning models for chat orchestration
         model_name = self._get_model_name(["gemma", "deepseek"])
+        steps: List[Dict] = []
+
+        def _emit(step: Dict):
+            if step.get("type") == "thinking" and step.get("status") == "done":
+                for i in range(len(steps)-1, -1, -1):
+                    if steps[i].get("type") == "thinking" and steps[i].get("turn") == step.get("turn"):
+                        steps[i] = step
+                        break
+                else:
+                    steps.append(step)
+            else:
+                steps.append(step)
+            
+            if step_callback:
+                step_callback(step)
 
         for turn in range(max_turns):
             payload = {
                 "model": model_name,
                 "temperature": 0.4,
-                "stream": False,
+                "stream": True,
                 "messages": messages,
-                "tools": tools
+                "tools": tools,
             }
-            
+
             try:
-                response = requests.post(self.endpoint, json=payload, timeout=120)
-                response.raise_for_status()
-                data = response.json()
-                message_out = data["choices"][0]["message"]
-                
-                # Append the assistant's message (which might contain tool_calls)
+                # ── Stream the LLM response ──────────────────────────
+                resp = requests.post(self.endpoint, json=payload, timeout=120, stream=True)
+                resp.raise_for_status()
+
+                # Accumulators
+                reasoning_buf = ""
+                content_buf = ""
+                tool_calls_buf: Dict[int, Dict] = {}  # index → {id, name, arguments}
+                reasoning_emitted = False
+
+                for raw_line in resp.iter_lines(decode_unicode=True):
+                    if not raw_line or not raw_line.startswith("data: "):
+                        continue
+                    data_str = raw_line[6:].strip()
+                    if data_str == "[DONE]":
+                        break
+
+                    try:
+                        chunk = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
+
+                    delta = chunk.get("choices", [{}])[0].get("delta", {})
+
+                    # -- Reasoning / thinking tokens --
+                    reasoning_content = delta.get("reasoning_content", "")
+                    if reasoning_content:
+                        if not reasoning_emitted:
+                            # Emit a "thinking" step immediately so the UI shows it
+                            _emit({"type": "thinking", "content": "", "turn": turn, "status": "started"})
+                            reasoning_emitted = True
+                        reasoning_buf += reasoning_content
+
+                    # -- Content tokens (final response or <think> tags) --
+                    content_piece = delta.get("content", "")
+                    if content_piece:
+                        content_buf += content_piece
+
+                    # -- Tool call chunks (streamed incrementally) --
+                    tc_deltas = delta.get("tool_calls", [])
+                    for tc in tc_deltas:
+                        idx = tc.get("index", 0)
+                        if idx not in tool_calls_buf:
+                            tool_calls_buf[idx] = {
+                                "id": tc.get("id", ""),
+                                "name": "",
+                                "arguments": "",
+                            }
+                        fn = tc.get("function", {})
+                        if fn.get("name"):
+                            tool_calls_buf[idx]["name"] += fn["name"]
+                        if fn.get("arguments"):
+                            tool_calls_buf[idx]["arguments"] += fn["arguments"]
+                        if tc.get("id"):
+                            tool_calls_buf[idx]["id"] = tc["id"]
+
+                resp.close()
+
+                # ── Post-process accumulated content ─────────────────
+                # Handle <think> tags in content (some models embed thinking here)
+                think_match = _re.search(r'<think>(.*?)</think>', content_buf, _re.DOTALL)
+                if think_match:
+                    reasoning_buf = think_match.group(1).strip()
+                    content_buf = _re.sub(r'<think>.*?</think>', '', content_buf, flags=_re.DOTALL).strip()
+
+                # Emit final thinking content (update with full text)
+                if reasoning_buf:
+                    if not reasoning_emitted:
+                        _emit({"type": "thinking", "content": reasoning_buf, "turn": turn})
+                    else:
+                        # Update the thinking step with full content
+                        _emit({"type": "thinking", "content": reasoning_buf, "turn": turn, "status": "done"})
+
+                # ── Build assistant message for conversation history ──
+                message_out: Dict = {"role": "assistant", "content": content_buf}
+                if tool_calls_buf:
+                    message_out["tool_calls"] = [
+                        {
+                            "id": tc["id"],
+                            "type": "function",
+                            "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                        }
+                        for tc in tool_calls_buf.values()
+                    ]
+
                 messages.append(message_out)
-                
-                # Check for tool_calls
-                if "tool_calls" in message_out and message_out["tool_calls"]:
-                    for tool_call in message_out["tool_calls"]:
-                        fn_name = tool_call["function"]["name"]
+
+                # ── Handle tool calls ────────────────────────────────
+                if tool_calls_buf:
+                    for idx, tc in tool_calls_buf.items():
+                        fn_name = tc["name"]
+                        
+                        allowed_tools = [t["function"]["name"] for t in tools]
+                        if fn_name not in allowed_tools:
+                            result_text = f"Error: Tool '{fn_name}' is not recognized."
+                            _emit({"type": "tool_call", "name": fn_name, "args": {}, "error": result_text, "turn": turn})
+                            messages.append({
+                                "role": "tool", "tool_call_id": tc["id"],
+                                "name": fn_name, "content": str(result_text)
+                            })
+                            continue
+
                         try:
-                            args = json.loads(tool_call["function"]["arguments"])
-                        except json.JSONDecodeError:
-                            args = {}
-                        
+                            args = json.loads(tc["arguments"])
+                        except json.JSONDecodeError as e:
+                            result_text = f"Error: Invalid JSON in arguments: {e}"
+                            _emit({"type": "tool_call", "name": fn_name, "args_raw": tc["arguments"], "error": result_text, "turn": turn})
+                            messages.append({
+                                "role": "tool", "tool_call_id": tc["id"],
+                                "name": fn_name, "content": str(result_text)
+                            })
+                            continue
+
                         logger.info(f"LLM Agent calling tool: {fn_name} with args: {args}")
-                        
-                        # Execute the tool safely
+                        _emit({"type": "tool_call", "name": fn_name, "args": args, "turn": turn})
+
                         try:
                             result_text = tool_handler(fn_name, args)
                         except Exception as e:
                             logger.error(f"Tool {fn_name} failed: {e}")
-                            result_text = f"Tool {fn_name} encountered an error: {str(e)}. Please change your arguments and try again."
-                        
-                        # Append the tool role response
+                            result_text = f"Tool {fn_name} error: {str(e)}"
+
+                        _emit({"type": "tool_result", "name": fn_name, "result": str(result_text)[:500], "turn": turn})
+
                         messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call["id"],
-                            "name": fn_name,
-                            "content": result_text
+                            "role": "tool", "tool_call_id": tc["id"],
+                            "name": fn_name, "content": str(result_text)
                         })
-                    
-                    # Loop continues, sending the tool contexts back to the LLM
-                    continue
+
+                    continue  # Loop back for the LLM to process tool results
                 else:
-                    # Final textual response
-                    return message_out.get("content", "")
+                    return {"reply": content_buf, "steps": steps, "model": model_name}
+
             except Exception as e:
                 logger.error(f"Agent chat failed at turn {turn}: {e}")
                 raise e
-                
-        return "Agent stopped: Reached maximum tool turns."
+
+        return {"reply": "Agent stopped: Reached maximum tool turns.", "steps": steps, "model": model_name}
 
     def extract_json_events(self, text: str, speaker: Optional[str] = None, timestamp: Optional[str] = None) -> Dict:
         """
