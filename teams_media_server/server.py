@@ -135,6 +135,16 @@ def get_meeting(mid: str):
     return m
 
 
+@app.patch("/v1.0/me/onlineMeetings/{mid}")
+async def update_meeting(mid: str, subject: str = Form(...)):
+    db = _load()
+    if mid not in db["meetings"]:
+        raise HTTPException(404, f"Meeting {mid!r} not found")
+    db["meetings"][mid]["subject"] = subject
+    _save(db)
+    return db["meetings"][mid]
+
+
 @app.delete("/v1.0/me/onlineMeetings/{mid}", status_code=204)
 def delete_meeting(mid: str):
     db = _load()

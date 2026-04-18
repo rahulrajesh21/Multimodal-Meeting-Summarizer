@@ -1,0 +1,124 @@
+WEBVTT
+
+00:00:31.000 --> 00:00:46.000
+<v Kyle Wolfe>Hey everyone. Hey, I have to ask. Could you give the air conditioning at my house if I stay unmuted? Okay. Awesome. I just wanted to make sure. So I just have that. Have that sound coming in? It was</v>
+
+00:00:46.000 --> 00:00:56.000
+<v Rémy Hannequin>there. Cool. Yeah. I think I hear more like the airplanes in my neighborhood than your acquisition. So that's fine.</v>
+
+00:00:56.000 --> 00:02:34.000
+<v Kyle Wolfe>I'm not sure. We'll give it another minute for Mark and we'll get started. Sure. My daughter wants to say hi. Can you say hi? Hi. Hello. Who's Joe's convey. All right. I'll give you your keyboard. You can work next to me. I'm going to get started. I'm going to get started. I know it's late for. A gentleman Albert. So let's. Let's get right into social discussion. Favorite favorite family tradition or just tradition. And I was thinking. I think the breath is the mind is. We we moved. My family has a big fourthed July celebration where we get together. And. Hold like a family Olympic. And we do a lot of like yard games and things like that. And it's just a fun time. We've done it for. 16 years now. So it's like we. We've done that same sort of looks all good together. It's people from Colorado. Iowa. Missouri. All come together usually in Kansas City, which is in a center location. And. Doing things like Batchy ball. Or. We do a bunch of cars. We do a lot of games. We do. We've done like ladder ball. Where do you like throw the golf balls and try and catch them? The ladder runs. Just different US yard games and the. There's points and then we have a winner. It's like a big. A big thing. But it's fun to be around everyone. Remmy</v>
+
+00:02:34.000 --> 00:02:44.000
+<v Rémy Hannequin>over to you. That's cool. How many people. I get that. I read you. Probably. 18. I would say more</v>
+
+00:02:44.000 --> 00:02:50.000
+<v Kyle Wolfe>with kids now. I don't know what to talk about, but I don't know what to talk about. I don't know what to talk about, but I don't know what to talk about, I don't know what to talk about, but I don't know what to talk about, I don't know what to talk about, I don't know what to</v>
+
+00:02:50.000 --> 00:05:20.000
+<v Rémy Hannequin>talk about, I don't know what to talk about, I don't know what to talk about, I don't know what to talk about, I don't know what to talk about, I don't know what to talk about, I don't know what to talk about, I don't know what to talk about, I don't know what to talk about, I don't know what to talk about, I don't know what to talk about, the end of May. So basically like two weeks ago that would have been, but this year I didn't plan to go anyway, but we cancelled it due to the COVID. But basically we gather in Brittany, so West of France, just like in a small village that is really at the close to the ocean. And once every two years there is this boat gathering from all around the world, mostly like sailing boats, basically. And there are like thousands of boats, and there are like depending on which day there are different boats for writing. And yeah, basically we gather, we love a lot, we work, we yeah, that's my mother part of the family and they are really really friendly and really really funny. I, yeah, it's not the same on my father's part I would say. But yeah, that's one of the, that's time of the year. So next year we'll go for sure because that would be this year where there will be the boats. And also in addition to the boats, there are like parties dancing, music and stuff like that. So that's cool. I think I last year I shared some pictures and videos about it actually. So maybe next year</v>
+
+00:05:20.000 --> 00:06:03.000
+<v Mark Fletcher>as well. That sounds fun. Yeah, Mark, what about you? Yeah, we don't really have any kind of traditions outside of the standard Christmas and birthdays. We usually like to see each other around birthdays and then Christmas will usually gather and play a lot of ball games and stuff, but nothing outside of that. Yeah, so I don't really have one to share the Albert, what about you? I think for me, so I leave a quite far from</v>
+
+00:06:03.000 --> 00:07:05.000
+<v Albert Tibau>my parents, so I've been living away for 20 years, so I haven't really got any traditions. Let's see. I think there are other closest for me, lunar New Year that we, so usually every lunar New Year or the relatives would come together for a dinner and then we will go visit each other's house. So on the first day of lunar New Year, what happens is everyone will visit every family's house. So there was a great fun. It's not fun when it's in my hometown where the traffic jam is really bad, so we spent like it hours just to travel to very four or five places. But so now that I'm married, what we do is a bit different, so instead of doing that every year for me, I will alternate between my family and my</v>
+
+00:07:05.000 --> 00:07:34.000
+<v Jinchen Zhao>wife's family. How about you, Jenshin? We don't really have anything special here, so probably just dinner around lunar New Year and dinner or lunch when someone has birthday and that's probably it. Awesome. Thanks everyone for sharing. I am</v>
+
+00:07:34.000 --> 00:07:44.000
+<v Kyle Wolfe>going to ask for announcements if whoever added it can just do it, just so we don't get a lot of noise throughout the meeting. So Jenshin, why don't you take the first one and just keep going down the</v>
+
+00:07:44.000 --> 00:07:51.000
+<v Jinchen Zhao>list? I will be of this Friday and next Monday, because I'm feeling a bit tired, so I want to</v>
+
+00:07:51.000 --> 00:08:27.000
+<v Albert Tibau>take some time. So the past week, the review at Skanhaspin was quite low, mainly because of two issues. The first one was a migration change that needed B3 extension. I think that has been reverted and then the other one was yesterday. Get the diversion change for a period of time that used sure and that caused the deployment failure. It has been reverted but changed back to use the cementing version, so now it's okay. But the impact</v>
+
+00:08:27.000 --> 00:09:16.000
+<v Rémy Hannequin>is good. But next, really. Cool. Yeah, so announcements just, yeah, we've increased the parization for the static jobs. Basically, we can now increase the parization, like, indefinitely for these jobs, but that's been makes much sense. But yeah, the idea is that that will allow people to have feedback quicker for these jobs and further improvements could be to separate the front end and backend kind of checks and also actually paralyze the checks in the jobs themselves. But</v>
+
+00:09:16.000 --> 00:09:52.000
+<v Kyle Wolfe>yeah, for now, we've gone the easiest to put. And then for me, I noted this morning that the review completion deadline for 360 reviews was pushed back away. So if you're kind of struggling to get through all of those and focus on teamwork, there's one more week to kind of keep that in mind. It looked like the MR that adjusted the schedule hasn't been merged yet. So I linked to that in the announcements as well, just as that heads up. If you go to the 360 pages, not reflected, but there was that the announcement is</v>
+
+00:09:52.000 --> 00:10:10.000
+<v Albert Tibau>happening again. Over to you Albert? Yeah, so we added a job to test the changes on FOS so that runs as few tests as possible based on the number of files that changed. There are a couple of small</v>
+
+00:10:10.000 --> 00:11:19.000
+<v Kyle Wolfe>bugs that came with it on making some MR to fix those. That was awesome. I'll just add that. I just want to vocalize that was really great work. If you need help cleaning anything up that's urgent since it's late, feel free to just delegate and we can try to do our best during the day. Okay. The next thing is more of a random thing that I found out. So last Thursday when danger was having problems, I logged in as Git Labbot, just to see if that token was still valid since we were getting kind of a strange error. It was. But I also found out that any login with Git Labbot is alerted to security and they will reach out to you. So just a heads up. Probably not a good idea to use that in these cases and just ask for help. Like I learned I should just ask someone else for help, but just as a heads up. So I'll get logged and then you will get reached out to by someone in security to see what was going on. Interesting. Yeah. Yeah. I was not aware that happened. Yeah. I'm curious how</v>
+
+00:11:19.000 --> 00:11:29.000
+<v Rémy Hannequin>the informed about the login. What I heard was there was an alert. I said I didn't know it was</v>
+
+00:11:29.000 --> 00:11:45.000
+<v Kyle Wolfe>monitored. So it's nice to know that that was the case and I said there was an alert and they were following up. And it wasn't like a don't do this. It was a did you do this? Because if not, there is a much bigger problem. But I think we should just reduce like stop logging in a Git</v>
+
+00:11:45.000 --> 00:12:48.000
+<v Rémy Hannequin>Labbot to get lab .com. Yeah, sure. That's very like we only need to do that usually when we want to generate a new token. And that's probably it. So yeah. Cool. Yeah, thanks for that. I announcement is that we just not just morning. I hope massive improvements. So we are using the cash in our pipelines and I also hope that it will improve the like many jobs duration. So yeah, we should look out for any related issues that could come up. So far. Yeah, I'm just speaking and there was a master broken. It's shown that is, yeah, I know it's good. It's about 14 bucks. Yeah, so yeah, just be aware that there might be</v>
+
+00:12:48.000 --> 00:13:06.000
+<v Kyle Wolfe>cash in related issues. Awesome work on that as well. I saw the master broken message as well. I was like, this would be cool. So cool. Let's move into the agenda. Albert, you want to take the first item</v>
+
+00:13:06.000 --> 00:14:39.000
+<v Albert Tibau>here? Discussions? Yeah. So yeah, what I was doing at MR, I'm trying to keep in mind the different forms and other projects that we need to cater for in the pipeline changes. Yes. So I try to restore as many as I can think of. I'm not sure if there is anything else. What else we need to keep in mind and also, is there like a one I'm wondering if there's any standard things that we go through to make sure that things are working for downstream folks and to what extent we want to take care of the folks. How about folks that we don't know about? Because I think it's quite easy to cause something to break in one of the folks. If we miss out particular class in the rules where we, so for example, we, for example, for a first test, we set to never, it is not E, but it's very easy to miss such a class in one of the rules and then that could cause a job to never be able to pass in a particular in a pipeline that we don't know. So I'm just wondering how do we cater</v>
+
+00:14:39.000 --> 00:15:26.000
+<v Rémy Hannequin>for this? Yeah, that happened in the past. There's this issue that I don't recall if I think I created it and like to be able to kind of test in advance all these use cases. But yes, we haven't, I think it doesn't mean the priority yet and it's also a bit, probably a bit complex. There's a trade -off between like the time to implement such testing and just the time to fix the small edge cases that</v>
+
+00:15:26.000 --> 00:16:38.000
+<v Kyle Wolfe>we face. But yeah, that's a recurring question, I think. Well, I think our default has been tried to fix forward. So do the best of like almost like best effort during testing and then focus on fixing forward. But I'm willing to prioritize this because the more we use rules, the more we're using these different things to optimize our pipeline, optimize the pipeline, I should say, the more we need this. So I linked to the, I was trying to find out that you were talking and linked to the issue. And if there's, if there's a way that we can leverage iteration here, because I think there's a really large problem, but if we here was a suggestion on the issue for what we could start in. Right. I'm curious, are we still using death? Are we</v>
+
+00:16:38.000 --> 00:17:07.000
+<v Rémy Hannequin>still using what? Death, death. Death, death, death, death. Yeah, I don't think we use it for security anymore. But yeah, I think it's used I don't know actually. Yeah, I think we are breeding the nightly images, but for omnibus, but for GitLab, I'm not sure. Yeah, I think Omnibus security development moved up and I think that was</v>
+
+00:17:07.000 --> 00:18:38.000
+<v Kyle Wolfe>the last piece. I can check with the delivery team or ask and G delivery to see if they're using death. Yeah, that's a very good question. I will ask that. Should we just continue this discussion in the issue? Great. Thanks for bringing that up, Albert. That's a big concern area of mine is we have this complex configuration. It's manual and tedious to value here right now and error problem. So cool. I had one, I just wanted to bring this up here as well. So I asked for feedback last week on the backstage deprecation issue before we kind of communicate a little bit broader. I tried to succinctly break out the pieces in the proposal into different issues. They can be tackled independently. Last chance for feedback. Anyone would like to focalize? Or if you need more time too because you haven't reviewed it, let me know. That is fine as well. Okay. Is there any reason that we should not communicate this week? That's kind of forcing function for that. No, I think it's a</v>
+
+00:18:38.000 --> 00:19:14.000
+<v Rémy Hannequin>good plan. I think that's we are covering on radio like a lot of places like handbook, several other three -aggressive. So I don't think we need to wait more and think of more things right now before communicating at least. You can always communicate and add details later anyway. Okay. As I kind of said in one of my</v>
+
+00:19:14.000 --> 00:19:41.000
+<v Kyle Wolfe>comments, I will need some help. I'm anticipating feedback. I will do my best to be as responsive as I can. But we kind of be additional wrinkle with my kids being home more than I had planned even this week. It'll be a little challenging. I'll target communication out like Wednesday, Thursday. I do have a question actually. What</v>
+
+00:19:41.000 --> 00:20:00.000
+<v Rémy Hannequin>if people have concerns of feedback that could get you in the way of the plan as we see it? Is it communication like, okay, we will do that? Or will it be open communication like what do you think</v>
+
+00:20:00.000 --> 00:21:22.000
+<v Kyle Wolfe>about that? Or maybe both? My plan on the communication was going to be this is the change that we're planning to do. I'm anticipating some of the feedback of have you considered the surge that you think about this? And I think it's my focus would be on continuing the plan unless we have good reason not to. And we don't know one right now, but that may change. We'll just kind of see how it goes. Yeah, makes sense. Okay. Okay, last item here is around due dates and milestones. So I kind of have this sense and I've had some feedback that this may be a little confusing on how I'm using due dates and milestones. So my general intent is to try to demonstrate the value of setting a due date. So the milestone should be indicating targeted release and due date I usually use for a follow up. So almost like a reminder of let's follow up on this on this date. How does everyone feel that that's going? Where is it working? Where is</v>
+
+00:21:22.000 --> 00:21:35.000
+<v Rémy Hannequin>it not working? I don't use due dates to be honest. Are we talking about the due dates feature in</v>
+
+00:21:35.000 --> 00:22:24.000
+<v Kyle Wolfe>issues? Yeah, yeah. So there I've been a little bit more active in setting due dates when I'm when there's like a question and it's not an urgent question to try and trigger a follow up. For setting milestones for lower priority work that I think we can kind of achieve alongside our work for milestones. Some of the feedback that that someone provided was that the way that I communicate milestones can sometimes be a little unclear, especially if there's other teams in there, which is like I'm going to set this to 131 for example, instead of do you think that this is achievable in 131? So that's going to be something that I'd like to change. But I am curious that if anyone has noticed anything and had any general feedback on this. So the due dates</v>
+
+00:22:24.000 --> 00:22:29.000
+<v Mark Fletcher>will be used in a case where something's blocked and it just needs a follow -up is that we use</v>
+
+00:22:29.000 --> 00:22:47.000
+<v Kyle Wolfe>them? That's how I have been using them. Like the security packaging QAMR I think is a really good example where I said I'll set a due date of two weeks to follow up on this. We're aligned. Like that</v>
+
+00:22:47.000 --> 00:23:02.000
+<v Mark Fletcher>doesn't align. So even if something's closed. So if we say we're tracking a metric or we plan to look into something light and see if something's improved is that going to be on a closed issue or a due</v>
+
+00:23:02.000 --> 00:23:26.000
+<v Kyle Wolfe>date on a new issue? It could. I haven't done that yet. I think that would be confusing. I don't know if there's just like a general way to remind like I have another tour that I used to remind me of this on the state. I don't know if there's a gala feature for that that can generate it to do. I'm sure there's an issue like issue out there for it. I see. I see you. I see</v>
+
+00:23:26.000 --> 00:24:19.000
+<v Rémy Hannequin>you. Go ahead. Sorry. Yeah, I was going to say you are using due dates for just for the reminder feature in your case, right? Yeah. Yeah. Okay. Yeah, I mean, personally, I just assigned the issues to myself and they are on my radar and I regularly go back to the issues that I'm assigned to or another question. So I don't use due dates. So I use basically the the fact that I'm assigned to an issue and the milestone basically, which aligns with the due date, basically. Okay. I think I'm just wondering like how hard is</v>
+
+00:24:19.000 --> 00:25:04.000
+<v Albert Tibau>a milestone when it's set. I think I just want to make sure that we don't get into a situation where we set a certain milestone and then knowing that we may or may not hit the milestone and like when that is already set, other stakeholders might see that as a commitment and that expectation may not be the same within the team and outside the team. So I just want to make sure that we are both our team as well as clear on how do we set milestones and do this. Yep. So that's where I'll I</v>
+
+00:25:04.000 --> 00:26:19.000
+<v Kyle Wolfe>I'm going to plan to have a handbook at mar which kind of which describes that a little bit more. I would say in general all of GitLab tries to be aggressive in there what they target for each release. So there is slippage. It's not it's not and that's why I try to use the word target as often as I can because our workload is so reactive and I would say more reactive than others. So having planned issues ahead of time that are addition to our OKRs and has been a little challenging, especially the and try to be clearer when I say I'm we're setting this for 131 and so that so that at least on the issue it's clear that we're targeting this for 131 it may not make it due to these factors. I look to be a little bit more comprehensive when when applying milestones. I because I definitely see that same concern where someone could be counting on this being delivered on a milestone and it totally slips in communication. So it's</v>
+
+00:26:19.000 --> 00:27:01.000
+<v Rémy Hannequin>as well. Yeah. Yeah, I mean it happens all the time that features a center milestone and the slip to the next and that's that's fine. It's it's expected because we I think most teams tend to overcommit and there are already uncertainties. So I don't that's not that's not that's not very pretty good. I wish I tried to avoid having too many things sleeping for the next milestone, but I think that's that's fine. Okay. So I'll tag</v>
+
+00:27:01.000 --> 00:28:07.000
+<v Kyle Wolfe>the team on a handbook at par where where I add some of that detail to the engineering productivity pages whether like let's do it on the top of a page and look for feedback there so that it's a little bit clearer on. Milestone and then I think I'm going to stop using due dates because I believe that that's a piece that can be even more confusing externally and the way that I'm using it is not representative of the what the feature is. We're not saying it's due by here. It's more just a reminder for follow -up. So I'll just use an external system for unneudging mechanism. Okay. Thank you for the good feedback on that and look for the handbook and Marra later this week. Anything else anyone would like to discuss? Okay. I hope everyone has a good rest of your day and we will catch up with you out the rest of the</v>
+
+00:28:07.000 --> 00:28:11.000
+<v Rémy Hannequin>week. See you everyone. I'm good evening. Bye bye. Bye.</v>

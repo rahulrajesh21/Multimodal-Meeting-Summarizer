@@ -3,7 +3,8 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { fetchMeeting, teamsVideoUrl, patchSpeakers, reprocessMeeting, chatWithMeeting, Job, ChatMessage, TEAMS_API } from '@/lib/api';
 import Link from 'next/link';
-
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 /* ── helpers ── */
@@ -213,7 +214,14 @@ function SpeakerSummaryCard({ name, role, summary, expanded, onToggle }: {
 }
 
 /* ── Chat Panel ── */
-function ChatPanel({ jobId }: { jobId: string }) {
+const SUGGESTED_PROMPTS = [
+    '🎯 What were the key decisions?',
+    '⚠️ Any unresolved issues?',
+    '📊 Summarize cost discussions',
+    '🔗 How does this connect to past meetings?',
+];
+
+function ChatPanel({ jobId, onSeek }: { jobId: string, onSeek?: (time: number) => void }) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -221,20 +229,20 @@ function ChatPanel({ jobId }: { jobId: string }) {
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    }, [messages]);
+    }, [messages, loading]);
 
-    const send = async () => {
-        const text = input.trim();
-        if (!text || loading) return;
+    const send = async (text?: string) => {
+        const msg = (text || input).trim();
+        if (!msg || loading) return;
 
-        const userMsg: ChatMessage = { role: 'user', content: text };
+        const userMsg: ChatMessage = { role: 'user', content: msg };
         const updated = [...messages, userMsg];
         setMessages(updated);
         setInput('');
         setLoading(true);
 
         try {
-            const { reply } = await chatWithMeeting(jobId, text, updated);
+            const { reply } = await chatWithMeeting(jobId, msg, updated);
             setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
         } catch (e: any) {
             setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message || 'Failed to get response'}` }]);
@@ -246,39 +254,132 @@ function ChatPanel({ jobId }: { jobId: string }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Messages */}
-            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {messages.length === 0 && (
-                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 20px' }}>
-                        <div style={{ fontSize: '32px', marginBottom: '12px' }}>💬</div>
-                        <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Chat with this meeting</div>
-                        <div style={{ fontSize: '13px', lineHeight: 1.5 }}>
-                            Ask questions about the transcript, who said what,<br />
-                            decisions made, screen shares, and more.
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '20px', gap: '20px' }}>
+                        <div style={{
+                            width: 56, height: 56, borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #7c6ff7, #06b6d4)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '28px', boxShadow: '0 0 30px rgba(124,111,247,0.3)',
+                        }}>🧠</div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)' }}>
+                                MeetingIQ Assistant
+                            </div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                                Ask about this meeting or query cross-meeting history.<br />
+                                I can cite speakers, timestamps, and past decisions.
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%', maxWidth: '360px' }}>
+                            {SUGGESTED_PROMPTS.map((p, i) => (
+                                <button key={i} onClick={() => send(p.replace(/^[^\s]+\s/, ''))}
+                                    style={{
+                                        background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                                        borderRadius: '10px', padding: '10px 12px', fontSize: '12px',
+                                        color: 'var(--text-secondary)', cursor: 'pointer', textAlign: 'left',
+                                        transition: 'all 0.15s', lineHeight: 1.4,
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-dim)'; e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg-surface)'; }}
+                                >{p}</button>
+                            ))}
                         </div>
                     </div>
                 )}
+
                 {messages.map((msg, i) => (
                     <div key={i} style={{
-                        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                        maxWidth: '85%',
-                        background: msg.role === 'user'
-                            ? 'linear-gradient(135deg, #7c6ff7, #6366f1)'
-                            : 'var(--bg-surface)',
-                        color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
-                        border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
-                        borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                        padding: '10px 14px',
-                        fontSize: '13px',
-                        lineHeight: 1.55,
-                        whiteSpace: 'pre-wrap',
+                        display: 'flex', gap: '10px', alignItems: 'flex-start',
+                        flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
                     }}>
-                        {msg.content}
+                        {/* Avatar */}
+                        {msg.role === 'assistant' && (
+                            <div style={{
+                                width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                                background: 'linear-gradient(135deg, #7c6ff7, #06b6d4)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '14px', marginTop: '2px',
+                            }}>🧠</div>
+                        )}
+                        {/* Bubble */}
+                        <div style={{
+                            maxWidth: '88%',
+                            background: msg.role === 'user'
+                                ? 'linear-gradient(135deg, #7c6ff7, #6366f1)'
+                                : 'var(--bg-surface)',
+                            color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                            border: msg.role === 'user' ? 'none' : '1px solid var(--border)',
+                            borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
+                            padding: msg.role === 'user' ? '10px 14px' : '12px 16px',
+                            fontSize: '13px',
+                            lineHeight: 1.55,
+                            overflowX: 'auto',
+                        }}>
+                            {msg.role === 'user' ? (
+                                <span>{msg.content}</span>
+                            ) : (
+                                <div className="markdown-body">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            a: ({ node, ...props }) => {
+                                                if (props.href?.startsWith('#cite:')) {
+                                                    const fullCitation = decodeURIComponent(props.href.replace('#cite:', ''));
+                                                    return (
+                                                        <span
+                                                            className="citation-pill"
+                                                            title={fullCitation}
+                                                            onClick={() => {
+                                                                const timeMatch = fullCitation.match(/(\d+):(\d+)(?::(\d+))?/);
+                                                                if (timeMatch && onSeek && !fullCitation.includes('Meeting')) {
+                                                                    let secs = 0;
+                                                                    if (timeMatch[3]) secs = parseInt(timeMatch[1]) * 3600 + parseInt(timeMatch[2]) * 60 + parseInt(timeMatch[3]);
+                                                                    else secs = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+                                                                    onSeek(Math.max(0, secs - 2));
+                                                                } else {
+                                                                    alert(`Source Context:\n${fullCitation}`);
+                                                                }
+                                                            }}
+                                                        >
+                                                            {props.children}
+                                                        </span>
+                                                    );
+                                                }
+                                                return <a {...props} target="_blank" rel="noopener noreferrer" />;
+                                            }
+                                        }}
+                                    >
+                                        {msg.content.replace(/\(\s*(?:AMI\s+)?(?:Meeting|Speaker_)[^)]+\)/gi, (match) => {
+                                            const pText = match.split(',')[0].replace('(', '').trim();
+                                            return `[${pText} +1](#cite:${encodeURIComponent(match)})`;
+                                        })}
+                                    </ReactMarkdown>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 ))}
+
+                {/* Typing indicator */}
                 {loading && (
-                    <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '13px' }}>
-                        <span className="spinner" style={{ width: 16, height: 16 }} />
-                        Thinking…
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                        <div style={{
+                            width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                            background: 'linear-gradient(135deg, #7c6ff7, #06b6d4)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '14px',
+                        }}>🧠</div>
+                        <div style={{
+                            background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                            borderRadius: '4px 16px 16px 16px', padding: '14px 18px',
+                            display: 'flex', gap: '5px', alignItems: 'center',
+                        }}>
+                            <span className="typing-dot" style={{ animationDelay: '0ms' }} />
+                            <span className="typing-dot" style={{ animationDelay: '150ms' }} />
+                            <span className="typing-dot" style={{ animationDelay: '300ms' }} />
+                        </div>
                     </div>
                 )}
             </div>
@@ -287,28 +388,58 @@ function ChatPanel({ jobId }: { jobId: string }) {
             <div style={{
                 padding: '12px 16px',
                 borderTop: '1px solid var(--border)',
-                display: 'flex',
-                gap: '8px',
-                background: 'var(--bg-primary)',
+                background: 'var(--bg-surface)',
                 flexShrink: 0,
             }}>
-                <input
-                    className="input"
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-                    placeholder="Ask about this meeting…"
-                    disabled={loading}
-                    style={{ flex: 1, padding: '10px 14px', fontSize: '13px', borderRadius: '10px' }}
-                />
-                <button
-                    className="btn btn-primary btn-sm"
-                    onClick={send}
-                    disabled={loading || !input.trim()}
-                    style={{ padding: '10px 16px', borderRadius: '10px', fontSize: '14px' }}
-                >
-                    ↑
-                </button>
+                {messages.length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                        <button
+                            onClick={() => setMessages([])}
+                            style={{
+                                background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                                fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                            }}
+                        >
+                            <span style={{ fontSize: '14px' }}>↺</span> Clear Chat History
+                        </button>
+                    </div>
+                )}
+                <div style={{
+                    display: 'flex', gap: '8px',
+                    background: 'var(--bg-hover)', borderRadius: '12px',
+                    border: '1px solid var(--border)', padding: '4px 4px 4px 14px',
+                    transition: 'border-color 0.15s',
+                }}>
+                    <input
+                        className="chat-input"
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                        placeholder="Ask about this meeting…"
+                        disabled={loading}
+                        style={{
+                            flex: 1, border: 'none', background: 'transparent',
+                            color: 'var(--text-primary)', fontSize: '13px',
+                            outline: 'none', padding: '8px 0',
+                            fontFamily: 'inherit',
+                        }}
+                    />
+                    <button
+                        onClick={() => send()}
+                        disabled={loading || !input.trim()}
+                        style={{
+                            width: 34, height: 34, borderRadius: '10px', border: 'none',
+                            background: input.trim() ? 'var(--accent)' : 'var(--bg-surface)',
+                            color: input.trim() ? '#fff' : 'var(--text-muted)',
+                            cursor: input.trim() ? 'pointer' : 'default',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '16px', transition: 'all 0.15s', flexShrink: 0,
+                        }}
+                    >↑</button>
+                </div>
+                <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', opacity: 0.6 }}>
+                    Powered by Cross-Meeting Graph · Responses may cite past meetings
+                </div>
             </div>
         </div>
     );
@@ -326,6 +457,8 @@ export default function MeetingDetailPage() {
     const [activeEvent, setActiveEvent] = useState<number | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [rightWidth, setRightWidth] = useState(440);
+    const dragging = useRef(false);
 
     const load = useCallback(async () => {
         try {
@@ -341,6 +474,30 @@ export default function MeetingDetailPage() {
         load();
         return () => { if (pollRef.current) clearTimeout(pollRef.current); };
     }, [load]);
+
+    // ── Resize drag handler ──
+    const startDrag = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        dragging.current = true;
+        const startX = e.clientX;
+        const startW = rightWidth;
+        const onMove = (ev: MouseEvent) => {
+            if (!dragging.current) return;
+            const delta = startX - ev.clientX;
+            setRightWidth(Math.min(800, Math.max(320, startW + delta)));
+        };
+        const onUp = () => {
+            dragging.current = false;
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    }, [rightWidth]);
 
     const events = useMemo(() => job?.graph_events || [], [job]);
     const summaries = job?.summaries || {};
@@ -467,8 +624,8 @@ export default function MeetingDetailPage() {
                 <SpeakerAssignPanel job={job} onSaved={load} />
             )}
 
-            {/* Body: 60/40 split */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 440px', height: 'calc(100vh - 61px)', overflow: 'hidden' }}>
+            {/* Body: resizable split */}
+            <div style={{ display: 'grid', gridTemplateColumns: `1fr 4px ${rightWidth}px`, height: 'calc(100vh - 61px)', overflow: 'hidden' }}>
 
                 {/* ── LEFT: video + insights ── */}
                 <div style={{ borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -578,6 +735,12 @@ export default function MeetingDetailPage() {
                         )}
                     </div>
                 </div>
+
+                {/* ── Drag handle ── */}
+                <div
+                    onMouseDown={startDrag}
+                    className="resize-handle"
+                />
 
                 {/* ── RIGHT: Output panel ── */}
                 <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -694,7 +857,7 @@ export default function MeetingDetailPage() {
                         })()}
 
                         <div style={{ display: rightTab === 'chat' ? 'block' : 'none', height: '100%' }}>
-                            {job.status === 'done' && <ChatPanel jobId={id} />}
+                            {job.status === 'done' && <ChatPanel jobId={id} onSeek={t => { if (videoRef.current) videoRef.current.currentTime = t; }} />}
                         </div>
                     </div>
                 </div>

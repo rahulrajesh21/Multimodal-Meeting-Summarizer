@@ -271,6 +271,230 @@
     "added_at": "2026-04-15T17:27:33.785895",
     "updated_at": "2026-04-15T17:27:33.785896"
   },
+  "kyle_fiedler": {
+    "display_name": "Kyle Fiedler",
+    "role": "Engineering Manager, Engineering Productivity",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.73,
+    "weights": {
+      "semantic": 0.3675,
+      "tonal": 0.127,
+      "role": 0.296,
+      "temporal": 0.2095
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-16T04:38:40.367748",
+    "updated_at": "2026-04-16T04:38:40.367756"
+  },
+  "alba_sanfeliciano": {
+    "display_name": "Alba Sanfeliciano",
+    "role": "Quality Engineer",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.42,
+    "weights": {
+      "semantic": 0.445,
+      "tonal": 0.158,
+      "role": 0.234,
+      "temporal": 0.163
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-16T04:39:11.690311",
+    "updated_at": "2026-04-16T04:39:11.690318"
+  },
+  "jinchen_lin": {
+    "display_name": "Jinchen Lin",
+    "role": "Backend Engineer",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.42,
+    "weights": {
+      "semantic": 0.445,
+      "tonal": 0.158,
+      "role": 0.234,
+      "temporal": 0.163
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-16T04:39:27.314195",
+    "updated_at": "2026-04-16T04:39:27.314200"
+  },
+  "r_my_hannequin": {
+    "display_name": "R\u00e9my Hannequin",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-17T14:24:41.065189",
+    "updated_at": "2026-04-17T14:24:41.065191"
+  },
+  "albert_tan": {
+    "display_name": "Albert Tan",
+    "role": "Full-stack Engineer",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.42,
+    "weights": {
+      "semantic": 0.445,
+      "tonal": 0.158,
+      "role": 0.234,
+      "temporal": 0.163
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-16T04:41:06.432180",
+    "updated_at": "2026-04-16T04:41:06.432186"
+  },
+  "kyle_wolfe": {
+    "display_name": "Kyle Wolfe",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-17T14:24:41.064802",
+    "updated_at": "2026-04-17T14:24:41.064810"
+  },
+  "mark_fletcher": {
+    "display_name": "Mark Fletcher",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-17T14:24:41.065482",
+    "updated_at": "2026-04-17T14:24:41.065484"
+  },
+  "albert_tibau": {
+    "display_name": "Albert Tibau",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-17T14:24:41.065758",
+    "updated_at": "2026-04-17T14:24:41.065760"
+  },
+  "alba_tibau": {
+    "display_name": "Alba Tibau",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-17T14:23:12.700507",
+    "updated_at": "2026-04-17T14:23:12.700509"
+  },
+  "jinchen_zhao": {
+    "display_name": "Jinchen Zhao",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-17T14:24:41.066015",
+    "updated_at": "2026-04-17T14:24:41.066017"
+  },
+  "speaker_b": {
+    "display_name": "Speaker_B",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-18T15:41:28.980370",
+    "updated_at": "2026-04-18T15:41:28.980375"
+  },
+  "speaker_d": {
+    "display_name": "Speaker_D",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-18T15:41:28.981076",
+    "updated_at": "2026-04-18T15:41:28.981078"
+  },
+  "speaker_a": {
+    "display_name": "Speaker_A",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-18T15:41:28.980770",
+    "updated_at": "2026-04-18T15:41:28.980772"
+  },
+  "speaker_c": {
+    "display_name": "Speaker_C",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-18T15:41:28.981382",
+    "updated_at": "2026-04-18T15:41:28.981385"
+  },
   "_speaker_id_mapping": {
     "SPEAKER_07": {
       "name": "Eric",

@@ -277,7 +277,8 @@ async def process_meeting_job(job_id: str):
                         f"[{s.start_time:.1f}s] {s.text}" for s in top_segs
                     )
                     if llm.is_ready and text_block.strip():
-                        summaries[spk] = llm.summarize(text_block, role=role)
+                        tm_instance = get_temporal_memory()
+                        summaries[spk] = llm.summarize(text_block, role=role, scored_segments=top_segs, tm=tm_instance)
                     else:
                         summaries[spk] = "\n".join(
                             f"• {s.text[:120]}" for s in top_segs
@@ -735,7 +736,8 @@ async def process_teams_job(job_id: str):
                         f"[{s.start_time:.1f}s] {s.text}" for s in top_segs
                     )
                     if llm.is_ready and text_block.strip():
-                        summaries[spk] = llm.summarize(text_block, role=role)
+                        tm_instance = get_temporal_memory()
+                        summaries[spk] = llm.summarize(text_block, role=role, scored_segments=top_segs, tm=tm_instance)
                     else:
                         summaries[spk] = "\n".join(
                             f"• {s.text[:120]}" for s in top_segs
@@ -887,40 +889,115 @@ async def chat_with_meeting(job_id: str, body: dict):
 
     meeting_context = "\n".join(ctx_parts)
 
-    system_prompt = f"""/no_think
-You are an AI assistant that answers questions about a specific meeting.
-You have access to the complete meeting transcript, speaker summaries,
-key events, and visual context (screen sharing detection).
+    # ── Tool Definition: Search Graph ──────────────────────────────────────
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "search_graph",
+                "description": (
+                    "Search the cross-meeting knowledge graph for historical decisions, context, and events. "
+                    "Use this if the user asks about past meetings or previous decisions."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "keywords": {
+                            "type": "string",
+                            "description": "Comma-separated keywords or entity names to search (e.g., 'cost, lcd screen, remote')."
+                        }
+                    },
+                    "required": ["keywords"]
+                }
+            }
+        }
+    ]
 
-{meeting_context}
+    def tool_handler(fn_name: str, args: dict) -> str:
+        if fn_name == "search_graph":
+            keywords = args.get("keywords", "")
+            if not keywords:
+                return "Error: keywords not provided."
+                
+            tm_instance = get_temporal_memory()
+            kws = [k.strip() for k in keywords.split(",") if k.strip()]
+            
+            all_items = []
+            for kw in kws[:3]:
+                items = tm_instance.query_temporal_context(kw, top_k=3)
+                all_items.extend(items)
+                
+            seen = set()
+            unique_items = []
+            for item in all_items:
+                uid = f"{item['meeting_id']}_{item['timestamp']}"
+                if uid not in seen:
+                    seen.add(uid)
+                    unique_items.append(item)
+                    
+            unique_items.sort(key=lambda x: x['relevance_score'], reverse=True)
+            
+            if not unique_items:
+                return f"No historical events found for keywords: {keywords}"
+                
+            lines = []
+            for item in unique_items[:7]:
+                state = " ⚠️ UNRESOLVED" if item['unresolved_score'] > 0.6 else ""
+                if item['event_type'] == 'decision': state = " ✅ DECIDED"
+                lines.append(
+                    f"- [{item['event_type'].upper()}] {item['entity']}: "
+                    f"{item['summary'][:350]}{state} "
+                    f"{item['citation']}"
+                )
+            return "\n".join(lines)
+        
+        return f"Unknown tool: {fn_name}"
 
-Answer the user's question based ONLY on the meeting data above. Be specific
-— cite speakers by name, reference timestamps when relevant, and mention
-screen-sharing or visual content if the user asks about what was on screen.
-Keep your answer concise and focused. If the information is not available
-in the meeting data, say so honestly."""
-
-    # ── Build conversation history ─────────────────────────────────────────
-    messages = [{"role": "system", "content": system_prompt}]
-    
-    for turn in history[-5:]:
-        role = turn.get("role", "user")
-        content = turn.get("content", "")
-        # role in OpenAI is 'user' or 'assistant'
-        messages.append({"role": role if role in ['user', 'assistant'] else 'user', "content": content})
-
-    messages.append({"role": "user", "content": user_msg})
-
-    # ── Call LM Studio ─────────────────────────────────────────────────────
     try:
         from src.llm_summarizer import LLMSummarizer
         llm = LLMSummarizer()
         if not llm.is_ready:
             raise HTTPException(503, "LLM (LM Studio) is not available")
+    except Exception as e:
+        logger.error(f"LLM import failed: {e}")
+        raise HTTPException(500, "Internal component error")
 
+    system_prompt = f"""You are an intelligent AI assistant answering questions about a project.
+You have access to the current meeting's data below.
+To answer questions about PAST meetings or the complete history of decisions, YOU MUST CALL THE `search_graph` tool. 
+
+--- CURRENT MEETING DATA ---
+{meeting_context}
+
+IMPORTANT INSTRUCTIONS:
+1. Always base your answers on the transcripts and graph data.
+2. Provide citations when stating facts (e.g., `(Meeting ES2002b, Speaker_A, 12:45)`).
+3. Be concise."""
+
+    # ── Build conversation history ─────────────────────────────────────────
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    raw_history = []
+    for turn in history[-5:]:
+        role = turn.get("role", "user")
+        content = turn.get("content", "")
+        # role in OpenAI is 'user' or 'assistant'
+        raw_history.append({"role": role if role in ['user', 'assistant'] else 'user', "content": content})
+
+    raw_history.append({"role": "user", "content": user_msg})
+    
+    # Strictly merge consecutive messages of the same role to prevent MLX template crashes
+    for msg in raw_history:
+        if messages[-1]["role"] == msg["role"]:
+            messages[-1]["content"] += f"\n\n{msg['content']}"
+        else:
+            messages.append(msg)
+
+    # ── Call Agent Loop ───────────────────────────────────────────────────
+    try:
         loop = asyncio.get_event_loop()
         reply = await loop.run_in_executor(
-            None, lambda: llm._call_ollama(messages, temperature=0.4)
+            None, lambda: llm.agent_chat(messages, tools, tool_handler, max_turns=5)
         )
         return {"reply": reply.strip()}
     except HTTPException:
@@ -965,6 +1042,19 @@ def get_graph():
 
     # Entity nodes + links
     for ent_id, ent in tm.entities.items():
+        # Filter out filler/noise entities from graph visualization
+        name_lower = ent.canonical_name.lower().strip()
+        import re as _re
+        from src.temporal_graph_memory import FILLER_SET, DISCARD_ENTITIES
+        stripped = _re.sub(r'[^\w\s]', '', name_lower).strip()
+        if stripped in FILLER_SET or name_lower in DISCARD_ENTITIES:
+            continue
+        words = stripped.split()
+        if words and all(w in FILLER_SET for w in words):
+            continue
+        if len(stripped) < 3:
+            continue
+
         evt_ids = tm.events_by_entity.get(ent_id, [])
         meeting_ids = {tm.events[eid].meeting_id
                        for eid in evt_ids if eid in tm.events}

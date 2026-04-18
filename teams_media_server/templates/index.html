@@ -1,12 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Teams Media Server — Transcript &amp; Recording Portal</title>
   <style>
     /* ── Reset / base ─────────────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     :root {
       --teams-purple: #6264a7;
@@ -26,10 +33,17 @@
       --teams-danger: #c50f1f;
       --teams-info: #0078d4;
       --radius: 4px;
-      --shadow: 0 2px 8px rgba(0,0,0,.08);
+      --shadow: 0 2px 8px rgba(0, 0, 0, .08);
     }
 
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--teams-bg); color: var(--teams-text); min-height: 100vh; display: flex; flex-direction: column; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--teams-bg);
+      color: var(--teams-text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
     /* ── Top bar ─────────────────────────────────────────────────────────── */
     .topbar {
@@ -41,779 +55,1337 @@
       padding: 0 16px;
       gap: 12px;
       flex-shrink: 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
       position: sticky;
       top: 0;
       z-index: 100;
     }
+
     .topbar-logo {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 15px; font-weight: 600; letter-spacing: .3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .3px;
     }
-    .topbar-logo svg { width: 24px; height: 24px; }
+
+    .topbar-logo svg {
+      width: 24px;
+      height: 24px;
+    }
+
     .topbar-nav {
-      display: flex; gap: 4px; margin-left: 24px;
+      display: flex;
+      gap: 4px;
+      margin-left: 24px;
     }
+
     .topbar-nav button {
-      background: transparent; color: rgba(255,255,255,0.8); border: none;
-      padding: 6px 12px; border-radius: var(--radius); font-size: 13px;
-      cursor: pointer; transition: all .15s;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.8);
+      border: none;
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .15s;
     }
+
     .topbar-nav button:hover,
-    .topbar-nav button.active { background: rgba(255,255,255,0.15); color: #fff; }
-    .topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .topbar-nav button.active {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    .topbar-right {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
     .topbar-right .pill {
-      background: rgba(255,255,255,0.15); border-radius: 100px;
-      padding: 3px 10px; font-size: 11px; font-weight: 600;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 100px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
     }
 
     /* ── Layout ──────────────────────────────────────────────────────────── */
-    .layout { display: flex; flex: 1; overflow: hidden; }
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
 
     /* ── Sidebar ─────────────────────────────────────────────────────────── */
     .sidebar {
-      width: 280px; background: var(--teams-sidebar); color: #fff;
-      display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
+      width: 280px;
+      background: var(--teams-sidebar);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
     }
-    .sidebar-section { padding: 20px 12px 8px; }
+
+    .sidebar-section {
+      padding: 20px 12px 8px;
+    }
+
     .sidebar-label {
-      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
-      color: rgba(255,255,255,0.5); text-transform: uppercase;
-      padding: 0 8px; margin-bottom: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      padding: 0 8px;
+      margin-bottom: 4px;
     }
+
     .sidebar-item {
-      display: flex; align-items: center; gap: 10px; padding: 9px 12px;
-      border-radius: var(--radius); cursor: pointer; font-size: 13px;
-      color: rgba(255,255,255,0.8); transition: all .1s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.8);
+      transition: all .1s;
     }
-    .sidebar-item:hover { background: var(--teams-sidebar-hover); color: #fff; }
-    .sidebar-item.active { background: var(--teams-sidebar-active); color: #fff; font-weight: 600; }
-    .sidebar-item .icon { font-size: 16px; flex-shrink: 0; width: 20px; text-align: center; }
+
+    .sidebar-item:hover {
+      background: var(--teams-sidebar-hover);
+      color: #fff;
+    }
+
+    .sidebar-item.active {
+      background: var(--teams-sidebar-active);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .sidebar-item .icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      width: 20px;
+      text-align: center;
+    }
+
     .meeting-pill {
-      margin-left: auto; background: var(--teams-purple);
-      border-radius: 100px; padding: 1px 8px; font-size: 10px; font-weight: 700;
+      margin-left: auto;
+      background: var(--teams-purple);
+      border-radius: 100px;
+      padding: 1px 8px;
+      font-size: 10px;
+      font-weight: 700;
     }
 
     /* ── Main content ────────────────────────────────────────────────────── */
-    .main { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
 
     /* ── Cards ───────────────────────────────────────────────────────────── */
     .card {
-      background: var(--teams-surface); border: 1px solid var(--teams-border);
-      border-radius: 8px; box-shadow: var(--shadow);
+      background: var(--teams-surface);
+      border: 1px solid var(--teams-border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
     }
+
     .card-header {
-      padding: 16px 20px 12px; border-bottom: 1px solid var(--teams-border);
-      display: flex; align-items: center; gap: 12px;
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--teams-border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
-    .card-title { font-size: 15px; font-weight: 600; }
-    .card-subtitle { font-size: 12px; color: var(--teams-text-muted); margin-top: 2px; }
-    .card-body { padding: 20px; }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: var(--teams-text-muted);
+      margin-top: 2px;
+    }
+
+    .card-body {
+      padding: 20px;
+    }
 
     /* ── Buttons ─────────────────────────────────────────────────────────── */
     .btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 16px; border-radius: var(--radius); font-size: 13px;
-      font-weight: 600; cursor: pointer; border: none; transition: all .15s;
-      font-family: inherit; text-decoration: none; white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .15s;
+      font-family: inherit;
+      text-decoration: none;
+      white-space: nowrap;
     }
-    .btn-primary { background: var(--teams-purple); color: #fff; }
-    .btn-primary:hover { background: var(--teams-purple-dark); }
-    .btn-secondary { background: transparent; color: var(--teams-text); border: 1px solid var(--teams-border); }
-    .btn-secondary:hover { background: var(--teams-bg); }
-    .btn-danger { background: transparent; color: var(--teams-danger); border: 1px solid rgba(197,15,31,.3); }
-    .btn-danger:hover { background: rgba(197,15,31,.07); }
-    .btn-sm { padding: 4px 10px; font-size: 12px; }
-    .btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--teams-purple);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--teams-purple-dark);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--teams-text);
+      border: 1px solid var(--teams-border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--teams-bg);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--teams-danger);
+      border: 1px solid rgba(197, 15, 31, .3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(197, 15, 31, .07);
+    }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    .btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
 
     /* ── Form ────────────────────────────────────────────────────────────── */
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-    .form-row.single { grid-template-columns: 1fr; }
-    .form-group { display: flex; flex-direction: column; gap: 5px; }
-    label { font-size: 12px; font-weight: 600; color: var(--teams-text-secondary); }
-    input[type=text], input[type=datetime-local], select, .file-input-label {
-      padding: 8px 12px; border: 1px solid var(--teams-border); border-radius: var(--radius);
-      font-size: 13px; font-family: inherit; background: var(--teams-surface);
-      color: var(--teams-text); transition: border .15s;
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
     }
-    input:focus, select:focus { outline: none; border-color: var(--teams-purple); box-shadow: 0 0 0 2px rgba(98,100,167,.2); }
-    input[type=file] { display: none; }
+
+    .form-row.single {
+      grid-template-columns: 1fr;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--teams-text-secondary);
+    }
+
+    input[type=text],
+    input[type=datetime-local],
+    select,
     .file-input-label {
-      cursor: pointer; color: var(--teams-text-muted); display: flex;
-      align-items: center; gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--teams-border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-family: inherit;
+      background: var(--teams-surface);
+      color: var(--teams-text);
+      transition: border .15s;
     }
-    .file-input-label:hover { border-color: var(--teams-purple); }
-    .file-input-label.has-file { color: var(--teams-text); border-color: var(--teams-success); }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--teams-purple);
+      box-shadow: 0 0 0 2px rgba(98, 100, 167, .2);
+    }
+
+    input[type=file] {
+      display: none;
+    }
+
+    .file-input-label {
+      cursor: pointer;
+      color: var(--teams-text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .file-input-label:hover {
+      border-color: var(--teams-purple);
+    }
+
+    .file-input-label.has-file {
+      color: var(--teams-text);
+      border-color: var(--teams-success);
+    }
 
     /* ── Table ───────────────────────────────────────────────────────────── */
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th {
-      text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 700;
-      color: var(--teams-text-muted); text-transform: uppercase; letter-spacing: 1px;
-      border-bottom: 2px solid var(--teams-border); background: #faf9f8;
+    .table-wrap {
+      overflow-x: auto;
     }
-    td { padding: 11px 12px; border-bottom: 1px solid var(--teams-border); vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #faf9f8; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      padding: 9px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--teams-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 2px solid var(--teams-border);
+      background: #faf9f8;
+    }
+
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--teams-border);
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: #faf9f8;
+    }
 
     /* ── Badges ──────────────────────────────────────────────────────────── */
     .badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
     }
-    .badge-green { background: rgba(16,124,16,.1); color: var(--teams-success); }
-    .badge-blue  { background: rgba(0,120,212,.1); color: var(--teams-info); }
-    .badge-purple { background: rgba(98,100,167,.12); color: var(--teams-purple); }
-    .badge-orange { background: rgba(210,146,0,.1); color: var(--teams-warning); }
+
+    .badge-green {
+      background: rgba(16, 124, 16, .1);
+      color: var(--teams-success);
+    }
+
+    .badge-blue {
+      background: rgba(0, 120, 212, .1);
+      color: var(--teams-info);
+    }
+
+    .badge-purple {
+      background: rgba(98, 100, 167, .12);
+      color: var(--teams-purple);
+    }
+
+    .badge-orange {
+      background: rgba(210, 146, 0, .1);
+      color: var(--teams-warning);
+    }
 
     /* ── Stats row ───────────────────────────────────────────────────────── */
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-    .stat-card {
-      background: var(--teams-surface); border: 1px solid var(--teams-border);
-      border-radius: 8px; padding: 16px 20px; box-shadow: var(--shadow);
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
     }
-    .stat-value { font-size: 28px; font-weight: 700; color: var(--teams-purple); line-height: 1.2; }
-    .stat-label { font-size: 12px; color: var(--teams-text-muted); margin-top: 4px; }
+
+    .stat-card {
+      background: var(--teams-surface);
+      border: 1px solid var(--teams-border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--teams-purple);
+      line-height: 1.2;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--teams-text-muted);
+      margin-top: 4px;
+    }
 
     /* ── Transcript viewer ───────────────────────────────────────────────── */
     .transcript-panel {
-      font-size: 13px; line-height: 1.7; max-height: 420px; overflow-y: auto;
-      background: #faf9f8; border-radius: var(--radius); padding: 16px;
+      font-size: 13px;
+      line-height: 1.7;
+      max-height: 420px;
+      overflow-y: auto;
+      background: #faf9f8;
+      border-radius: var(--radius);
+      padding: 16px;
       border: 1px solid var(--teams-border);
     }
-    .transcript-cue { margin-bottom: 14px; }
-    .transcript-cue .ts { font-size: 11px; color: var(--teams-text-muted); font-weight: 600; margin-bottom: 2px; }
-    .transcript-cue .speaker {
-      display: inline-block; padding: 1px 8px; border-radius: 100px; font-size: 11px;
-      font-weight: 700; color: #fff; margin-bottom: 3px;
+
+    .transcript-cue {
+      margin-bottom: 14px;
     }
-    .transcript-cue .text { color: var(--teams-text-secondary); }
+
+    .transcript-cue .ts {
+      font-size: 11px;
+      color: var(--teams-text-muted);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .transcript-cue .speaker {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 3px;
+    }
+
+    .transcript-cue .text {
+      color: var(--teams-text-secondary);
+    }
 
     /* ── Modal ───────────────────────────────────────────────────────────── */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.45);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 200; backdrop-filter: blur(3px); padding: 16px;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      backdrop-filter: blur(3px);
+      padding: 16px;
     }
-    .modal-overlay.hidden { display: none; }
+
+    .modal-overlay.hidden {
+      display: none;
+    }
+
     .modal {
-      background: var(--teams-surface); border-radius: 8px;
-      width: min(640px, 100%); max-height: 90vh; overflow-y: auto;
-      box-shadow: 0 8px 40px rgba(0,0,0,.25);
+      background: var(--teams-surface);
+      border-radius: 8px;
+      width: min(640px, 100%);
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 40px rgba(0, 0, 0, .25);
     }
+
     .modal-header {
-      padding: 20px 24px 16px; border-bottom: 1px solid var(--teams-border);
-      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--teams-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    .modal-header h2 { font-size: 18px; font-weight: 700; }
-    .modal-body { padding: 24px; }
+
+    .modal-header h2 {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
     .modal-footer {
-      padding: 16px 24px; border-top: 1px solid var(--teams-border);
-      display: flex; justify-content: flex-end; gap: 10px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--teams-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
     }
 
     /* ── Notification ─────────────────────────────────────────────────────── */
     #toast {
-      position: fixed; bottom: 24px; right: 24px;
-      background: var(--teams-text); color: #fff;
-      border-radius: 8px; padding: 12px 20px; font-size: 14px;
-      box-shadow: 0 4px 20px rgba(0,0,0,.25); z-index: 500;
-      transform: translateY(100px); opacity: 0;
-      transition: all .25s; max-width: 360px;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--teams-text);
+      color: #fff;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .25);
+      z-index: 500;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all .25s;
+      max-width: 360px;
     }
-    #toast.show { transform: translateY(0); opacity: 1; }
-    #toast.success { background: var(--teams-success); }
-    #toast.error   { background: var(--teams-danger); }
+
+    #toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    #toast.success {
+      background: var(--teams-success);
+    }
+
+    #toast.error {
+      background: var(--teams-danger);
+    }
 
     /* ── Detail expand ────────────────────────────────────────────────────── */
-    .expand-row { display: none; }
-    .expand-row.open { display: table-row; }
-    .expand-row td { background: #faf9f8; padding: 16px 20px; }
+    .expand-row {
+      display: none;
+    }
+
+    .expand-row.open {
+      display: table-row;
+    }
+
+    .expand-row td {
+      background: #faf9f8;
+      padding: 16px 20px;
+    }
 
     /* ── VTT diarization table ────────────────────────────────────────────── */
-    .diar-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .diar-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
     .diar-table th,
-    .diar-table td { padding: 6px 10px; border: 1px solid var(--teams-border); }
-    .diar-table th { background: #f3f2f1; }
+    .diar-table td {
+      padding: 6px 10px;
+      border: 1px solid var(--teams-border);
+    }
+
+    .diar-table th {
+      background: #f3f2f1;
+    }
 
     /* ── Upload progress ─────────────────────────────────────────────────── */
-    .upload-progress { height: 4px; background: var(--teams-border); border-radius: 2px; overflow: hidden; margin-top: 12px; }
-    .upload-progress-bar { height: 100%; background: var(--teams-purple); width: 0; transition: width .3s; border-radius: 2px; }
+    .upload-progress {
+      height: 4px;
+      background: var(--teams-border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .upload-progress-bar {
+      height: 100%;
+      background: var(--teams-purple);
+      width: 0;
+      transition: width .3s;
+      border-radius: 2px;
+    }
 
     /* ── Divider ─────────────────────────────────────────────────────────── */
-    .divider { border: none; border-top: 1px solid var(--teams-border); margin: 20px 0; }
+    .divider {
+      border: none;
+      border-top: 1px solid var(--teams-border);
+      margin: 20px 0;
+    }
 
     /* ── Tabs ────────────────────────────────────────────────────────────── */
-    .tabs { display: flex; border-bottom: 1px solid var(--teams-border); margin-bottom: 20px; }
-    .tab { padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; color: var(--teams-text-muted); margin-bottom: -1px; transition: all .15s; }
-    .tab:hover { color: var(--teams-text); }
-    .tab.active { color: var(--teams-purple); border-bottom-color: var(--teams-purple); }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--teams-border);
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      color: var(--teams-text-muted);
+      margin-bottom: -1px;
+      transition: all .15s;
+    }
+
+    .tab:hover {
+      color: var(--teams-text);
+    }
+
+    .tab.active {
+      color: var(--teams-purple);
+      border-bottom-color: var(--teams-purple);
+    }
 
     @media (max-width: 768px) {
-      .sidebar { display: none; }
-      .stats-row { grid-template-columns: 1fr 1fr; }
-      .form-row { grid-template-columns: 1fr; }
+      .sidebar {
+        display: none;
+      }
+
+      .stats-row {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
+
 <body>
 
-<!-- ────────────────────── TOP BAR ────────────────────────────────────────── -->
-<div class="topbar">
-  <div class="topbar-logo">
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="24" height="24" rx="5" fill="#6264a7"/>
-      <path d="M15 7h2a2 2 0 012 2v4a2 2 0 01-2 2h-2" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-      <circle cx="9" cy="9" r="2.5" stroke="#fff" stroke-width="1.5"/>
-      <path d="M4 19c0-3 2.2-5 5-5s5 2 5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-    <span>Teams Media Server</span>
-  </div>
-  <div class="topbar-nav">
-    <button class="active" onclick="showPage('dashboard')">Dashboard</button>
-    <button onclick="showPage('meetings')">Meetings</button>
-    <button onclick="showPage('api-explorer')">API Explorer</button>
-  </div>
-  <div class="topbar-right">
-    <span class="pill" id="health-pill">● Connecting…</span>
-  </div>
-</div>
-
-<div class="layout">
-
-<!-- ────────────────────── SIDEBAR ────────────────────────────────────────── -->
-<aside class="sidebar">
-  <div class="sidebar-section">
-    <div class="sidebar-label">Overview</div>
-    <div class="sidebar-item active" onclick="showPage('dashboard'); setSidebarActive(this)">
-      <span class="icon">⊞</span> Dashboard
+  <!-- ────────────────────── TOP BAR ────────────────────────────────────────── -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="24" height="24" rx="5" fill="#6264a7" />
+        <path d="M15 7h2a2 2 0 012 2v4a2 2 0 01-2 2h-2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" />
+        <circle cx="9" cy="9" r="2.5" stroke="#fff" stroke-width="1.5" />
+        <path d="M4 19c0-3 2.2-5 5-5s5 2 5 5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" />
+      </svg>
+      <span>Teams Media Server</span>
     </div>
-    <div class="sidebar-item" onclick="showPage('meetings'); setSidebarActive(this)">
-      <span class="icon">📅</span> Online Meetings
-      <span class="meeting-pill" id="meeting-count">0</span>
+    <div class="topbar-nav">
+      <button class="active" onclick="showPage('dashboard')">Dashboard</button>
+      <button onclick="showPage('meetings')">Meetings</button>
+      <button onclick="showPage('api-explorer')">API Explorer</button>
+    </div>
+    <div class="topbar-right">
+      <span class="pill" id="health-pill">● Connecting…</span>
     </div>
   </div>
-  <div class="sidebar-section">
-    <div class="sidebar-label">Graph API</div>
-    <div class="sidebar-item" onclick="showPage('api-explorer'); setSidebarActive(this)">
-      <span class="icon">🔌</span> API Explorer
+
+  <div class="layout">
+
+    <!-- ────────────────────── SIDEBAR ────────────────────────────────────────── -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Overview</div>
+        <div class="sidebar-item active" onclick="showPage('dashboard'); setSidebarActive(this)">
+          <span class="icon">⊞</span> Dashboard
+        </div>
+        <div class="sidebar-item" onclick="showPage('meetings'); setSidebarActive(this)">
+          <span class="icon">📅</span> Online Meetings
+          <span class="meeting-pill" id="meeting-count">0</span>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Graph API</div>
+        <div class="sidebar-item" onclick="showPage('api-explorer'); setSidebarActive(this)">
+          <span class="icon">🔌</span> API Explorer
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Actions</div>
+        <div class="sidebar-item" onclick="openCreateMeeting()">
+          <span class="icon">➕</span> New Meeting
+        </div>
+      </div>
+    </aside>
+
+    <!-- ────────────────────── MAIN ───────────────────────────────────────────── -->
+    <main class="main">
+
+      <!-- ── Dashboard ── -->
+      <div id="page-dashboard">
+        <div class="stats-row" id="stats-row">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-meetings">—</div>
+            <div class="stat-label">Online Meetings</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-transcripts">—</div>
+            <div class="stat-label">Transcripts</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-recordings">—</div>
+            <div class="stat-label">Recordings</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-speakers">—</div>
+            <div class="stat-label">Total Speakers</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:0">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Recent Meetings</div>
+              <div class="card-subtitle">Latest 5 online meetings with transcripts &amp; recordings</div>
+            </div>
+            <button class="btn btn-primary" style="margin-left:auto" onclick="openCreateMeeting()">+ New
+              Meeting</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div class="table-wrap">
+              <table id="recent-table">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Organizer</th>
+                    <th>Start</th>
+                    <th>Transcripts</th>
+                    <th>Recordings</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-tbody">
+                  <tr>
+                    <td colspan="6" style="text-align:center;color:var(--teams-text-muted);padding:32px">Loading…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Meetings page ── -->
+      <div id="page-meetings" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Online Meetings</div>
+              <div class="card-subtitle">Manage Teams meeting transcripts and recordings</div>
+            </div>
+            <button class="btn btn-primary" style="margin-left:auto" onclick="openCreateMeeting()">+ New
+              Meeting</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div class="table-wrap">
+              <table id="meetings-table">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Meeting ID</th>
+                    <th>Organizer</th>
+                    <th>Start</th>
+                    <th>Transcripts</th>
+                    <th>Recordings</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="meetings-tbody">
+                  <tr>
+                    <td colspan="7" style="text-align:center;color:var(--teams-text-muted);padding:32px">Loading…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── API Explorer ── -->
+      <div id="page-api-explorer" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">API Explorer</div>
+              <div class="card-subtitle">Mirror of Microsoft Graph API endpoints —
+                <code>base: /v1.0/me/onlineMeetings</code></div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tabs">
+              <div class="tab active" onclick="setApiTab(this,'meetings-api')">Meetings</div>
+              <div class="tab" onclick="setApiTab(this,'transcripts-api')">Transcripts</div>
+              <div class="tab" onclick="setApiTab(this,'recordings-api')">Recordings</div>
+            </div>
+
+            <!-- Meetings API -->
+            <div id="meetings-api">
+              <table style="width:100%;border-collapse:collapse;font-size:13px">
+                <thead>
+                  <tr style="background:#f3f2f1">
+                    <th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Method</th>
+                    <th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Endpoint</th>
+                    <th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-blue">GET</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings</code>
+                    </td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">List all meetings</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-green">POST</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings</code>
+                    </td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Create a meeting entry</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-blue">GET</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{id}</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Get meeting detail</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-orange">DELETE</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{id}</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Delete a meeting</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Transcripts API -->
+            <div id="transcripts-api" style="display:none">
+              <table style="width:100%;border-collapse:collapse;font-size:13px">
+                <thead>
+                  <tr style="background:#f3f2f1">
+                    <th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Method</th>
+                    <th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Endpoint</th>
+                    <th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-blue">GET</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{mid}/transcripts</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">List transcripts for a meeting</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-green">POST</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{mid}/transcripts</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Upload a VTT transcript</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-blue">GET</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{mid}/transcripts/{tid}</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Get transcript metadata &amp;
+                      diarization</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-blue">GET</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{mid}/transcripts/{tid}/content</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Download raw VTT file</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-orange">DELETE</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{mid}/transcripts/{tid}</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Delete a transcript</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Recordings API -->
+            <div id="recordings-api" style="display:none">
+              <table style="width:100%;border-collapse:collapse;font-size:13px">
+                <thead>
+                  <tr style="background:#f3f2f1">
+                    <th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Method</th>
+                    <th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Endpoint</th>
+                    <th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-blue">GET</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{mid}/recordings</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">List recordings for a meeting</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-green">POST</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{mid}/recordings</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Upload a video recording</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-blue">GET</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{mid}/recordings/{rid}</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Get recording metadata</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-blue">GET</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{mid}/recordings/{rid}/content</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Stream video file</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px;border:1px solid var(--teams-border)"><span
+                        class="badge badge-orange">DELETE</span></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">
+                      <code>/v1.0/me/onlineMeetings/{mid}/recordings/{rid}</code></td>
+                    <td style="padding:8px;border:1px solid var(--teams-border)">Delete a recording</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- end .layout -->
+
+  <!-- ── TOAST ──────────────────────────────────────────────────────────────── -->
+  <div id="toast"></div>
+
+  <!-- ── CREATE MEETING MODAL ───────────────────────────────────────────────── -->
+  <div class="modal-overlay hidden" id="create-meeting-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Create Online Meeting</h2>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('create-meeting-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="create-meeting-form">
+          <div class="form-row">
+            <div class="form-group" style="grid-column:1/-1">
+              <label>Meeting Subject *</label>
+              <input type="text" id="m-subject" placeholder="e.g. Weekly Team Standup — Feb 2026" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Organizer Display Name</label>
+              <input type="text" id="m-organizer" placeholder="e.g. Rahul Kumar" />
+            </div>
+            <div class="form-group"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Start Date/Time</label>
+              <input type="datetime-local" id="m-start" />
+            </div>
+            <div class="form-group">
+              <label>End Date/Time</label>
+              <input type="datetime-local" id="m-end" />
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--teams-text-secondary)">
+            📎 Optional: attach transcript &amp; recording now
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Transcript File (.vtt / .txt)</label>
+              <label class="file-input-label" id="transcript-label" for="m-transcript">
+                📄 Choose VTT file…
+              </label>
+              <input type="file" id="m-transcript" accept=".vtt,.txt,.srt"
+                onchange="updateFileLabel('m-transcript','transcript-label')" />
+            </div>
+            <div class="form-group">
+              <label>Recording (video file)</label>
+              <label class="file-input-label" id="recording-label" for="m-recording">
+                🎬 Choose video…
+              </label>
+              <input type="file" id="m-recording" accept="video/*,audio/*"
+                onchange="updateFileLabel('m-recording','recording-label')" />
+            </div>
+          </div>
+
+          <div class="upload-progress" id="upload-progress" style="display:none">
+            <div class="upload-progress-bar" id="upload-bar"></div>
+          </div>
+          <div id="create-error" style="color:var(--teams-danger);font-size:13px;margin-top:8px;display:none"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('create-meeting-modal')">Cancel</button>
+        <button class="btn btn-primary" id="create-btn" onclick="submitCreateMeeting()">Create Meeting</button>
+      </div>
     </div>
   </div>
-  <div class="sidebar-section">
-    <div class="sidebar-label">Actions</div>
-    <div class="sidebar-item" onclick="openCreateMeeting()">
-      <span class="icon">➕</span> New Meeting
-    </div>
-  </div>
-</aside>
 
-<!-- ────────────────────── MAIN ───────────────────────────────────────────── -->
-<main class="main">
-
-  <!-- ── Dashboard ── -->
-  <div id="page-dashboard">
-    <div class="stats-row" id="stats-row">
-      <div class="stat-card"><div class="stat-value" id="stat-meetings">—</div><div class="stat-label">Online Meetings</div></div>
-      <div class="stat-card"><div class="stat-value" id="stat-transcripts">—</div><div class="stat-label">Transcripts</div></div>
-      <div class="stat-card"><div class="stat-value" id="stat-recordings">—</div><div class="stat-label">Recordings</div></div>
-      <div class="stat-card"><div class="stat-value" id="stat-speakers">—</div><div class="stat-label">Total Speakers</div></div>
-    </div>
-
-    <div class="card" style="margin-top:0">
-      <div class="card-header">
+  <!-- ── MEETING DETAIL MODAL ───────────────────────────────────────────────── -->
+  <div class="modal-overlay hidden" id="meeting-detail-modal">
+    <div class="modal" style="width:min(800px,100%)">
+      <div class="modal-header">
         <div>
-          <div class="card-title">Recent Meetings</div>
-          <div class="card-subtitle">Latest 5 online meetings with transcripts &amp; recordings</div>
+          <h2 id="detail-subject">Meeting Detail</h2>
+          <div style="font-size:12px;color:var(--teams-text-muted);margin-top:4px" id="detail-id"></div>
         </div>
-        <button class="btn btn-primary" style="margin-left:auto" onclick="openCreateMeeting()">+ New Meeting</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('meeting-detail-modal')">✕</button>
       </div>
-      <div class="card-body" style="padding:0">
-        <div class="table-wrap">
-          <table id="recent-table">
-            <thead><tr>
-              <th>Subject</th><th>Organizer</th><th>Start</th>
-              <th>Transcripts</th><th>Recordings</th><th>Actions</th>
-            </tr></thead>
-            <tbody id="recent-tbody"><tr><td colspan="6" style="text-align:center;color:var(--teams-text-muted);padding:32px">Loading…</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Meetings page ── -->
-  <div id="page-meetings" style="display:none">
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">Online Meetings</div>
-          <div class="card-subtitle">Manage Teams meeting transcripts and recordings</div>
-        </div>
-        <button class="btn btn-primary" style="margin-left:auto" onclick="openCreateMeeting()">+ New Meeting</button>
-      </div>
-      <div class="card-body" style="padding:0">
-        <div class="table-wrap">
-          <table id="meetings-table">
-            <thead><tr>
-              <th>Subject</th><th>Meeting ID</th><th>Organizer</th><th>Start</th>
-              <th>Transcripts</th><th>Recordings</th><th>Actions</th>
-            </tr></thead>
-            <tbody id="meetings-tbody"><tr><td colspan="7" style="text-align:center;color:var(--teams-text-muted);padding:32px">Loading…</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── API Explorer ── -->
-  <div id="page-api-explorer" style="display:none">
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">API Explorer</div>
-          <div class="card-subtitle">Mirror of Microsoft Graph API endpoints — <code>base: /v1.0/me/onlineMeetings</code></div>
-        </div>
-      </div>
-      <div class="card-body">
+      <div class="modal-body">
         <div class="tabs">
-          <div class="tab active" onclick="setApiTab(this,'meetings-api')">Meetings</div>
-          <div class="tab" onclick="setApiTab(this,'transcripts-api')">Transcripts</div>
-          <div class="tab" onclick="setApiTab(this,'recordings-api')">Recordings</div>
+          <div class="tab active" onclick="setDetailTab(this,'dt-transcript')">📄 Transcripts</div>
+          <div class="tab" onclick="setDetailTab(this,'dt-recording')">🎬 Recordings</div>
+          <div class="tab" onclick="setDetailTab(this,'dt-preview')">👁 Preview</div>
         </div>
 
-        <!-- Meetings API -->
-        <div id="meetings-api">
-          <table style="width:100%;border-collapse:collapse;font-size:13px">
-            <thead><tr style="background:#f3f2f1"><th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Method</th><th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Endpoint</th><th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Description</th></tr></thead>
-            <tbody>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-blue">GET</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings</code></td><td style="padding:8px;border:1px solid var(--teams-border)">List all meetings</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-green">POST</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Create a meeting entry</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-blue">GET</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{id}</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Get meeting detail</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-orange">DELETE</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{id}</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Delete a meeting</td></tr>
-            </tbody>
-          </table>
+        <!-- Transcripts tab -->
+        <div id="dt-transcript">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+            <button class="btn btn-primary btn-sm" onclick="openUploadTranscript()">+ Upload Transcript</button>
+          </div>
+          <div id="transcript-list">
+            <p style="color:var(--teams-text-muted);font-size:13px">No transcripts yet.</p>
+          </div>
         </div>
 
-        <!-- Transcripts API -->
-        <div id="transcripts-api" style="display:none">
-          <table style="width:100%;border-collapse:collapse;font-size:13px">
-            <thead><tr style="background:#f3f2f1"><th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Method</th><th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Endpoint</th><th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Description</th></tr></thead>
-            <tbody>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-blue">GET</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{mid}/transcripts</code></td><td style="padding:8px;border:1px solid var(--teams-border)">List transcripts for a meeting</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-green">POST</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{mid}/transcripts</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Upload a VTT transcript</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-blue">GET</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{mid}/transcripts/{tid}</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Get transcript metadata &amp; diarization</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-blue">GET</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{mid}/transcripts/{tid}/content</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Download raw VTT file</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-orange">DELETE</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{mid}/transcripts/{tid}</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Delete a transcript</td></tr>
-            </tbody>
-          </table>
+        <!-- Recordings tab -->
+        <div id="dt-recording" style="display:none">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+            <button class="btn btn-primary btn-sm" onclick="openUploadRecording()">+ Upload Recording</button>
+          </div>
+          <div id="recording-list">
+            <p style="color:var(--teams-text-muted);font-size:13px">No recordings yet.</p>
+          </div>
         </div>
 
-        <!-- Recordings API -->
-        <div id="recordings-api" style="display:none">
-          <table style="width:100%;border-collapse:collapse;font-size:13px">
-            <thead><tr style="background:#f3f2f1"><th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Method</th><th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Endpoint</th><th style="padding:8px;text-align:left;border:1px solid var(--teams-border)">Description</th></tr></thead>
-            <tbody>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-blue">GET</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{mid}/recordings</code></td><td style="padding:8px;border:1px solid var(--teams-border)">List recordings for a meeting</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-green">POST</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{mid}/recordings</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Upload a video recording</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-blue">GET</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{mid}/recordings/{rid}</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Get recording metadata</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-blue">GET</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{mid}/recordings/{rid}/content</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Stream video file</td></tr>
-              <tr><td style="padding:8px;border:1px solid var(--teams-border)"><span class="badge badge-orange">DELETE</span></td><td style="padding:8px;border:1px solid var(--teams-border)"><code>/v1.0/me/onlineMeetings/{mid}/recordings/{rid}</code></td><td style="padding:8px;border:1px solid var(--teams-border)">Delete a recording</td></tr>
-            </tbody>
-          </table>
+        <!-- Preview tab -->
+        <div id="dt-preview" style="display:none">
+          <div id="preview-area">
+            <p style="color:var(--teams-text-muted);font-size:13px">Select a transcript or recording above to preview.
+            </p>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-</main>
-</div><!-- end .layout -->
-
-<!-- ── TOAST ──────────────────────────────────────────────────────────────── -->
-<div id="toast"></div>
-
-<!-- ── CREATE MEETING MODAL ───────────────────────────────────────────────── -->
-<div class="modal-overlay hidden" id="create-meeting-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Create Online Meeting</h2>
-      <button class="btn btn-secondary btn-sm" onclick="closeModal('create-meeting-modal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <form id="create-meeting-form">
-        <div class="form-row">
-          <div class="form-group" style="grid-column:1/-1">
-            <label>Meeting Subject *</label>
-            <input type="text" id="m-subject" placeholder="e.g. Weekly Team Standup — Feb 2026" required />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Organizer Display Name</label>
-            <input type="text" id="m-organizer" placeholder="e.g. Rahul Kumar" />
-          </div>
-          <div class="form-group"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Start Date/Time</label>
-            <input type="datetime-local" id="m-start" />
-          </div>
-          <div class="form-group">
-            <label>End Date/Time</label>
-            <input type="datetime-local" id="m-end" />
-          </div>
-        </div>
-
-        <hr class="divider" />
-        <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--teams-text-secondary)">
-          📎 Optional: attach transcript &amp; recording now
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Transcript File (.vtt / .txt)</label>
-            <label class="file-input-label" id="transcript-label" for="m-transcript">
-              📄 Choose VTT file…
-            </label>
-            <input type="file" id="m-transcript" accept=".vtt,.txt,.srt" onchange="updateFileLabel('m-transcript','transcript-label')" />
-          </div>
-          <div class="form-group">
-            <label>Recording (video file)</label>
-            <label class="file-input-label" id="recording-label" for="m-recording">
-              🎬 Choose video…
-            </label>
-            <input type="file" id="m-recording" accept="video/*,audio/*" onchange="updateFileLabel('m-recording','recording-label')" />
-          </div>
-        </div>
-
-        <div class="upload-progress" id="upload-progress" style="display:none">
-          <div class="upload-progress-bar" id="upload-bar"></div>
-        </div>
-        <div id="create-error" style="color:var(--teams-danger);font-size:13px;margin-top:8px;display:none"></div>
-      </form>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('create-meeting-modal')">Cancel</button>
-      <button class="btn btn-primary" id="create-btn" onclick="submitCreateMeeting()">Create Meeting</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── MEETING DETAIL MODAL ───────────────────────────────────────────────── -->
-<div class="modal-overlay hidden" id="meeting-detail-modal">
-  <div class="modal" style="width:min(800px,100%)">
-    <div class="modal-header">
-      <div>
-        <h2 id="detail-subject">Meeting Detail</h2>
-        <div style="font-size:12px;color:var(--teams-text-muted);margin-top:4px" id="detail-id"></div>
+  <!-- ── UPLOAD TRANSCRIPT MODAL ────────────────────────────────────────────── -->
+  <div class="modal-overlay hidden" id="upload-transcript-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Upload Transcript</h2>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('upload-transcript-modal')">✕</button>
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="closeModal('meeting-detail-modal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="tabs">
-        <div class="tab active" onclick="setDetailTab(this,'dt-transcript')">📄 Transcripts</div>
-        <div class="tab" onclick="setDetailTab(this,'dt-recording')">🎬 Recordings</div>
-        <div class="tab" onclick="setDetailTab(this,'dt-preview')">👁 Preview</div>
-      </div>
-
-      <!-- Transcripts tab -->
-      <div id="dt-transcript">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-          <button class="btn btn-primary btn-sm" onclick="openUploadTranscript()">+ Upload Transcript</button>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--teams-text-muted);margin-bottom:16px">
+          Upload a <strong>WebVTT (.vtt)</strong> or <strong>text (.txt)</strong> file. The server will automatically
+          parse speaker labels
+          (diarization) from <code>&lt;v SpeakerName&gt;</code> tags or <code>[00:00:00] SpeakerName:</code> format,
+          identical to the Teams Graph API format.
+        </p>
+        <div class="form-group" style="margin-bottom:16px">
+          <label>VTT / Transcript File *</label>
+          <label class="file-input-label" id="ut-file-label" for="ut-file">📄 Choose .vtt file…</label>
+          <input type="file" id="ut-file" accept=".vtt,.txt,.srt"
+            onchange="updateFileLabel('ut-file','ut-file-label')" />
         </div>
-        <div id="transcript-list"><p style="color:var(--teams-text-muted);font-size:13px">No transcripts yet.</p></div>
-      </div>
-
-      <!-- Recordings tab -->
-      <div id="dt-recording" style="display:none">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-          <button class="btn btn-primary btn-sm" onclick="openUploadRecording()">+ Upload Recording</button>
+        <div class="upload-progress" id="ut-progress" style="display:none">
+          <div class="upload-progress-bar" id="ut-bar"></div>
         </div>
-        <div id="recording-list"><p style="color:var(--teams-text-muted);font-size:13px">No recordings yet.</p></div>
+        <div id="ut-error" style="color:var(--teams-danger);font-size:13px;margin-top:8px;display:none"></div>
       </div>
-
-      <!-- Preview tab -->
-      <div id="dt-preview" style="display:none">
-        <div id="preview-area">
-          <p style="color:var(--teams-text-muted);font-size:13px">Select a transcript or recording above to preview.</p>
-        </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('upload-transcript-modal')">Cancel</button>
+        <button class="btn btn-primary" id="ut-btn" onclick="submitUploadTranscript()">Upload</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ── UPLOAD TRANSCRIPT MODAL ────────────────────────────────────────────── -->
-<div class="modal-overlay hidden" id="upload-transcript-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Upload Transcript</h2>
-      <button class="btn btn-secondary btn-sm" onclick="closeModal('upload-transcript-modal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:13px;color:var(--teams-text-muted);margin-bottom:16px">
-        Upload a <strong>WebVTT (.vtt)</strong> or <strong>text (.txt)</strong> file. The server will automatically parse speaker labels
-        (diarization) from <code>&lt;v SpeakerName&gt;</code> tags or <code>[00:00:00] SpeakerName:</code> format, identical to the Teams Graph API format.
-      </p>
-      <div class="form-group" style="margin-bottom:16px">
-        <label>VTT / Transcript File *</label>
-        <label class="file-input-label" id="ut-file-label" for="ut-file">📄 Choose .vtt file…</label>
-        <input type="file" id="ut-file" accept=".vtt,.txt,.srt" onchange="updateFileLabel('ut-file','ut-file-label')" />
+  <!-- ── UPLOAD RECORDING MODAL ─────────────────────────────────────────────── -->
+  <div class="modal-overlay hidden" id="upload-recording-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Upload Recording</h2>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('upload-recording-modal')">✕</button>
       </div>
-      <div class="upload-progress" id="ut-progress" style="display:none">
-        <div class="upload-progress-bar" id="ut-bar"></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--teams-text-muted);margin-bottom:16px">
+          Upload an MP4, MOV, WebM, or audio file. The file will be accessible via the
+          <code>/recordings/{rid}/content</code> endpoint.
+        </p>
+        <div class="form-group" style="margin-bottom:16px">
+          <label>Video / Audio File *</label>
+          <label class="file-input-label" id="ur-file-label" for="ur-file">🎬 Choose video file…</label>
+          <input type="file" id="ur-file" accept="video/*,audio/*"
+            onchange="updateFileLabel('ur-file','ur-file-label')" />
+        </div>
+        <div class="upload-progress" id="ur-progress" style="display:none">
+          <div class="upload-progress-bar" id="ur-bar"></div>
+        </div>
+        <div id="ur-error" style="color:var(--teams-danger);font-size:13px;margin-top:8px;display:none"></div>
       </div>
-      <div id="ut-error" style="color:var(--teams-danger);font-size:13px;margin-top:8px;display:none"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('upload-transcript-modal')">Cancel</button>
-      <button class="btn btn-primary" id="ut-btn" onclick="submitUploadTranscript()">Upload</button>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('upload-recording-modal')">Cancel</button>
+        <button class="btn btn-primary" id="ur-btn" onclick="submitUploadRecording()">Upload</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- ── UPLOAD RECORDING MODAL ─────────────────────────────────────────────── -->
-<div class="modal-overlay hidden" id="upload-recording-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Upload Recording</h2>
-      <button class="btn btn-secondary btn-sm" onclick="closeModal('upload-recording-modal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:13px;color:var(--teams-text-muted);margin-bottom:16px">
-        Upload an MP4, MOV, WebM, or audio file. The file will be accessible via the
-        <code>/recordings/{rid}/content</code> endpoint.
-      </p>
-      <div class="form-group" style="margin-bottom:16px">
-        <label>Video / Audio File *</label>
-        <label class="file-input-label" id="ur-file-label" for="ur-file">🎬 Choose video file…</label>
-        <input type="file" id="ur-file" accept="video/*,audio/*" onchange="updateFileLabel('ur-file','ur-file-label')" />
-      </div>
-      <div class="upload-progress" id="ur-progress" style="display:none">
-        <div class="upload-progress-bar" id="ur-bar"></div>
-      </div>
-      <div id="ur-error" style="color:var(--teams-danger);font-size:13px;margin-top:8px;display:none"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('upload-recording-modal')">Cancel</button>
-      <button class="btn btn-primary" id="ur-btn" onclick="submitUploadRecording()">Upload</button>
-    </div>
-  </div>
-</div>
+  <script>
+    /* ── State ─────────────────────────────────────────────────────────────────── */
+    const API = '';   // same origin
+    let currentMeetingId = null;
+    let allMeetings = [];
 
-<script>
-/* ── State ─────────────────────────────────────────────────────────────────── */
-const API = '';   // same origin
-let currentMeetingId = null;
-let allMeetings = [];
+    /* ── Page routing ─────────────────────────────────────────────────────────── */
+    function showPage(id) {
+      ['dashboard', 'meetings', 'api-explorer'].forEach(p => {
+        document.getElementById(`page-${p}`).style.display = p === id ? '' : 'none';
+      });
+      if (id === 'dashboard' || id === 'meetings') loadMeetings();
+    }
 
-/* ── Page routing ─────────────────────────────────────────────────────────── */
-function showPage(id) {
-  ['dashboard','meetings','api-explorer'].forEach(p => {
-    document.getElementById(`page-${p}`).style.display = p === id ? '' : 'none';
-  });
-  if (id === 'dashboard' || id === 'meetings') loadMeetings();
-}
+    function setSidebarActive(el) {
+      document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+      el.classList.add('active');
+    }
 
-function setSidebarActive(el) {
-  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-}
+    /* ── API helpers ──────────────────────────────────────────────────────────── */
+    async function api(path, opts) {
+      const r = await fetch(API + path, opts);
+      if (!r.ok) {
+        const txt = await r.text().catch(() => r.statusText);
+        throw new Error(txt);
+      }
+      if (r.status === 204) return null;
+      return r.json().catch(() => null);
+    }
 
-/* ── API helpers ──────────────────────────────────────────────────────────── */
-async function api(path, opts) {
-  const r = await fetch(API + path, opts);
-  if (!r.ok) {
-    const txt = await r.text().catch(() => r.statusText);
-    throw new Error(txt);
-  }
-  if (r.status === 204) return null;
-  return r.json().catch(() => null);
-}
+    /* ── Toast ─────────────────────────────────────────────────────────────────── */
+    let toastTimeout;
+    function toast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = 'show ' + type;
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => el.className = '', 3000);
+    }
 
-/* ── Toast ─────────────────────────────────────────────────────────────────── */
-let toastTimeout;
-function toast(msg, type = '') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'show ' + type;
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => el.className = '', 3000);
-}
+    /* ── Modal helpers ────────────────────────────────────────────────────────── */
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-/* ── Modal helpers ────────────────────────────────────────────────────────── */
-function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    /* ── File label update ─────────────────────────────────────────────────────── */
+    function updateFileLabel(inputId, labelId) {
+      const f = document.getElementById(inputId).files[0];
+      const lbl = document.getElementById(labelId);
+      if (f) {
+        lbl.textContent = `✅  ${f.name}  (${(f.size / 1024 / 1024).toFixed(2)} MB)`;
+        lbl.classList.add('has-file');
+      }
+    }
 
-/* ── File label update ─────────────────────────────────────────────────────── */
-function updateFileLabel(inputId, labelId) {
-  const f = document.getElementById(inputId).files[0];
-  const lbl = document.getElementById(labelId);
-  if (f) {
-    lbl.textContent = `✅  ${f.name}  (${(f.size/1024/1024).toFixed(2)} MB)`;
-    lbl.classList.add('has-file');
-  }
-}
+    /* ── Formatters ─────────────────────────────────────────────────────────────── */
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      try { return new Date(iso).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }); }
+      catch { return iso; }
+    }
+    function fmtBytes(n) {
+      if (!n) return '—';
+      if (n > 1e9) return (n / 1e9).toFixed(1) + ' GB';
+      if (n > 1e6) return (n / 1e6).toFixed(1) + ' MB';
+      return (n / 1024).toFixed(0) + ' KB';
+    }
 
-/* ── Formatters ─────────────────────────────────────────────────────────────── */
-function fmtDate(iso) {
-  if (!iso) return '—';
-  try { return new Date(iso).toLocaleString('en-US', { dateStyle:'medium', timeStyle:'short' }); }
-  catch { return iso; }
-}
-function fmtBytes(n) {
-  if (!n) return '—';
-  if (n > 1e9) return (n/1e9).toFixed(1) + ' GB';
-  if (n > 1e6) return (n/1e6).toFixed(1) + ' MB';
-  return (n/1024).toFixed(0) + ' KB';
-}
+    /* ── Load & render meetings ─────────────────────────────────────────────────── */
+    async function loadMeetings() {
+      try {
+        const data = await api('/v1.0/me/onlineMeetings');
+        allMeetings = data.value || [];
+        renderMeetingsTable(allMeetings);
+        renderRecentTable(allMeetings.slice(-5).reverse());
+        updateStats(allMeetings);
+        document.getElementById('meeting-count').textContent = allMeetings.length;
+      } catch (e) { console.error(e); }
+    }
 
-/* ── Load & render meetings ─────────────────────────────────────────────────── */
-async function loadMeetings() {
-  try {
-    const data = await api('/v1.0/me/onlineMeetings');
-    allMeetings = data.value || [];
-    renderMeetingsTable(allMeetings);
-    renderRecentTable(allMeetings.slice(-5).reverse());
-    updateStats(allMeetings);
-    document.getElementById('meeting-count').textContent = allMeetings.length;
-  } catch(e) { console.error(e); }
-}
+    function updateStats(meetings) {
+      let transcripts = 0, recordings = 0, speakers = 0;
+      meetings.forEach(m => {
+        transcripts += (m.transcripts || []).length;
+        recordings += (m.recordings || []).length;
+        (m.transcripts || []).forEach(t => speakers += (t.speakerCount || 0));
+      });
+      document.getElementById('stat-meetings').textContent = meetings.length;
+      document.getElementById('stat-transcripts').textContent = transcripts;
+      document.getElementById('stat-recordings').textContent = recordings;
+      document.getElementById('stat-speakers').textContent = speakers;
+    }
 
-function updateStats(meetings) {
-  let transcripts = 0, recordings = 0, speakers = 0;
-  meetings.forEach(m => {
-    transcripts += (m.transcripts || []).length;
-    recordings  += (m.recordings  || []).length;
-    (m.transcripts || []).forEach(t => speakers += (t.speakerCount || 0));
-  });
-  document.getElementById('stat-meetings').textContent    = meetings.length;
-  document.getElementById('stat-transcripts').textContent = transcripts;
-  document.getElementById('stat-recordings').textContent  = recordings;
-  document.getElementById('stat-speakers').textContent    = speakers;
-}
-
-function meetingRow(m, cols) {
-  const txCount = (m.transcripts || []).length;
-  const recCount = (m.recordings  || []).length;
-  const colsArr = cols === 7
-    ? `<td title="${m.id}" style="font-size:11px;color:var(--teams-text-muted)">${m.id.slice(0,20)}…</td>`
-    : '';
-  return `<tr>
+    function meetingRow(m, cols) {
+      const txCount = (m.transcripts || []).length;
+      const recCount = (m.recordings || []).length;
+      const colsArr = cols === 7
+        ? `<td title="${m.id}" style="font-size:11px;color:var(--teams-text-muted)">${m.id.slice(0, 20)}…</td>`
+        : '';
+      return `<tr>
     <td style="font-weight:600">${escHtml(m.subject)}</td>
     ${colsArr}
     <td>${escHtml(m.organizer?.displayName || '—')}</td>
     <td>${fmtDate(m.startDateTime)}</td>
-    <td>${txCount > 0 ? `<span class="badge badge-blue">${txCount} transcript${txCount>1?'s':''}</span>` : '<span style="color:var(--teams-text-muted);font-size:12px">none</span>'}</td>
-    <td>${recCount > 0 ? `<span class="badge badge-green">${recCount} recording${recCount>1?'s':''}</span>` : '<span style="color:var(--teams-text-muted);font-size:12px">none</span>'}</td>
+    <td>${txCount > 0 ? `<span class="badge badge-blue">${txCount} transcript${txCount > 1 ? 's' : ''}</span>` : '<span style="color:var(--teams-text-muted);font-size:12px">none</span>'}</td>
+    <td>${recCount > 0 ? `<span class="badge badge-green">${recCount} recording${recCount > 1 ? 's' : ''}</span>` : '<span style="color:var(--teams-text-muted);font-size:12px">none</span>'}</td>
     <td style="white-space:nowrap">
+      <button class="btn btn-secondary btn-sm" onclick="promptRenameMeeting('${m.id}')">Rename</button>
       <button class="btn btn-secondary btn-sm" onclick="openMeetingDetail('${m.id}')">Open</button>
       <button class="btn btn-danger btn-sm" onclick="deleteMeeting('${m.id}')">Delete</button>
     </td>
   </tr>`;
-}
-
-function renderMeetingsTable(meetings) {
-  const tbody = document.getElementById('meetings-tbody');
-  if (!meetings.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--teams-text-muted);padding:32px">No meetings yet. Click "+ New Meeting" to create one.</td></tr>'; return; }
-  tbody.innerHTML = meetings.map(m => meetingRow(m, 7)).join('');
-}
-
-function renderRecentTable(meetings) {
-  const tbody = document.getElementById('recent-tbody');
-  if (!meetings.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--teams-text-muted);padding:32px">No meetings yet.</td></tr>'; return; }
-  tbody.innerHTML = meetings.map(m => meetingRow(m, 6)).join('');
-}
-
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-/* ── Create meeting ─────────────────────────────────────────────────────────── */
-function openCreateMeeting() {
-  document.getElementById('create-error').style.display = 'none';
-  document.getElementById('upload-progress').style.display = 'none';
-  document.getElementById('create-btn').disabled = false;
-  openModal('create-meeting-modal');
-}
-
-async function submitCreateMeeting() {
-  const subj = document.getElementById('m-subject').value.trim();
-  if (!subj) { showError('create-error','Meeting subject is required.'); return; }
-
-  const btn = document.getElementById('create-btn');
-  btn.disabled = true;
-  btn.textContent = 'Creating…';
-
-  const fd = new FormData();
-  fd.append('subject', subj);
-  fd.append('organizer', document.getElementById('m-organizer').value.trim());
-  const s = document.getElementById('m-start').value;
-  const e = document.getElementById('m-end').value;
-  if (s) fd.append('start_datetime', new Date(s).toISOString());
-  if (e) fd.append('end_datetime',   new Date(e).toISOString());
-
-  try {
-    const meeting = await api('/v1.0/me/onlineMeetings', { method:'POST', body: fd });
-
-    // Optionally upload transcript + recording
-    const txFile  = document.getElementById('m-transcript').files[0];
-    const recFile = document.getElementById('m-recording').files[0];
-
-    showProgress('upload-bar', 0);
-    document.getElementById('upload-progress').style.display='';
-
-    if (txFile) {
-      const tfd = new FormData();
-      tfd.append('file', txFile);
-      await api(`/v1.0/me/onlineMeetings/${meeting.id}/transcripts`, { method:'POST', body:tfd });
-      showProgress('upload-bar', 50);
-    }
-    if (recFile) {
-      const rfd = new FormData();
-      rfd.append('file', recFile);
-      await api(`/v1.0/me/onlineMeetings/${meeting.id}/recordings`, { method:'POST', body:rfd });
-      showProgress('upload-bar', 100);
     }
 
-    closeModal('create-meeting-modal');
-    toast('Meeting created successfully!', 'success');
-    await loadMeetings();
-  } catch(err) {
-    showError('create-error', err.message);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Create Meeting';
-  }
-}
+    function renderMeetingsTable(meetings) {
+      const tbody = document.getElementById('meetings-tbody');
+      if (!meetings.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--teams-text-muted);padding:32px">No meetings yet. Click "+ New Meeting" to create one.</td></tr>'; return; }
+      tbody.innerHTML = meetings.map(m => meetingRow(m, 7)).join('');
+    }
 
-/* ── Delete meeting ─────────────────────────────────────────────────────────── */
-async function deleteMeeting(mid) {
-  if (!confirm('Delete this meeting and all its transcripts/recordings?')) return;
-  try {
-    await api(`/v1.0/me/onlineMeetings/${mid}`, { method:'DELETE' });
-    toast('Meeting deleted.', '');
-    await loadMeetings();
-  } catch(e) { toast('Error: ' + e.message, 'error'); }
-}
+    function renderRecentTable(meetings) {
+      const tbody = document.getElementById('recent-tbody');
+      if (!meetings.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--teams-text-muted);padding:32px">No meetings yet.</td></tr>'; return; }
+      tbody.innerHTML = meetings.map(m => meetingRow(m, 6)).join('');
+    }
 
-/* ── Meeting detail ─────────────────────────────────────────────────────────── */
-async function openMeetingDetail(mid) {
-  currentMeetingId = mid;
-  try {
-    const m = await api(`/v1.0/me/onlineMeetings/${mid}`);
-    document.getElementById('detail-subject').textContent = m.subject;
-    document.getElementById('detail-id').textContent = `ID: ${m.id}`;
-    renderTranscriptList(m.transcripts || []);
-    renderRecordingList(m.recordings  || []);
-    // reset to first tab
-    setDetailTab(document.querySelector('#meeting-detail-modal .tab'), 'dt-transcript');
-    openModal('meeting-detail-modal');
-  } catch(e) { toast('Could not load meeting: ' + e.message, 'error'); }
-}
+    function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-function renderTranscriptList(transcripts) {
-  const el = document.getElementById('transcript-list');
-  if (!transcripts.length) { el.innerHTML = '<p style="color:var(--teams-text-muted);font-size:13px">No transcripts yet.</p>'; return; }
-  el.innerHTML = transcripts.map(t => `
+    /* ── Create meeting ─────────────────────────────────────────────────────────── */
+    function openCreateMeeting() {
+      document.getElementById('create-error').style.display = 'none';
+      document.getElementById('upload-progress').style.display = 'none';
+      document.getElementById('create-btn').disabled = false;
+      openModal('create-meeting-modal');
+    }
+
+    async function submitCreateMeeting() {
+      const subj = document.getElementById('m-subject').value.trim();
+      if (!subj) { showError('create-error', 'Meeting subject is required.'); return; }
+
+      const btn = document.getElementById('create-btn');
+      btn.disabled = true;
+      btn.textContent = 'Creating…';
+
+      const fd = new FormData();
+      fd.append('subject', subj);
+      fd.append('organizer', document.getElementById('m-organizer').value.trim());
+      const s = document.getElementById('m-start').value;
+      const e = document.getElementById('m-end').value;
+      if (s) fd.append('start_datetime', new Date(s).toISOString());
+      if (e) fd.append('end_datetime', new Date(e).toISOString());
+
+      try {
+        const meeting = await api('/v1.0/me/onlineMeetings', { method: 'POST', body: fd });
+
+        // Optionally upload transcript + recording
+        const txFile = document.getElementById('m-transcript').files[0];
+        const recFile = document.getElementById('m-recording').files[0];
+
+        showProgress('upload-bar', 0);
+        document.getElementById('upload-progress').style.display = '';
+
+        if (txFile) {
+          const tfd = new FormData();
+          tfd.append('file', txFile);
+          await api(`/v1.0/me/onlineMeetings/${meeting.id}/transcripts`, { method: 'POST', body: tfd });
+          showProgress('upload-bar', 50);
+        }
+        if (recFile) {
+          const rfd = new FormData();
+          rfd.append('file', recFile);
+          await api(`/v1.0/me/onlineMeetings/${meeting.id}/recordings`, { method: 'POST', body: rfd });
+          showProgress('upload-bar', 100);
+        }
+
+        closeModal('create-meeting-modal');
+        toast('Meeting created successfully!', 'success');
+        await loadMeetings();
+      } catch (err) {
+        showError('create-error', err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Meeting';
+      }
+    }
+
+    /* ── Delete meeting ─────────────────────────────────────────────────────────── */
+    async function deleteMeeting(mid) {
+      if (!confirm('Delete this meeting and all its transcripts/recordings?')) return;
+      try {
+        await api(`/v1.0/me/onlineMeetings/${mid}`, { method: 'DELETE' });
+        toast('Meeting deleted.', '');
+        await loadMeetings();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+
+    /* ── Rename meeting ─────────────────────────────────────────────────────────── */
+    async function promptRenameMeeting(mid) {
+      const m = allMeetings.find(x => x.id === mid);
+      if (!m) return;
+      const newSubject = prompt("Enter new meeting name:", m.subject);
+      if (!newSubject || newSubject.trim() === m.subject || newSubject.trim() === "") return;
+
+      try {
+        const fd = new FormData();
+        fd.append("subject", newSubject.trim());
+        await api(`/v1.0/me/onlineMeetings/${mid}`, { method: 'PATCH', body: fd });
+        toast('Meeting renamed.', 'success');
+        await loadMeetings();
+      } catch (e) {
+        toast('Error: ' + e.message, 'error');
+      }
+    }
+
+    /* ── Meeting detail ─────────────────────────────────────────────────────────── */
+    async function openMeetingDetail(mid) {
+      currentMeetingId = mid;
+      try {
+        const m = await api(`/v1.0/me/onlineMeetings/${mid}`);
+        document.getElementById('detail-subject').textContent = m.subject;
+        document.getElementById('detail-id').textContent = `ID: ${m.id}`;
+        renderTranscriptList(m.transcripts || []);
+        renderRecordingList(m.recordings || []);
+        // reset to first tab
+        setDetailTab(document.querySelector('#meeting-detail-modal .tab'), 'dt-transcript');
+        openModal('meeting-detail-modal');
+      } catch (e) { toast('Could not load meeting: ' + e.message, 'error'); }
+    }
+
+    function renderTranscriptList(transcripts) {
+      const el = document.getElementById('transcript-list');
+      if (!transcripts.length) { el.innerHTML = '<p style="color:var(--teams-text-muted);font-size:13px">No transcripts yet.</p>'; return; }
+      el.innerHTML = transcripts.map(t => `
     <div style="border:1px solid var(--teams-border);border-radius:6px;padding:14px 16px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:13px;font-weight:600">📄 ${escHtml(t.filename)}</span>
@@ -829,25 +1401,25 @@ function renderTranscriptList(transcripts) {
       </div>
     </div>
   `).join('');
-}
+    }
 
-function renderDiarization(diar) {
-  const speakerColors = ['#6264a7','#0078d4','#107c10','#d29200','#c50f1f','#038387'];
-  return `<div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--teams-text-muted);margin-bottom:6px">Diarization</div>
+    function renderDiarization(diar) {
+      const speakerColors = ['#6264a7', '#0078d4', '#107c10', '#d29200', '#c50f1f', '#038387'];
+      return `<div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--teams-text-muted);margin-bottom:6px">Diarization</div>
   <div style="display:flex;flex-wrap:wrap;gap:8px">
-    ${diar.map((d,i) => `
+    ${diar.map((d, i) => `
       <div style="display:flex;align-items:center;gap:6px;background:#f3f2f1;border-radius:4px;padding:5px 10px">
-        <span style="width:10px;height:10px;border-radius:50%;background:${speakerColors[i%speakerColors.length]};display:inline-block"></span>
+        <span style="width:10px;height:10px;border-radius:50%;background:${speakerColors[i % speakerColors.length]};display:inline-block"></span>
         <span style="font-weight:600;font-size:12px">${escHtml(d.speakerLabel)}</span>
         <span style="color:var(--teams-text-muted);font-size:11px">${d.segments?.length || 0} segments</span>
       </div>`).join('')}
   </div>`;
-}
+    }
 
-function renderRecordingList(recordings) {
-  const el = document.getElementById('recording-list');
-  if (!recordings.length) { el.innerHTML = '<p style="color:var(--teams-text-muted);font-size:13px">No recordings yet.</p>'; return; }
-  el.innerHTML = recordings.map(r => `
+    function renderRecordingList(recordings) {
+      const el = document.getElementById('recording-list');
+      if (!recordings.length) { el.innerHTML = '<p style="color:var(--teams-text-muted);font-size:13px">No recordings yet.</p>'; return; }
+      el.innerHTML = recordings.map(r => `
     <div style="border:1px solid var(--teams-border);border-radius:6px;padding:14px 16px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:13px;font-weight:600">🎬 ${escHtml(r.filename)}</span>
@@ -861,178 +1433,178 @@ function renderRecordingList(recordings) {
       </div>
     </div>
   `).join('');
-}
+    }
 
-/* ── Preview ─────────────────────────────────────────────────────────────────── */
-async function previewTranscript(url) {
-  setDetailTab(document.querySelectorAll('#meeting-detail-modal .tab')[2], 'dt-preview');
-  const area = document.getElementById('preview-area');
-  area.innerHTML = '<div style="color:var(--teams-text-muted);font-size:13px">Loading…</div>';
-  try {
-    const r = await fetch(url);
-    const vtt = await r.text();
-    const segments = parseVTT(vtt);
-    const colors = ['#6264a7','#0078d4','#107c10','#d29200','#c50f1f','#038387'];
-    const speakerMap = {};
-    let ci = 0;
-    area.innerHTML = `<div class="transcript-panel">${
-      segments.map(s => {
-        if (!speakerMap[s.speaker]) speakerMap[s.speaker] = colors[(ci++)%colors.length];
-        return `<div class="transcript-cue">
+    /* ── Preview ─────────────────────────────────────────────────────────────────── */
+    async function previewTranscript(url) {
+      setDetailTab(document.querySelectorAll('#meeting-detail-modal .tab')[2], 'dt-preview');
+      const area = document.getElementById('preview-area');
+      area.innerHTML = '<div style="color:var(--teams-text-muted);font-size:13px">Loading…</div>';
+      try {
+        const r = await fetch(url);
+        const vtt = await r.text();
+        const segments = parseVTT(vtt);
+        const colors = ['#6264a7', '#0078d4', '#107c10', '#d29200', '#c50f1f', '#038387'];
+        const speakerMap = {};
+        let ci = 0;
+        area.innerHTML = `<div class="transcript-panel">${segments.map(s => {
+          if (!speakerMap[s.speaker]) speakerMap[s.speaker] = colors[(ci++) % colors.length];
+          return `<div class="transcript-cue">
           <div class="ts">${s.start} → ${s.end}</div>
           <span class="speaker" style="background:${speakerMap[s.speaker]}">${escHtml(s.speaker)}</span>
           <div class="text">${escHtml(s.text)}</div>
         </div>`;
-      }).join('')
-    }</div>`;
-  } catch(e) { area.innerHTML = `<div style="color:var(--teams-danger);font-size:13px">Failed to load: ${e.message}</div>`; }
-}
+        }).join('')
+          }</div>`;
+      } catch (e) { area.innerHTML = `<div style="color:var(--teams-danger);font-size:13px">Failed to load: ${e.message}</div>`; }
+    }
 
-async function previewRecording(url) {
-  setDetailTab(document.querySelectorAll('#meeting-detail-modal .tab')[2], 'dt-preview');
-  document.getElementById('preview-area').innerHTML = `
+    async function previewRecording(url) {
+      setDetailTab(document.querySelectorAll('#meeting-detail-modal .tab')[2], 'dt-preview');
+      document.getElementById('preview-area').innerHTML = `
     <video controls style="width:100%;max-height:400px;border-radius:6px;background:#000" src="${url}">
       Your browser does not support video.
     </video>`;
-}
+    }
 
-/* Simple VTT parser for preview */
-function parseVTT(vtt) {
-  const segments = [];
-  const blocks = vtt.split(/\n{2,}/);
-  for (const block of blocks) {
-    const lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
-    const tsIdx = lines.findIndex(l => l.includes('-->'));
-    if (tsIdx < 0) continue;
-    const [start, end] = lines[tsIdx].split('-->').map(s=>s.trim().split(' ')[0]);
-    const textLines = lines.slice(tsIdx+1);
-    const full = textLines.join(' ');
-    const m = full.match(/^<v ([^>]+)>(.*)/);
-    const speaker = m ? m[1].trim() : 'Unknown';
-    const text = (m ? m[2] : full).replace(/<[^>]+>/g,'').trim();
-    segments.push({ start, end, speaker, text });
-  }
-  return segments;
-}
+    /* Simple VTT parser for preview */
+    function parseVTT(vtt) {
+      const segments = [];
+      const blocks = vtt.split(/\n{2,}/);
+      for (const block of blocks) {
+        const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+        const tsIdx = lines.findIndex(l => l.includes('-->'));
+        if (tsIdx < 0) continue;
+        const [start, end] = lines[tsIdx].split('-->').map(s => s.trim().split(' ')[0]);
+        const textLines = lines.slice(tsIdx + 1);
+        const full = textLines.join(' ');
+        const m = full.match(/^<v ([^>]+)>(.*)/);
+        const speaker = m ? m[1].trim() : 'Unknown';
+        const text = (m ? m[2] : full).replace(/<[^>]+>/g, '').trim();
+        segments.push({ start, end, speaker, text });
+      }
+      return segments;
+    }
 
-/* ── Delete transcript / recording ─────────────────────────────────────────── */
-async function deleteTranscript(tid) {
-  if (!confirm('Delete this transcript?')) return;
-  try {
-    await api(`/v1.0/me/onlineMeetings/${currentMeetingId}/transcripts/${tid}`, { method:'DELETE' });
-    toast('Transcript deleted.','');
-    await openMeetingDetail(currentMeetingId);
-  } catch(e) { toast('Error: '+e.message,'error'); }
-}
+    /* ── Delete transcript / recording ─────────────────────────────────────────── */
+    async function deleteTranscript(tid) {
+      if (!confirm('Delete this transcript?')) return;
+      try {
+        await api(`/v1.0/me/onlineMeetings/${currentMeetingId}/transcripts/${tid}`, { method: 'DELETE' });
+        toast('Transcript deleted.', '');
+        await openMeetingDetail(currentMeetingId);
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
 
-async function deleteRecording(rid) {
-  if (!confirm('Delete this recording?')) return;
-  try {
-    await api(`/v1.0/me/onlineMeetings/${currentMeetingId}/recordings/${rid}`, { method:'DELETE' });
-    toast('Recording deleted.','');
-    await openMeetingDetail(currentMeetingId);
-  } catch(e) { toast('Error: '+e.message,'error'); }
-}
+    async function deleteRecording(rid) {
+      if (!confirm('Delete this recording?')) return;
+      try {
+        await api(`/v1.0/me/onlineMeetings/${currentMeetingId}/recordings/${rid}`, { method: 'DELETE' });
+        toast('Recording deleted.', '');
+        await openMeetingDetail(currentMeetingId);
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
 
-/* ── Upload transcript ─────────────────────────────────────────────────────── */
-function openUploadTranscript() {
-  document.getElementById('ut-error').style.display = 'none';
-  document.getElementById('ut-progress').style.display = 'none';
-  document.getElementById('ut-btn').disabled = false;
-  openModal('upload-transcript-modal');
-}
+    /* ── Upload transcript ─────────────────────────────────────────────────────── */
+    function openUploadTranscript() {
+      document.getElementById('ut-error').style.display = 'none';
+      document.getElementById('ut-progress').style.display = 'none';
+      document.getElementById('ut-btn').disabled = false;
+      openModal('upload-transcript-modal');
+    }
 
-async function submitUploadTranscript() {
-  const file = document.getElementById('ut-file').files[0];
-  if (!file) { showError('ut-error','Please choose a VTT file.'); return; }
-  const btn = document.getElementById('ut-btn');
-  btn.disabled = true; btn.textContent = 'Uploading…';
-  document.getElementById('ut-progress').style.display='';
-  showProgress('ut-bar',30);
-  const fd = new FormData();
-  fd.append('file', file);
-  try {
-    await api(`/v1.0/me/onlineMeetings/${currentMeetingId}/transcripts`, { method:'POST', body:fd });
-    showProgress('ut-bar',100);
-    closeModal('upload-transcript-modal');
-    toast('Transcript uploaded!','success');
-    await openMeetingDetail(currentMeetingId);
-  } catch(e) { showError('ut-error',e.message); }
-  finally { btn.disabled=false; btn.textContent='Upload'; }
-}
+    async function submitUploadTranscript() {
+      const file = document.getElementById('ut-file').files[0];
+      if (!file) { showError('ut-error', 'Please choose a VTT file.'); return; }
+      const btn = document.getElementById('ut-btn');
+      btn.disabled = true; btn.textContent = 'Uploading…';
+      document.getElementById('ut-progress').style.display = '';
+      showProgress('ut-bar', 30);
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        await api(`/v1.0/me/onlineMeetings/${currentMeetingId}/transcripts`, { method: 'POST', body: fd });
+        showProgress('ut-bar', 100);
+        closeModal('upload-transcript-modal');
+        toast('Transcript uploaded!', 'success');
+        await openMeetingDetail(currentMeetingId);
+      } catch (e) { showError('ut-error', e.message); }
+      finally { btn.disabled = false; btn.textContent = 'Upload'; }
+    }
 
-/* ── Upload recording ─────────────────────────────────────────────────────── */
-function openUploadRecording() {
-  document.getElementById('ur-error').style.display = 'none';
-  document.getElementById('ur-progress').style.display = 'none';
-  document.getElementById('ur-btn').disabled = false;
-  openModal('upload-recording-modal');
-}
+    /* ── Upload recording ─────────────────────────────────────────────────────── */
+    function openUploadRecording() {
+      document.getElementById('ur-error').style.display = 'none';
+      document.getElementById('ur-progress').style.display = 'none';
+      document.getElementById('ur-btn').disabled = false;
+      openModal('upload-recording-modal');
+    }
 
-async function submitUploadRecording() {
-  const file = document.getElementById('ur-file').files[0];
-  if (!file) { showError('ur-error','Please choose a video file.'); return; }
-  const btn = document.getElementById('ur-btn');
-  btn.disabled=true; btn.textContent='Uploading…';
-  document.getElementById('ur-progress').style.display='';
-  showProgress('ur-bar',20);
-  const fd = new FormData();
-  fd.append('file', file);
-  try {
-    await api(`/v1.0/me/onlineMeetings/${currentMeetingId}/recordings`, { method:'POST', body:fd });
-    showProgress('ur-bar',100);
-    closeModal('upload-recording-modal');
-    toast('Recording uploaded!','success');
-    await openMeetingDetail(currentMeetingId);
-  } catch(e) { showError('ur-error', e.message); }
-  finally { btn.disabled=false; btn.textContent='Upload'; }
-}
+    async function submitUploadRecording() {
+      const file = document.getElementById('ur-file').files[0];
+      if (!file) { showError('ur-error', 'Please choose a video file.'); return; }
+      const btn = document.getElementById('ur-btn');
+      btn.disabled = true; btn.textContent = 'Uploading…';
+      document.getElementById('ur-progress').style.display = '';
+      showProgress('ur-bar', 20);
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        await api(`/v1.0/me/onlineMeetings/${currentMeetingId}/recordings`, { method: 'POST', body: fd });
+        showProgress('ur-bar', 100);
+        closeModal('upload-recording-modal');
+        toast('Recording uploaded!', 'success');
+        await openMeetingDetail(currentMeetingId);
+      } catch (e) { showError('ur-error', e.message); }
+      finally { btn.disabled = false; btn.textContent = 'Upload'; }
+    }
 
-/* ── Tab helpers ─────────────────────────────────────────────────────────────── */
-function setDetailTab(el, panelId) {
-  document.querySelectorAll('#meeting-detail-modal .tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  ['dt-transcript','dt-recording','dt-preview'].forEach(p => {
-    document.getElementById(p).style.display = p === panelId ? '' : 'none';
-  });
-}
+    /* ── Tab helpers ─────────────────────────────────────────────────────────────── */
+    function setDetailTab(el, panelId) {
+      document.querySelectorAll('#meeting-detail-modal .tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      ['dt-transcript', 'dt-recording', 'dt-preview'].forEach(p => {
+        document.getElementById(p).style.display = p === panelId ? '' : 'none';
+      });
+    }
 
-function setApiTab(el, panelId) {
-  document.querySelectorAll('#page-api-explorer .tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  ['meetings-api','transcripts-api','recordings-api'].forEach(p => {
-    document.getElementById(p).style.display = p === panelId ? '' : 'none';
-  });
-}
+    function setApiTab(el, panelId) {
+      document.querySelectorAll('#page-api-explorer .tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      ['meetings-api', 'transcripts-api', 'recordings-api'].forEach(p => {
+        document.getElementById(p).style.display = p === panelId ? '' : 'none';
+      });
+    }
 
-/* ── Misc helpers ─────────────────────────────────────────────────────────────── */
-function showError(id, msg) {
-  const el = document.getElementById(id);
-  el.textContent = '⚠ ' + msg;
-  el.style.display = '';
-}
+    /* ── Misc helpers ─────────────────────────────────────────────────────────────── */
+    function showError(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = '⚠ ' + msg;
+      el.style.display = '';
+    }
 
-function showProgress(barId, pct) {
-  document.getElementById(barId).style.width = pct + '%';
-}
+    function showProgress(barId, pct) {
+      document.getElementById(barId).style.width = pct + '%';
+    }
 
-/* ── Health check ─────────────────────────────────────────────────────────── */
-async function checkHealth() {
-  const pill = document.getElementById('health-pill');
-  try {
-    const h = await api('/health');
-    pill.textContent = `● Online  ·  ${h.meetings} meetings`;
-    pill.style.color = '#92c353';
-  } catch {
-    pill.textContent = '● Offline';
-    pill.style.color = '#ff5454';
-  }
-}
+    /* ── Health check ─────────────────────────────────────────────────────────── */
+    async function checkHealth() {
+      const pill = document.getElementById('health-pill');
+      try {
+        const h = await api('/health');
+        pill.textContent = `● Online  ·  ${h.meetings} meetings`;
+        pill.style.color = '#92c353';
+      } catch {
+        pill.textContent = '● Offline';
+        pill.style.color = '#ff5454';
+      }
+    }
 
-/* ── Init ─────────────────────────────────────────────────────────────────── */
-checkHealth();
-setInterval(checkHealth, 15000);
-loadMeetings();
-</script>
+    /* ── Init ─────────────────────────────────────────────────────────────────── */
+    checkHealth();
+    setInterval(checkHealth, 15000);
+    loadMeetings();
+  </script>
 </body>
+
 </html>

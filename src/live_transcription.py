@@ -103,6 +103,8 @@ class LiveTranscriber:
 
         if self.backend == "huggingface":
             self._init_huggingface()
+        elif self.backend == "whisply":
+            self._init_whisply()
             
         # Initialize diarization if enabled
         if enable_diarization:
@@ -167,6 +169,44 @@ class LiveTranscriber:
         except Exception as e:
             raise RuntimeError(f"Failed to load Hugging Face pipeline: {e}")
 
+    def _init_whisply(self):
+        """Initialize Whisply TranscriptionHandler using MLX Whisper."""
+        try:
+            from whisply.transcription import TranscriptionHandler
+            from whisply import models as whisply_models
+            
+            # Map device for whisply
+            if self.device == "cuda":
+                device_arg = "cuda:0"
+            elif self.device == "mps":
+                device_arg = "mps"
+            else:
+                device_arg = "cpu"
+                
+            print(f"Loading Whisply (mlx-whisper backend) on {device_arg}...")
+            
+            # Parse the model string correctly into the predefined keys in Whisply config
+            base_model_key = self.model_size.replace("whisper-", "")
+            if base_model_key not in whisply_models.WHISPER_MODELS:
+                base_model_key = "large-v3-turbo"
+                
+            self.whisply_handler = TranscriptionHandler(
+                model=base_model_key,
+                device=device_arg,
+                annotate=False,
+                file_language=self.language,
+                sub_length=20,
+            )
+            
+            # Use Whisply's native router to resolve the exact huggingface repo string for MLX
+            resolved_model_repo = whisply_models.set_mlx_model(base_model_key, translation=False)
+            self.whisply_handler.model = resolved_model_repo
+            self.whisply_handler.model_provided = base_model_key
+            
+            print(f"Whisply initialized successfully with repository: {resolved_model_repo}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load Whisply: {e}")
+
     def _init_diarization(self, hf_token: Optional[str], device: str):
         """Initialize the pyannote diarization pipeline."""
         if not hf_token:
@@ -188,7 +228,7 @@ class LiveTranscriber:
             # print("Attempting to load pyannote/speaker-diarization-3.1...")
             self.diarize_model = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
-                token=hf_token
+                use_auth_token=hf_token
             )
             if self.diarize_model:
                 self.diarize_model.to(torch.device(device))
@@ -210,12 +250,10 @@ class LiveTranscriber:
         try:
             if self.backend == "faster_whisper":
                 # faster-whisper transcribe
-                # Disable VAD filter for now to avoid onnxruntime issues
                 segments, _ = self.model.transcribe(
                     audio_array, 
-                    language=self.language,
-                    beam_size=5,
-                    vad_filter=False 
+                    condition_on_previous_text=False, # Avoid looping hallucinations
+                    vad_filter=True 
                 )
                 # Convert generator to string
                 text = " ".join([segment.text for segment in segments]).strip()
@@ -363,12 +401,12 @@ class LiveTranscriber:
             
             if self.backend == "faster_whisper":
                 # faster-whisper
-                # Disable VAD filter for now
                 fw_segments, _ = self.model.transcribe(
                     audio_array,
                     language=self.language,
                     beam_size=5,
-                    vad_filter=False
+                    condition_on_previous_text=False,
+                    vad_filter=True
                 )
                 
                 # Convert format
@@ -379,6 +417,55 @@ class LiveTranscriber:
                         "text": seg.text.strip(),
                         "speaker": None
                     })
+            
+            elif self.backend == "whisply":
+                import tempfile
+                import soundfile as sf
+                from pathlib import Path
+                
+                print("Running Whisply (MLX) transcription...")
+                
+                # Write temp wav for Whisply
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                    sf.write(f.name, audio_array, sample_rate)
+                    audio_path = Path(f.name)
+                
+                # `transcribe_with_mlx_whisper` returns dict with chunk-level timestamps
+                result_dict = self.whisply_handler.transcribe_with_mlx_whisper(audio_path)
+                os.remove(audio_path)
+                
+                if "transcription" in result_dict and "transcriptions" in result_dict["transcription"]:
+                    transcriptions = result_dict["transcription"]["transcriptions"]
+                    # Language key may be 'en', None, etc depending on auto-detection
+                    lang_key = list(transcriptions.keys())[0] if transcriptions else None
+                    if lang_key is not None or (transcriptions and None in transcriptions):
+                        # Handle both None and string lang keys
+                        if lang_key is None and None in transcriptions:
+                            lang_data = transcriptions[None]
+                        else:
+                            lang_data = transcriptions[lang_key]
+                        
+                        print(f"Whisply lang='{lang_key}', available keys: {list(lang_data.keys())}")
+                        
+                        # Whisply returns data under 'chunks' key
+                        chunk_key = "chunks" if "chunks" in lang_data else "segments" if "segments" in lang_data else None
+                        if chunk_key:
+                            chunks = lang_data[chunk_key]
+                            print(f"Found {len(chunks)} {chunk_key} from Whisply")
+                            for c in chunks:
+                                ts = c.get("timestamp", [0, 0])
+                                segments.append({
+                                    "start": ts[0] if ts[0] is not None else 0.0,
+                                    "end": ts[1] if ts[1] is not None else 0.0,
+                                    "text": c.get("text", "").strip(),
+                                    "speaker": None
+                                })
+                        else:
+                            print(f"Whisply output has no 'chunks' or 'segments' key. Keys: {list(lang_data.keys())}")
+                    else:
+                        print(f"Whisply transcriptions is empty: {transcriptions}")
+                else:
+                    print(f"Whisply did not return a valid dictionary: {result_dict}")
             
             else: # huggingface
                 # Enable return_timestamps for full audio
@@ -410,6 +497,20 @@ class LiveTranscriber:
                 print("Running diarization...")
                 segments = self._assign_speakers(segments, audio_array, sample_rate)
 
+            # Merge consecutive segments from the same speaker
+            if segments:
+                merged = [segments[0].copy()]
+                for seg in segments[1:]:
+                    prev = merged[-1]
+                    if seg.get("speaker") == prev.get("speaker"):
+                        # Extend the previous segment
+                        prev["end"] = seg["end"]
+                        prev["text"] = prev["text"] + " " + seg.get("text", "")
+                    else:
+                        merged.append(seg.copy())
+                segments = merged
+                print(f"Merged into {len(segments)} speaker segments")
+
             # Apply resolved speaker name mapping if provided
             if speaker_mapping:
                 for seg in segments:
@@ -424,6 +525,8 @@ class LiveTranscriber:
                 yield segment
                 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"Full transcription failed: {e}")
             # Yield an error segment so UI knows something went wrong
             yield {

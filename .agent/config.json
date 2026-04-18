@@ -1,0 +1,17 @@
+{
+  "project": "Multimodal-Meeting-Summarizer",
+  "skills": [
+    {
+      "id": "tool-call-reviewer",
+      "path": "./skills/code-reviewer/skill.md",
+      "auto_invoke": false
+    }
+  ],
+  "agents": [
+    {
+      "name": "AuditBot",
+      "persona": "Senior AI Architect",
+      "skills": ["tool-call-reviewer"]
+    }
+  ]
+}

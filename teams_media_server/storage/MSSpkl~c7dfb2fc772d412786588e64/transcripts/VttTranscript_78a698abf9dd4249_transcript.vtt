@@ -1,0 +1,106 @@
+WEBVTT
+
+00:00:27.000 --> 00:01:43.000
+<v Kyle Wolfe>you you hey over I think we're just waiting on Junction. I see him typing in the agenda and I know he takes a few minutes. Like his zoom takes a few minutes to draw. So I'll just wait in</v>
+
+00:01:43.000 --> 00:02:06.000
+<v Alba Tibau>this. I know. I hope everyone's having a good Tuesday. Yeah. Yeah. Going away. How about you? Yeah. Off to</v>
+
+00:02:06.000 --> 00:02:14.000
+<v Kyle Wolfe>a good start. I would say. Cool. I'm going to give Junction one more minute and I'll just jump in</v>
+
+00:02:14.000 --> 00:03:43.000
+<v Kyle Wolfe>the social discussion. I'm kind of curious on the noticeable increase in flaky test for master. That's kind of got my interest. My curiosity. All right. Let's go ahead and get started. Mark Mark was out sick yesterday. I haven't heard from him today. I would encourage everybody if you need to like unexpectedly out sick, at least share in the team channel or I'm not sure if he shared in quality. We'd please stand up. I know he direct message me, but please communicate broadly. No harm in doing that. So either team channel or weekly stand up and then we can kind of signal boost from there. Social discussion. That wasn't quite a creature. The right way to phrase this, but if you could learn one new thing, I'm curious what it would be just like without like taking the time to learn it was just like, boom, you now know everything about this. Mine would actually be woodworking, which has been kind of like an often on hobby for me, where I just like the physical like making something and I've only made like really small. Like I've just made like really so I think the biggest thing I've made is like a coffee people a long time, like five years ago. And I just haven't done that, but it's been something I've always wanted to get better at and just taking the time to do it.</v>
+
+00:03:45.000 --> 00:04:55.000
+<v Rémy Hannequin>What about you, Remy? Yeah, that's a good question. Maybe so it's not, it's probably not just learning, but like if I could be like a nastro note in like the next second, that would be great, but it doesn't only involve learning because it also involves training and be selected and all of that. But yeah, that I would love to go in space for sure. Yeah, I mean, yeah, let if I can learn something in one second, I think I would like to I would like it to be exceptional. So I think going into spaces is a good one. So that's what you mean? So that's what you mean? So that's what you mean? So that's</v>
+
+00:04:55.000 --> 00:05:42.000
+<v Alba Tibau>what you mean? So that's what you mean? So that's what you mean? So that's what you mean? So that's what you mean? So that's what you mean? So that's what you mean? So that's what you mean? So that's what you mean? So that's what you mean? So that's what you mean? And I had a few friends who knew how to play piano. And it seems to me that knowing how to play the piano gives someone the ability to learn other musical instruments very easily, but it gives the foundation. It seems so, yeah, then what I would want to learn that. Then from there, I can move on to other instruments if I want to. You</v>
+
+00:05:42.000 --> 00:06:25.000
+<v Jinchen Zhao>mentioned? At first, I saw that there are so many things I can learn. But then I remember that maybe painting or drawing, because I always want to make my own games, or not my own, but make some games. And the only thing I really miss to feel everything will be some visual things, because I can program, I can design. But I cannot do any visual things. So if that can be done, then I can do everything</v>
+
+00:06:25.000 --> 00:06:52.000
+<v Kyle Wolfe>by my own. That's great. Yeah, I really appreciate everybody answering these questions. I think it's kind of helpful to get to know people from different angles. And I really appreciate it. Don't feel like you have to share. So if you don't want to. And if it would be helpful, I can post questions at the time. So you don't just come into the meeting and then are like, I don't know, I'll wait out. Because I'm always curious</v>
+
+00:06:52.000 --> 00:07:11.000
+<v Rémy Hannequin>what people have on this. Yeah. And actually, I think I thought about a new thing, kind of asking the answer, like, if I could learn, if I could learn how to learn things instantly, so that I could learn</v>
+
+00:07:11.000 --> 00:07:24.000
+<v Jinchen Zhao>anything instantly. That's cheating. Just like I want to have infinity wishes. There was no rule on this one. I'm</v>
+
+00:07:24.000 --> 00:11:16.000
+<v Kyle Wolfe>afraid to go. Cool. That's awesome. Cool. All right. I'll jump into the announcements. This one's from Mac. So thanks to everyone who has worked on Pipeline Stability Cost Reduction. And I'll even mention review flexibility, because that was also called out in this meeting. Pipeline metrics are in the best state. It has been with M -Arteration and Pipeline Stability. And Sid was really just kind of excited to see that. It's like, the quote here that Mechbutton is, we're very results driven in the best company ever. Now, he's talking about how quickly we can deliver value when he said we're the best company ever, which is just really, really awesome. I believe the link is to the engineering key review. So feel free to give it a review. If you have time, it's similar to, I think it's the same link that we had last week. So, kudos to everybody. I think those are really, really high praise. And the engine key review is visible to all execs and engineering leaders, so awesome work. This is the, do you think it or code it? So I don't think this one is. I was looking for it ahead of time. So you just have to take my word that that's what was said. Unfortunately, that's not very apparent. No, no, don't figure. Okay, yeah, I think sometimes there's customer names and things mentioned. That's why this one's not recorded. But I'll check with Mack and see. Or see if I can track it down. I was able to do it earlier. Let me just take it to do here. The next item, I thought this was kind of interesting. Great. Jregor has shared this issue that runner is looking at to just try to have a more efficient future focus on how runners can auto scale. There was a video link to that issue that I found very insightful. There was a lot of metrics in Grapana that were shown in dashboards. So if you're looking to learn more about our runner infrastructure and how it may look to evolve in the future, I found the video very interesting. I just had it on in the background while I was listening to things and then when there was something interesting being talked about, I kind of brought it to the forefront. It is an hour, so it's kind of long, but I just wanted to share it to see if anyone else would get value out of that. And then the last update is Mech merged the change to switch the master pipeline success rate KPI into to use all master pipelines yesterday. And I moved the old chart to the engineering product to be pipeline dashboard. As I kind of said in the issue, I think this is more reflective of what people think this KPI is measuring just at face value. I don't think people think of the scheduled pipelines. And I also think it kind of aligns the metric with the, I'll say the risk that like changes and things propose. So by incorporating the pipeline graph, we're really looking at the distributed risk of all of our changes and reflecting on the KPI. Cool. Yeah, it does change, like as I mentioned, Mech, it does change the source of values, but it's great to see, you know, it's great to see everything kind of looking in the best state it ever has. So if you look at the chart, you know, the last few months, the last four months, it's really been the highest</v>
+
+00:11:16.000 --> 00:11:30.000
+<v Kyle Wolfe>it's ever been in the four year history of the chart. Cool. Okay, any other announcements to anyone? I can,</v>
+
+00:11:30.000 --> 00:12:17.000
+<v Kyle Wolfe>I can know as we go on. Okay. Sorry, I'm just finishing up this to do so. I don't lose sight. Let's move into the first item. I did want to say thank you to everyone again for the great collaboration on the plan for the kind of go forward way of track of getting better visibility into our throughput labels, specifically backstage for this one. Remi, you summarized the proposal very well. I just kind of took it and moved it up to the description right before the meeting. I just want to see if there was anything else needed that we should discuss before we kind of start breaking the work into issues and executing on that first</v>
+
+00:12:17.000 --> 00:12:29.000
+<v Kyle Wolfe>iteration. Jin, I know you had a question on the issue. We can always just talk about it async if</v>
+
+00:12:29.000 --> 00:12:38.000
+<v Jinchen Zhao>you want. I think that's pretty minor, just that. Okay. So much how do we label some of the merch</v>
+
+00:12:38.000 --> 00:13:15.000
+<v Kyle Wolfe>requests? Okay. Let's just take that one async. I'm going to take silences. No, there's nothing else needed. I just want to confirm. But again, I just want to reiterate. Thank you for all the collaboration. I know a lot of thought was put into all of this by all of you. And that was very evident to me. I'm very grateful that you're able to kind of come up with a really good simple proposal. Over to you, Jin</v>
+
+00:13:15.000 --> 00:14:47.000
+<v Jinchen Zhao>-Jin, for the trash report. So we're going to add a new report for sale, merch request. And we divide the report by different groups like the group 3 -H report. And I really don't want to add another 5 ,000 lines of fire. So I try to find it. In the end, I use a script to generate the policy fires. So it's not ideal. But it's pretty fast to do it that way. So it generates a lot of policy fires. And also, I have had an auscript to generate a new CI configuration, which put all groups into different jobs. So we don't see a job which contains for all the groups, which takes very long. And if there is one arrow, then an entire job break, post or fail. So I think it's nice to be down that way. And I'm wondering if we should do the same for the current group 3 -H. And I still read me a recombit on it. I haven't read it, but we don't need to repeat so. Maybe just</v>
+
+00:14:47.000 --> 00:15:41.000
+<v Rémy Hannequin>take this in for your information. Yeah, yeah, I think that's, I think that's a great step forward, because there was no reason to duplicate. And it was just making the maintenance very hard. So yeah, my only comment was that basically, we have already wrote like the dynamic CI config generation. So if you want to use this feature, like this CI feature, it should just be a matter of like calling the script that generate the config instead of checking it out in Git, basically more or less, I would say, but yeah, that can be done as</v>
+
+00:15:41.000 --> 00:15:49.000
+<v Jinchen Zhao>a follower, I think. I can try. Maybe it can be done by a few minutes, then show why not.</v>
+
+00:15:50.000 --> 00:16:05.000
+<v Alba Tibau>Maybe. Yeah, it looks quite impressive. I don't wanna say. Yeah, that's cool. Yeah, yeah, I thought it was good</v>
+
+00:16:05.000 --> 00:16:13.000
+<v Kyle Wolfe>work the way that you were able to dry it up compared to the team 3 -H report. So that's</v>
+
+00:16:13.000 --> 00:16:40.000
+<v Jinchen Zhao>pretty sweet. For, let us another file to extract all the group definitions. And I really copy and pass all the definition for so long, like an hour or two, and it really makes three attires. So I really don't want to repeat that. Yeah, that makes sense. Good work on that. Anything else there, Ginger? No, I think we</v>
+
+00:16:40.000 --> 00:19:43.000
+<v Rémy Hannequin>can take out the most repress. Great, cool. Remy, you wanna talk about flinky test? Yeah, yeah. So since yesterday, there seemed to be a few new flaky tests. One was about, actually, the two flaky tests have kind of the same problem, which is that something is loading lazily or asynchronously, and then it's moving up, it's moving the content page, or even like moving the content outside of the window, so that the test, when the test is asked to click somewhere, then either it's not at the same place as it was before the constant edge VG loaded, or it even is outside the window. So, Enstan was great in debugging, and actually fixing two issues, and I gave my kudos to him in the thanks channel this morning. So maybe just thinking out loud, like maybe we should audit if there's other play, like for instance, for the SVG that is lazily loaded, maybe you can do an audit and check it there's other potentially flaky tests that we could improve beforehand, before the cause of problems. And for the other one, it was caused by the merge requests widget, which flows asynchronously, and I think before it's loaded, there's probably a placeholder that takes maybe this space, and then once it's loaded, it maybe takes this space, and it moves the page down. And for this one, I don't know if there's like a systemic improvement that we can make, but maybe. I haven't thought about that, but yeah. And I think generally it's probably, it's probably like, I think we probably tend to put more and more things to load that synchronously, and specifically maybe in the merge widgets, merge requests widget, or even in the sidebar, in a lot of places actually. So I think that's why we tend to have these new flaky problems. So maybe it's a good time to maybe like take a step back and see if we can improve that globally. Yeah, I agree. I think we'll only</v>
+
+00:19:43.000 --> 00:19:48.000
+<v Kyle Wolfe>see this more or more. Is there an issue to like you mentioned like an audit or something like that?</v>
+
+00:19:48.000 --> 00:19:57.000
+<v Rémy Hannequin>Do we have an issue for anything like that? Already? I don't think that we are creating so many issues</v>
+
+00:19:57.000 --> 00:20:28.000
+<v Kyle Wolfe>that might be right. Yeah, yeah. I was trying to search as you were chatting with handling, I'll just say like lazy loading spec handling. I think we should get an issue, and then let's discuss pacing in the issue to see what kind of solutions we can come up with. Or the team can come up with because I agree. The so only continue to be more and more of a problem based on current trends. A quick thought</v>
+
+00:20:28.000 --> 00:20:52.000
+<v Jinchen Zhao>is that if we have a central way to load asynchronous things, then we can have a queue or something. And when we want to load something, we put something in a queue. And we just wait for the queue to be empty. So we only start testing when the queue is empty. I don't know if it will start.</v>
+
+00:20:53.000 --> 00:21:28.000
+<v Rémy Hannequin>So we did, so it would be like the helper that we have now, the wait for request helper, but like more general one. Kind of. Yeah. And also related to this problem about GraphQL, which we don't wait for. And that's kind of related. I will try to find the issue. Yeah, Ruby, if we have so many different</v>
+
+00:21:28.000 --> 00:21:54.000
+<v Jinchen Zhao>ways to load things asynchronously, then there are probably no good way to do it, but I'm just thinking if we can start and add those unified way to load things as a query. Yeah, I was going to say</v>
+
+00:21:54.000 --> 00:22:05.000
+<v Kyle Wolfe>can someone track down an issue on this or create one? If not, I can. Yeah, I can. I don't</v>
+
+00:22:05.000 --> 00:22:15.000
+<v Rémy Hannequin>know if that. Go ahead. Yeah, I will try to find an issue and create one if that's just no</v>
+
+00:22:15.000 --> 00:23:19.000
+<v Kyle Wolfe>issue yet. Yeah, the GraphQL thing, the GraphQL issue that you mentioned, that's also interesting, because I know that there's a, there's guidance in the handbook to use GraphQL. Like don't build an API, just do something new, try to use GraphQL. First, so that's also something that will continue to see more and more. Yeah, exactly. Cool. Okay, thanks for bringing that up. Yeah, we need to look to address that. All right, lastly, this I miss this in the announcements, but it looks like group spaces is moving under access, I would say the access group. So what is in spaces is just kind of merged up with access. I'll be creating a triage ops issue to see what is needed from like team triage report labels, all of that. I think I have a general idea, but</v>
+
+00:23:19.000 --> 00:23:35.000
+<v Rémy Hannequin>would be I'll be looking for input on that. Yeah, I think we have this template in triage apps that covers a few things, but yeah, maybe there's more things. Yeah, yeah, I know we have changes. I'm just not</v>
+
+00:23:35.000 --> 00:24:12.000
+<v Kyle Wolfe>sure we have like a group to removal of the change template. I think will be 90 % of it. So I'll get that created and we can collaborate on that. Any other items to discuss? Awesome. Create efficient team meeting. Good discussions as well. I appreciate everybody's time. And I know it's different times for all of us. So thank you for being very flexible and I will catch you later in the week. Yeah, good day. Evening everyone.</v>
+
+00:24:12.000 --> 00:24:14.000
+<v Rémy Hannequin>See you. Bye. Thank you.</v>
