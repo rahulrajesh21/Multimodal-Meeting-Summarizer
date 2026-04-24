@@ -317,7 +317,7 @@ async def lifespan(app: FastAPI):
     # NOTE: Set up your MCP Server connection parameters here.
     # We are using Google Sheets as requested. Make sure `npx` is available and 
     # the proper Google credentials environment variables are passed when starting the API.
-    server_params = StdioServerParameters(command="npx", args=["-y", "@modelcontextprotocol/server-google-sheets"])
+    server_params = StdioServerParameters(command="npx", args=["-y", "mcp-google-sheets"])
     
     async with AsyncExitStack() as stack:
         try:
