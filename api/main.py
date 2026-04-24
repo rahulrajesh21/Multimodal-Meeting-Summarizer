@@ -24,6 +24,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from contextlib import AsyncExitStack, asynccontextmanager
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
 # ── path setup ────────────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -302,7 +306,43 @@ async def process_meeting_job(job_id: str):
 
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
-app = FastAPI(title="Meeting Intelligence API", version="1.0.0")
+
+mcp_session: ClientSession = None
+mcp_tools_cache = []
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global mcp_session, mcp_tools_cache
+    
+    # NOTE: Set up your MCP Server connection parameters here.
+    # We are using Google Sheets as requested. Make sure `npx` is available and 
+    # the proper Google credentials environment variables are passed when starting the API.
+    server_params = StdioServerParameters(command="npx", args=["-y", "@modelcontextprotocol/server-google-sheets"])
+    
+    async with AsyncExitStack() as stack:
+        try:
+            read, write = await stack.enter_async_context(stdio_client(server_params))
+            session = await stack.enter_async_context(ClientSession(read, write))
+            await session.initialize()
+            mcp_session = session
+            
+            # Fetch and cache MCP tools in OpenAI format
+            tools_resp = await session.list_tools()
+            for t in tools_resp.tools:
+                mcp_tools_cache.append({
+                    "type": "function",
+                    "function": {
+                        "name": t.name,
+                        "description": t.description,
+                        "parameters": t.inputSchema
+                    }
+                })
+            logger.info(f"MCP Server initialized successfully. Loaded {len(mcp_tools_cache)} tools.")
+        except Exception as e:
+            logger.warning(f"Failed to start MCP Client/Server: {e}")
+        yield
+
+app = FastAPI(title="Meeting Intelligence API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -1014,6 +1054,12 @@ async def chat_with_meeting(job_id: str, body: dict):
             }
         }
     ]
+    
+    global mcp_tools_cache
+    if mcp_tools_cache:
+        tools.extend(mcp_tools_cache)
+
+    main_loop = asyncio.get_running_loop()
 
     def tool_handler(fn_name: str, args: dict) -> str:
         if fn_name == "search_graph":
@@ -1091,6 +1137,25 @@ async def chat_with_meeting(job_id: str, body: dict):
                     f"{item['citation']}"
                 )
             return "\n".join(lines)
+            
+        # ── Fallback to MCP Tools ─────────────────────
+        global mcp_session
+        if mcp_session:
+            try:
+                # Execute the async MCP call on the main event loop
+                future = asyncio.run_coroutine_threadsafe(
+                    mcp_session.call_tool(fn_name, arguments=args),
+                    main_loop
+                )
+                result = future.result(timeout=30)
+                if result.isError:
+                    return f"MCP Tool Error: {result.content}"
+                
+                # Default text extraction from MCP result
+                return "\n".join(c.text for c in result.content if getattr(c, 'type', '') == 'text')
+            except Exception as e:
+                logger.error(f"MCP Exception executing {fn_name}: {e}")
+                return f"MCP Tool System Error: {e}"
         
         return f"Unknown tool: {fn_name}"
 
