@@ -15,6 +15,8 @@ sleep 1
 
 # 1. FastAPI backend
 echo "  → Starting API on :8000"
+source "$HOME/.nvm/nvm.sh" 2>/dev/null
+nvm use 20 --silent 2>/dev/null || true
 "$ROOT/venv/bin/uvicorn" api.main:app --host 0.0.0.0 --port 8000 --reload &
 API_PID=$!
 

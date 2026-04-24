@@ -7,6 +7,7 @@ const navItems = [
     { href: '/meetings', icon: '🎬', label: 'Meetings' },
     { href: '/graph', icon: '🕸️', label: 'Cross-Meeting Graph' },
     { href: '/roles', icon: '👥', label: 'Role Management' },
+    { href: '/mcp', icon: '🔌', label: 'Integrations' },
     { href: '/settings', icon: '⚙️', label: 'Settings' },
 ];
 

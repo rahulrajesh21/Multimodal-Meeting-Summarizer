@@ -24,6 +24,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from contextlib import AsyncExitStack, asynccontextmanager
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -52,6 +55,7 @@ TEAMS_SERVER_URL = os.environ.get("TEAMS_SERVER_URL", "http://localhost:8001")
 text_analyzer     = None
 temporal_memory   = None
 participant_store = None
+context_store     = None
 
 def get_text_analyzer():
     global text_analyzer
@@ -78,13 +82,21 @@ def get_participant_store():
         participant_store = ParticipantStore(data_dir=str(DATA_DIR))
     return participant_store
 
+def get_context_store():
+    global context_store
+    if context_store is None:
+        from src.context_store import ContextStore
+        ta = get_text_analyzer()
+        context_store = ContextStore(storage_root=str(ROOT), text_analyzer=ta)
+    return context_store
+
 # ── job store (in-memory + persisted) ────────────────────────────────────────
 _jobs: Dict[str, Dict] = {}
 
 def _load_jobs():
     if JOBS_FILE.exists():
         try:
-            with open(JOBS_FILE) as f:
+            with open(JOBS_FILE, encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             pass
@@ -92,8 +104,8 @@ def _load_jobs():
 
 def _save_jobs():
     try:
-        with open(JOBS_FILE, "w") as f:
-            json.dump(_jobs, f, indent=2)
+        with open(JOBS_FILE, "w", encoding="utf-8") as f:
+            json.dump(_jobs, f, indent=2, ensure_ascii=False)
     except Exception as e:
         logger.warning(f"Could not save jobs: {e}")
 
@@ -298,6 +310,15 @@ async def process_meeting_job(job_id: str):
             _set("status", "done")
             _set("completed_at", datetime.now().isoformat())
 
+            # Index into ChromaDB for RAG retrieval
+            try:
+                cs = get_context_store()
+                tm = get_temporal_memory()
+                counts = cs.index_meeting(job, temporal_memory=tm)
+                logger.info(f"ChromaDB indexed: {counts}")
+            except Exception as e:
+                logger.warning(f"ChromaDB indexing failed (non-fatal): {e}")
+
         except Exception as e:
             logger.exception(f"Job {job_id} failed: {e}")
             _set("status", "error")
@@ -307,39 +328,100 @@ async def process_meeting_job(job_id: str):
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 
-mcp_session: ClientSession = None
+mcp_sessions: dict = {}
+mcp_tool_session_map: dict = {}
 mcp_tools_cache = []
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global mcp_session, mcp_tools_cache
+    global mcp_sessions, mcp_tool_session_map, mcp_tools_cache
     
     # NOTE: Set up your MCP Server connection parameters here.
     # We are using Google Sheets as requested. Make sure `npx` is available and 
     # the proper Google credentials environment variables are passed when starting the API.
-    server_params = StdioServerParameters(command="npx", args=["-y", "mcp-google-sheets"])
+    
+    # Auto-inject the local sheets.json credentials so you don't have to export it
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(ROOT / "sheets.json")
+    os.environ["SERVICE_ACCOUNT_PATH"] = str(ROOT / "sheets.json") # Needed for @a-bonus/google-docs-mcp
+    
+    # Build --include-tools list from persisted config (defaults to docs + sheets)
+    mcp_config = _load_mcp_config()
+    enabled_tools = get_enabled_tools(mcp_config)
+    tools_arg = ",".join(enabled_tools) if enabled_tools else "readDocument"
+    logger.info(f"MCP enabled categories: {mcp_config.get('enabled_categories', [])} → {len(enabled_tools)} tools")
+    
+    server_configs = [
+        {
+            "name": "google-docs",
+            "command": "npx",
+            "args": ["-y", "@a-bonus/google-docs-mcp"],
+            "env": dict(os.environ)
+        },
+        {
+            "name": "slack",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-slack"],
+            "env": dict(os.environ)
+        }
+    ]
     
     async with AsyncExitStack() as stack:
+        mcp_tools_cache.clear()
+        
+        for config in server_configs:
+            if config["name"] == "slack" and not (os.environ.get("SLACK_BOT_TOKEN") and os.environ.get("SLACK_TEAM_ID")):
+                logger.info("Skipping Slack MCP: SLACK_BOT_TOKEN and SLACK_TEAM_ID require to be set in environment.")
+                continue
+
+            try:
+                server_params = StdioServerParameters(
+                    command=config["command"], 
+                    args=config["args"],
+                    env=config["env"]
+                )
+                read, write = await stack.enter_async_context(stdio_client(server_params))
+                session = await stack.enter_async_context(ClientSession(read, write))
+                await session.initialize()
+                mcp_sessions[config["name"]] = session
+                
+                # Fetch and cache MCP tools in OpenAI format
+                tools_resp = await session.list_tools()
+                for t in tools_resp.tools:
+                    # Filter tools based on config settings (Google Workspace specifically)
+                    if config["name"] == "google-docs" and enabled_tools and t.name not in enabled_tools:
+                        continue
+
+                    mcp_tool_session_map[t.name] = session
+                    mcp_tools_cache.append({
+                        "type": "function",
+                        "function": {
+                            "name": t.name,
+                            "description": t.description,
+                            "parameters": t.inputSchema
+                        }
+                    })
+                logger.info(f"MCP Server '{config['name']}' initialized. Loaded {len(tools_resp.tools)} tools.")
+            except Exception as e:
+                logger.warning(f"Failed to start MCP Server '{config['name']}': {e}")
+
+        # Auto-index all completed meetings into ChromaDB on startup
         try:
-            read, write = await stack.enter_async_context(stdio_client(server_params))
-            session = await stack.enter_async_context(ClientSession(read, write))
-            await session.initialize()
-            mcp_session = session
-            
-            # Fetch and cache MCP tools in OpenAI format
-            tools_resp = await session.list_tools()
-            for t in tools_resp.tools:
-                mcp_tools_cache.append({
-                    "type": "function",
-                    "function": {
-                        "name": t.name,
-                        "description": t.description,
-                        "parameters": t.inputSchema
-                    }
-                })
-            logger.info(f"MCP Server initialized successfully. Loaded {len(mcp_tools_cache)} tools.")
+            cs = get_context_store()
+            if cs._transcript.count() == 0:  # Only reindex if empty
+                tm = get_temporal_memory()
+                indexed = 0
+                for job_id, job in _jobs.items():
+                    if job.get("status") == "done":
+                        try:
+                            cs.index_meeting(job, temporal_memory=tm)
+                            indexed += 1
+                        except Exception:
+                            pass
+                if indexed:
+                    logger.info(f"Auto-indexed {indexed} meetings into ChromaDB on startup")
         except Exception as e:
-            logger.warning(f"Failed to start MCP Client/Server: {e}")
+            logger.warning(f"ChromaDB auto-index on startup failed: {e}")
+
         yield
 
 app = FastAPI(title="Meeting Intelligence API", version="1.0.0", lifespan=lifespan)
@@ -933,8 +1015,22 @@ async def process_teams_meeting(body: dict, background_tasks: BackgroundTasks):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  MEETING CHAT
+#  MODELS & CHAT
 # ═══════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/models")
+async def get_models():
+    """Proxy LM Studio's /v1/models endpoint."""
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.get("http://127.0.0.1:1234/v1/models", timeout=5.0)
+            if r.status_code == 200:
+                data = r.json()
+                return data.get("data", [])
+            return []
+    except Exception as e:
+        logger.error(f"Failed to fetch models from LM Studio: {e}")
+        return []
 
 @app.post("/api/meetings/{job_id}/chat")
 async def chat_with_meeting(job_id: str, body: dict):
@@ -953,6 +1049,7 @@ async def chat_with_meeting(job_id: str, body: dict):
         raise HTTPException(400, "message is required")
 
     history = body.get("history", [])[-10:]  # Keep last 10 exchanges
+    model_choice = body.get("model", None)
 
     # ── Build meeting context ──────────────────────────────────────────────
     ctx_parts: list[str] = []
@@ -968,66 +1065,13 @@ async def chat_with_meeting(job_id: str, body: dict):
         )
         ctx_parts.append(f"Participants: {names}")
 
-    # 2. Per-speaker summaries (compact but rich)
+    # 2. Compact metadata only — all other context is retrieved on-demand via tools
     summaries = job.get("summaries", {})
     if summaries:
-        ctx_parts.append("\n--- SPEAKER SUMMARIES ---")
+        ctx_parts.append("\n--- SPEAKER SUMMARIES (brief) ---")
         for speaker, summary in summaries.items():
-            ctx_parts.append(f"{speaker}:\n{summary}")
-
-    # 3. Graph events (decisions, problems, ideas with timestamps)
-    mid = job.get("meeting_id")
-    if mid:
-        tm = get_temporal_memory()
-        event_ids = tm.events_by_meeting.get(mid, [])
-        if event_ids:
-            ctx_parts.append("\n--- KEY EVENTS ---")
-            for eid in event_ids[:50]:
-                ev = tm.events.get(eid)
-                if ev:
-                    line = f"[{ev.start_time:.0f}s] [{ev.event_type}] {ev.speaker}: {ev.summary}"
-                    if ev.is_screen_sharing:
-                        line += " (screen share)"
-                    if ev.ocr_text:
-                        line += f" [Screen text: {ev.ocr_text[:100]}]"
-                    ctx_parts.append(line)
-
-    # 4. Visual context overview
-    screen_share_count = job.get("screen_share_frames", 0)
-    total_frames = job.get("visual_context_count", 0)
-    if total_frames > 0:
-        ctx_parts.append(
-            f"\nVisual Analysis: {screen_share_count}/{total_frames} "
-            f"frames had screen sharing detected"
-        )
-
-    # 5. Global Meeting Directory
-    tm = get_temporal_memory()
-    available_meetings = []
-    # Deduplicate titles to keep the prompt clean if names repeat
-    seen_titles = set()
-    for m in tm.meetings.values():
-        title = m.get('title', m.get('_id'))
-        if title not in seen_titles:
-            date_str = m.get('date', '')[:10]
-            if date_str:
-                available_meetings.append(f"- {title} ({date_str})")
-            else:
-                available_meetings.append(f"- {title}")
-            seen_titles.add(title)
-            
-    if available_meetings:
-        ctx_parts.append("\n--- GLOBAL KNOWLEDGE GRAPH DIRECTORY ---")
-        ctx_parts.append("The following meetings are available in the system graph database. You can use the 'search_graph' tool to look up decisions or events from these past meetings:")
-        ctx_parts.append("\n".join(available_meetings))
-
-    # 6. Full transcript (cap to ~1000 words to fit model window of 4096 tokens)
-    transcript = job.get("transcript", "")
-    if transcript:
-        words = transcript.split()
-        if len(words) > 1000:
-            transcript = " ".join(words[:1000]) + "\n... (transcript truncated to fit LLM window)"
-        ctx_parts.append(f"\n--- FULL TRANSCRIPT ---\n{transcript}")
+            # Only include first 150 chars of each summary
+            ctx_parts.append(f"{speaker}: {summary[:150]}...")
 
     meeting_context = "\n".join(ctx_parts)
 
@@ -1052,16 +1096,55 @@ async def chat_with_meeting(job_id: str, body: dict):
                     "required": ["keywords"]
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_context",
+                "description": (
+                    "Search the meeting knowledge base for transcript segments, events, decisions, and meeting history. "
+                    "Returns the top 5 most relevant results. ALWAYS call this tool first before writing any document or answering detailed questions."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Natural language search query (e.g., 'budget decisions', 'product requirements', 'action items')."
+                        },
+                        "scope": {
+                            "type": "string",
+                            "enum": ["all", "transcript", "events", "meetings"],
+                            "description": "Which collection to search. Default: all."
+                        }
+                    },
+                    "required": ["query"]
+                }
+            }
         }
     ]
     
     global mcp_tools_cache
     if mcp_tools_cache:
+        # Pass all available MCP tools to the agent.
+        # The progressive payload guard in llm_summarizer will handle any size limits dynamically.
         tools.extend(mcp_tools_cache)
+        
+        total_tools_size = len(json.dumps(tools))
+        logger.info(f"Injecting {len(tools)} tools into agent_chat (Payload size: {total_tools_size / 1024:.1f} KB)")
 
     main_loop = asyncio.get_running_loop()
 
     def tool_handler(fn_name: str, args: dict) -> str:
+        if fn_name == "search_context":
+            query = args.get("query", "")
+            scope = args.get("scope", "all")
+            if not query:
+                return "Error: query not provided."
+            cs = get_context_store()
+            meeting_id = job.get("meeting_id")
+            return cs.search(query, top_k=5, scope=scope, meeting_id=meeting_id if scope == "transcript" else None)
+
         if fn_name == "search_graph":
             keywords = args.get("keywords", "")
             if not keywords:
@@ -1139,12 +1222,13 @@ async def chat_with_meeting(job_id: str, body: dict):
             return "\n".join(lines)
             
         # ── Fallback to MCP Tools ─────────────────────
-        global mcp_session
-        if mcp_session:
+        global mcp_tool_session_map
+        session = mcp_tool_session_map.get(fn_name)
+        if session:
             try:
                 # Execute the async MCP call on the main event loop
                 future = asyncio.run_coroutine_threadsafe(
-                    mcp_session.call_tool(fn_name, arguments=args),
+                    session.call_tool(fn_name, arguments=args),
                     main_loop
                 )
                 result = future.result(timeout=30)
@@ -1169,16 +1253,28 @@ async def chat_with_meeting(job_id: str, body: dict):
         raise HTTPException(500, "Internal component error")
 
     system_prompt = f"""You are an intelligent AI assistant answering questions about a project.
-You have access to the current meeting's data below.
-To answer questions about PAST meetings or the complete history of decisions, YOU MUST CALL THE `search_graph` tool. 
+You have access to the current meeting's brief metadata below. For detailed transcript, events, or cross-meeting history, you MUST use your retrieval tools.
 
---- CURRENT MEETING DATA ---
+--- CURRENT MEETING ---
 {meeting_context}
 
 IMPORTANT INSTRUCTIONS:
-1. Always base your answers on the transcripts and graph data.
-2. Provide citations when stating facts (e.g., `(Meeting ES2002b, Speaker_A, 12:45)`).
-3. Be concise."""
+1. ALWAYS call `search_context` first to retrieve relevant transcript segments and events before answering detailed questions or writing documents.
+2. Use `search_graph` for cross-meeting historical decisions and context.
+3. If the user asks you to modify or add to a document/sheet, DO NOT ask for permission. Use your editing tools to write directly.
+4. Provide citations when stating facts (e.g., `(Meeting ES2002b, Speaker_A, 12:45)`).
+5. Be highly detailed and comprehensive. Do not summarize too aggressively. Extract as much explicit factual data as possible.
+6. The source transcripts are raw spoken dialogue containing verbal tics ("um", "uh", "yeah"). **NEVER quote this raw text verbatim in your final output or tool calls.** Always rewrite and paraphrase the decisions and facts into polished, professional business English.
+7. NEVER use emojis or unicode symbols in your output. Use plain text only — no ✅, 🎯, ❌, 📊, etc.
+
+GOOGLE DOCS FORMATTING RULES (critical):
+When writing to Google Docs with `replaceDocumentWithMarkdown`, you MUST use proper markdown:
+- Use `# Heading 1`, `## Heading 2`, `### Heading 3` for headings (with a blank line before each)
+- Use `**bold text**` for emphasis
+- Use `- item` for bullet points (with a blank line before the list)
+- Use `1. item` for numbered lists
+- Put a blank line between every section and paragraph
+- Do NOT use `*` for bullets — always use `-`"""
 
     # ── Build conversation history ─────────────────────────────────────────
     messages = [{"role": "system", "content": system_prompt}]
@@ -1217,7 +1313,8 @@ IMPORTANT INSTRUCTIONS:
             None,
             lambda: llm.agent_chat(
                 messages, tools, tool_handler,
-                max_turns=5, step_callback=_step_callback,
+                max_turns=15, step_callback=_step_callback,
+                model_name=model_choice
             ),
         )
 
@@ -1226,20 +1323,20 @@ IMPORTANT INSTRUCTIONS:
             await asyncio.sleep(0.1)
             while not step_queue.empty():
                 step = step_queue.get_nowait()
-                yield f"data: {json.dumps({'type': 'step', 'step': step})}\n\n"
+                yield f"data: {json.dumps({'type': 'step', 'step': step}, ensure_ascii=False)}\n\n"
 
         # Drain any remaining steps
         while not step_queue.empty():
             step = step_queue.get_nowait()
-            yield f"data: {json.dumps({'type': 'step', 'step': step})}\n\n"
+            yield f"data: {json.dumps({'type': 'step', 'step': step}, ensure_ascii=False)}\n\n"
 
         # Get the final result
         try:
             result = fut.result()
-            yield f"data: {json.dumps({'type': 'reply', 'content': result['reply'].strip(), 'steps': result.get('steps', []), 'model': result.get('model', 'unknown')})}\n\n"
+            yield f"data: {json.dumps({'type': 'reply', 'content': result['reply'].strip(), 'steps': result.get('steps', []), 'model': result.get('model', 'unknown')}, ensure_ascii=False)}\n\n"
         except Exception as e:
             logger.error(f"Chat failed: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
 
         yield "data: [DONE]\n\n"
 
@@ -1363,6 +1460,111 @@ def delete_role(name: str):
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  SYSTEM
+# ═══════════════════════════════════════════════════════════════════════════
+#  MCP CONFIG ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════════
+
+MCP_CONFIG_FILE = ROOT / "mcp_config.json"
+
+# Defines all available tool categories and their tools
+MCP_TOOL_CATEGORIES = {
+    "docs": {
+        "label": "Google Docs",
+        "description": "Read, write, and format Google Documents",
+        "icon": "📄",
+        "tools": ["readDocument", "appendMarkdown", "replaceDocumentWithMarkdown", "createDocument", "appendText", "findAndReplace", "insertTableWithData", "applyTextStyle"]
+    },
+    "sheets": {
+        "label": "Google Sheets",
+        "description": "Read, write, and format Google Spreadsheets",
+        "icon": "📊",
+        "tools": ["readSpreadsheet", "writeSpreadsheet", "appendRows", "formatCells", "clearRange", "getSpreadsheetInfo", "createSpreadsheet"]
+    },
+    "drive": {
+        "label": "Google Drive",
+        "description": "List, search, and manage files in Drive",
+        "icon": "💾",
+        "tools": ["listDocuments", "searchDocuments", "listDriveFiles", "getDocumentInfo", "createFolder", "moveFile", "renameFile"]
+    },
+    "email": {
+        "label": "Gmail",
+        "description": "Read, send, and manage emails",
+        "icon": "✉️",
+        "tools": ["listMessages", "getMessage", "sendEmail", "trashMessage", "modifyMessageLabels", "createDraft", "triageInbox"]
+    },
+    "calendar": {
+        "label": "Google Calendar",
+        "description": "View and manage calendar events",
+        "icon": "📅",
+        "tools": ["listEvents", "createEvent", "updateEvent", "deleteEvent", "quickAddEvent"]
+    }
+}
+
+def _load_mcp_config() -> dict:
+    """Load MCP config from disk, returning defaults if not present."""
+    if MCP_CONFIG_FILE.exists():
+        try:
+            return json.loads(MCP_CONFIG_FILE.read_text())
+        except Exception:
+            pass
+    # Default: docs and sheets enabled
+    return {"enabled_categories": ["docs", "sheets"]}
+
+def _save_mcp_config(config: dict):
+    MCP_CONFIG_FILE.write_text(json.dumps(config, indent=2))
+
+def get_enabled_tools(config: dict) -> list[str]:
+    """Flatten enabled categories into a list of tool names."""
+    tools = []
+    for cat_id in config.get("enabled_categories", []):
+        cat = MCP_TOOL_CATEGORIES.get(cat_id)
+        if cat:
+            tools.extend(cat["tools"])
+    return tools
+
+@app.get("/api/mcp/config")
+def get_mcp_config():
+    """Return current MCP category config and available categories."""
+    config = _load_mcp_config()
+    return {
+        "enabled_categories": config.get("enabled_categories", []),
+        "categories": MCP_TOOL_CATEGORIES,
+        "active_tools": get_enabled_tools(config),
+        "mcp_connected": len(mcp_sessions) > 0
+    }
+
+@app.post("/api/mcp/config")
+def update_mcp_config(body: dict):
+    """Update enabled MCP categories. Changes take effect on next MCP restart."""
+    enabled = body.get("enabled_categories", [])
+    # Validate that only known categories are provided
+    valid = [c for c in enabled if c in MCP_TOOL_CATEGORIES]
+    config = {"enabled_categories": valid}
+    _save_mcp_config(config)
+    return {
+        "ok": True,
+        "enabled_categories": valid,
+        "active_tools": get_enabled_tools(config),
+        "note": "Restart the API server for changes to take effect."
+    }
+
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/context/reindex")
+def reindex_context():
+    """Re-index all completed meetings into ChromaDB for RAG retrieval."""
+    cs = get_context_store()
+    tm = get_temporal_memory()
+    indexed = 0
+    for job_id, job in _jobs.items():
+        if job.get("status") == "done":
+            try:
+                cs.index_meeting(job, temporal_memory=tm)
+                indexed += 1
+            except Exception as e:
+                logger.warning(f"Failed to index job {job_id}: {e}")
+    return {"ok": True, "indexed_meetings": indexed}
+
 # ═══════════════════════════════════════════════════════════════════════════
 
 @app.post("/api/system/reset")

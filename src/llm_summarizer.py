@@ -3,10 +3,44 @@ from typing import List, Optional, Dict
 import requests
 import json
 import re
+import re as _re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Regex to strip emojis and misc unicode symbols from LLM output
+_EMOJI_RE = re.compile(
+    "["
+    "\U0001F600-\U0001F64F"  # emoticons
+    "\U0001F300-\U0001F5FF"  # symbols & pictographs
+    "\U0001F680-\U0001F6FF"  # transport & map
+    "\U0001F1E0-\U0001F1FF"  # flags
+    "\U0001F900-\U0001F9FF"  # supplemental symbols
+    "\U0001FA00-\U0001FA6F"  # chess symbols
+    "\U0001FA70-\U0001FAFF"  # symbols extended-A
+    "\U00002702-\U000027B0"  # dingbats
+    "\U0000FE00-\U0000FE0F"  # variation selectors
+    "\U0000200D"             # zero width joiner
+    "\U000020E3"             # combining enclosing keycap
+    "\U00002600-\U000026FF"  # misc symbols
+    "\U00002700-\U000027BF"  # dingbats
+    "\U0000231A-\U0000231B"  # watch/hourglass
+    "\U00002934-\U00002935"  # arrows
+    "\U000025AA-\U000025FE"  # geometric shapes
+    "\U00002B05-\U00002B07"  # arrows
+    "\U00002B1B-\U00002B1C"  # squares
+    "\U00002B50"             # star
+    "\U00002B55"             # circle
+    "\U00003030"             # wavy dash
+    "\U0000303D"             # part alternation mark
+    "\U00003297"             # circled ideograph congratulation
+    "\U00003299"             # circled ideograph secret
+    "]+", flags=re.UNICODE
+)
+
+def _strip_emojis(text: str) -> str:
+    """Remove emoji and unicode symbol characters from text."""
+    return _EMOJI_RE.sub('', text).strip()
 
 class LLMSummarizer:
     """
@@ -101,7 +135,7 @@ class LLMSummarizer:
             logger.error(f"LM Studio generation failed: {e}")
             raise e
 
-    def agent_chat(self, messages: List[Dict], tools: List[Dict], tool_handler: callable, max_turns: int = 5, step_callback: callable = None) -> Dict:
+    def agent_chat(self, messages: List[Dict], tools: List[Dict], tool_handler: callable, max_turns: int = 5, step_callback: callable = None, model_name: str = None) -> Dict:
         """
         Agent orchestration loop with real-time streaming.
         Uses stream=True to get token-by-token reasoning and content.
@@ -111,7 +145,10 @@ class LLMSummarizer:
         import json
         import re as _re
         
-        model_name = self._get_model_name(["gemma", "deepseek"])
+        # If model_name is explicitly provided, use it. Otherwise use fallback.
+        if not model_name:
+            # Gemma 4 is safe now — RAG reduced payload from 300K to ~6K tokens
+            model_name = self._get_model_name(["gemma", "qwen3.5-9b", "qwen"])
         steps: List[Dict] = []
 
         def _emit(step: Dict):
@@ -128,6 +165,12 @@ class LLMSummarizer:
             if step_callback:
                 step_callback(step)
 
+        # Hard safety constant: max estimated tokens we can safely send.
+        # Even with 262K context, we need headroom for the LLM's own output.
+        MAX_SAFE_TOKENS = 120_000  # ~120K tokens leaves plenty of room for response
+        CHARS_PER_TOKEN = 3.5     # conservative estimate for code/JSON heavy payloads
+        MAX_SAFE_CHARS = int(MAX_SAFE_TOKENS * CHARS_PER_TOKEN)  # ~420K characters
+
         for turn in range(max_turns):
             payload = {
                 "model": model_name,
@@ -137,16 +180,61 @@ class LLMSummarizer:
                 "tools": tools,
             }
 
+            # ── Payload size guard: progressively truncate to fit ─────
+            payload_json = json.dumps(payload)
+            payload_chars = len(payload_json)
+            est_tokens = int(payload_chars / CHARS_PER_TOKEN)
+            logger.info(f"[agent_chat] Turn {turn}: payload={payload_chars:,} chars (~{est_tokens:,} tokens), {len(tools)} tools, {len(messages)} messages")
+
+            if payload_chars > MAX_SAFE_CHARS:
+                logger.warning(f"[agent_chat] Payload too large ({payload_chars:,} chars). Applying progressive truncation...")
+
+                # Step 1: Strip tools down to just search_graph (always keep it)
+                if len(tools) > 1:
+                    tools = [t for t in tools if t.get('function', {}).get('name') == 'search_graph']
+                    payload["tools"] = tools
+                    logger.info(f"  → Stripped tools to {len(tools)} (search_graph only)")
+
+                # Step 2: Truncate system message (meeting context) to 2000 chars
+                if messages and messages[0]["role"] == "system":
+                    sys_content = messages[0]["content"]
+                    if len(sys_content) > 3000:
+                        messages[0]["content"] = sys_content[:3000] + "\n... (context truncated to fit model window)"
+                        logger.info(f"  → Truncated system prompt from {len(sys_content):,} to 3000 chars")
+
+                # Step 3: Trim history — keep only last 2 messages
+                if len(messages) > 3:
+                    messages = [messages[0]] + messages[-2:]
+                    payload["messages"] = messages
+                    logger.info(f"  → Trimmed history to {len(messages)} messages")
+
+                # Step 4: Truncate any individual message over 2000 chars
+                for msg in messages[1:]:
+                    if len(msg.get("content", "")) > 2000:
+                        msg["content"] = msg["content"][:2000] + "\n...(truncated)"
+
+                payload_json = json.dumps(payload, ensure_ascii=False)
+                logger.info(f"  → Final payload: {len(payload_json):,} chars (~{int(len(payload_json)/CHARS_PER_TOKEN):,} tokens)")
+
             try:
                 # ── Stream the LLM response ──────────────────────────
                 resp = requests.post(self.endpoint, json=payload, timeout=120, stream=True)
-                resp.raise_for_status()
+                try:
+                    resp.raise_for_status()
+                except requests.exceptions.HTTPError as http_err:
+                    error_body = resp.text[:500] if resp.text else 'No body'
+                    logger.error(f"LM Studio returned {resp.status_code}: {error_body} (payload was {len(payload_json):,} chars)")
+                    raise RuntimeError(f"LM Studio error {resp.status_code}: The payload ({est_tokens:,} est. tokens) may exceed the model's context window. Try reducing enabled MCP tools or conversation history.") from http_err
 
                 # Accumulators
                 reasoning_buf = ""
                 content_buf = ""
                 tool_calls_buf: Dict[int, Dict] = {}  # index → {id, name, arguments}
                 reasoning_emitted = False
+
+                # Force UTF-8 decoding — LM Studio omits charset from Content-Type,
+                # causing requests to default to ISO-8859-1 (mojibake: â€" instead of —)
+                resp.encoding = 'utf-8'
 
                 for raw_line in resp.iter_lines(decode_unicode=True):
                     if not raw_line or not raw_line.startswith("data: "):
@@ -226,6 +314,7 @@ class LLMSummarizer:
                 messages.append(message_out)
 
                 # ── Handle tool calls ────────────────────────────────
+                logger.info(f"[agent_chat] Turn {turn} result: content_buf={len(content_buf)} chars, tool_calls={len(tool_calls_buf)}, reasoning={len(reasoning_buf)} chars")
                 if tool_calls_buf:
                     for idx, tc in tool_calls_buf.items():
                         fn_name = tc["name"]
@@ -262,20 +351,30 @@ class LLMSummarizer:
 
                         _emit({"type": "tool_result", "name": fn_name, "result": str(result_text)[:500], "turn": turn})
 
+                        # Cap tool results to prevent context explosion on next turn
+                        result_str = str(result_text)
+                        if len(result_str) > 4000:
+                            result_str = result_str[:4000] + "\n...(result truncated to fit context window)"
+                            logger.info(f"  Truncated tool result from {len(str(result_text)):,} to 4000 chars")
+
                         messages.append({
                             "role": "tool", "tool_call_id": tc["id"],
-                            "name": fn_name, "content": str(result_text)
+                            "name": fn_name, "content": result_str
                         })
 
                     continue  # Loop back for the LLM to process tool results
                 else:
-                    return {"reply": content_buf, "steps": steps, "model": model_name}
+                    logger.info(f"[agent_chat] Turn {turn}: Final response — {len(content_buf)} chars")
+                    return {"reply": _strip_emojis(content_buf), "steps": steps, "model": model_name}
 
-            except Exception as e:
-                logger.error(f"Agent chat failed at turn {turn}: {e}")
-                raise e
+            except RuntimeError as re:
+                # Payload overflow — return a helpful error message to the user
+                logger.error(f"Agent chat runtime error at turn {turn}: {re}")
+                _emit({"type": "error", "message": str(re), "turn": turn})
+                return {"reply": f"I encountered a context window issue: {re}", "steps": steps, "model": model_name}
 
-        return {"reply": "Agent stopped: Reached maximum tool turns.", "steps": steps, "model": model_name}
+        logger.warning(f"[agent_chat] Reached max_turns={max_turns}. Last content: {content_buf[:200] if content_buf else '(empty)'}")
+        return {"reply": _strip_emojis(content_buf) if content_buf else "Agent stopped: Reached maximum tool turns. Please try a simpler request.", "steps": steps, "model": model_name}
 
     def extract_json_events(self, text: str, speaker: Optional[str] = None, timestamp: Optional[str] = None) -> Dict:
         """

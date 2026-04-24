@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { fetchMeeting, teamsVideoUrl, patchSpeakers, reprocessMeeting, chatWithMeeting, Job, ChatMessage, AgentStep, TEAMS_API } from '@/lib/api';
+import { fetchMeeting, teamsVideoUrl, patchSpeakers, reprocessMeeting, chatWithMeeting, fetchModels, Job, ChatMessage, AgentStep, TEAMS_API } from '@/lib/api';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -320,7 +320,22 @@ function ChatPanel({ jobId, onSeek }: { jobId: string, onSeek?: (time: number) =
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [liveSteps, setLiveSteps] = useState<AgentStep[]>([]);
+    const [models, setModels] = useState<{ id: string }[]>([]);
+    const [selectedModel, setSelectedModel] = useState<string>('');
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const init = async () => {
+            try {
+                const fetchedModels = await fetchModels();
+                setModels(fetchedModels);
+                // Try to find Gemma as a default, fallback to first available
+                const defaultModel = fetchedModels.find(m => m.id.toLowerCase().includes('gemma'))?.id || (fetchedModels.length > 0 ? fetchedModels[0].id : '');
+                setSelectedModel(defaultModel);
+            } catch (e) { console.error('Failed to fetch models', e); }
+        };
+        init();
+    }, []);
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -341,6 +356,7 @@ function ChatPanel({ jobId, onSeek }: { jobId: string, onSeek?: (time: number) =
             const { reply, steps, model } = await chatWithMeeting(
                 jobId, msg, updated,
                 (steps) => setLiveSteps(steps),
+                selectedModel || undefined
             );
             setLiveSteps([]);
             setMessages(prev => [...prev, { role: 'assistant', content: reply, steps, model }]);
@@ -572,6 +588,7 @@ function ChatPanel({ jobId, onSeek }: { jobId: string, onSeek?: (time: number) =
                     background: 'var(--bg-hover)', borderRadius: '12px',
                     border: '1px solid var(--border)', padding: '4px 4px 4px 14px',
                     transition: 'border-color 0.15s',
+                    alignItems: 'center',
                 }}>
                     <input
                         className="chat-input"
@@ -587,6 +604,23 @@ function ChatPanel({ jobId, onSeek }: { jobId: string, onSeek?: (time: number) =
                             fontFamily: 'inherit',
                         }}
                     />
+                    {models.length > 0 && (
+                        <select
+                            value={selectedModel}
+                            onChange={e => setSelectedModel(e.target.value)}
+                            style={{
+                                background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                                color: 'var(--text-secondary)', fontSize: '11px', borderRadius: '6px',
+                                padding: '4px 8px', outline: 'none', cursor: 'pointer',
+                                maxWidth: '120px', textOverflow: 'ellipsis',
+                            }}
+                            title="Select Model"
+                        >
+                            {models.map(m => (
+                                <option key={m.id} value={m.id}>{m.id.split('/').pop()}</option>
+                            ))}
+                        </select>
+                    )}
                     <button
                         onClick={() => send()}
                         disabled={loading || !input.trim()}

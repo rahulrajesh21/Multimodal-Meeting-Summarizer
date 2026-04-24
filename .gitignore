@@ -124,3 +124,6 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Google Credentials
+sheets.json
