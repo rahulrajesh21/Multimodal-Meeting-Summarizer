@@ -3,8 +3,8 @@ import './globals.css';
 import Sidebar from '@/components/Sidebar';
 
 export const metadata: Metadata = {
-  title: 'MeetingIQ — Meeting Intelligence Platform',
-  description: 'AI-powered cross-meeting insights and role-aware summaries',
+  title: 'MeetingIQ — Agent Platform',
+  description: 'Agentic Meeting Intelligence: transcription, knowledge graphs, and autonomous AI analysis',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -14,14 +14,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Instrument+Serif:ital@0;1&family=Playfair+Display:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body>
-        <div className="layout">
+      <body style={{ background: '#F7F6F3' }}>
+        <div style={{ display: 'flex', minHeight: '100vh' }}>
           <Sidebar />
-          <main className="main">{children}</main>
+          <main style={{ marginLeft: '220px', flex: 1, minHeight: '100vh', overflow: 'hidden' }}>
+            {children}
+          </main>
         </div>
       </body>
     </html>

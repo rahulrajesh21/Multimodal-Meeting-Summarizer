@@ -56,11 +56,11 @@ function GraphCanvas({ data }: { data: GraphData }) {
             .data(nodes)
             .join('g')
             .attr('cursor', 'pointer')
-            .call(d3.drag<SVGGElement, any>()
+            .call((d3.drag<SVGGElement, any>()
                 .on('start', (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
                 .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
                 .on('end', (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
-            );
+            ) as any);
 
         node.append('circle')
             .attr('r', d => nodeRadius(d))
