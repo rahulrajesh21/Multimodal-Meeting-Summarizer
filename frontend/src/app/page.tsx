@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { fetchMeetings, Job } from '@/lib/api';
 import UploadModal from '@/components/UploadModal';
@@ -112,10 +113,12 @@ function StatCard({ label, value, color, icon: Icon, change, delay, hero }: any)
 }
 
 function MeetingCard({ job, index }: { job: any; index: number }) {
+  const router = useRouter();
   const [hovered, setHovered] = useState(false);
   const durations = ['12 min 38 sec', '15 min 12 sec', '09 min 28 sec'];
   return (
     <motion.div
+      onClick={() => router.push(`/meetings/${job.job_id}`)}
       initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.1 + index * 0.07 }}
       style={{

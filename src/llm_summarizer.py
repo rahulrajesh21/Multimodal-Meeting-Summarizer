@@ -168,8 +168,8 @@ class LLMSummarizer:
         # Hard safety constant: max estimated tokens we can safely send.
         # Even with 262K context, we need headroom for the LLM's own output.
         MAX_SAFE_TOKENS = 120_000  # ~120K tokens leaves plenty of room for response
-        CHARS_PER_TOKEN = 3.5     # conservative estimate for code/JSON heavy payloads
-        MAX_SAFE_CHARS = int(MAX_SAFE_TOKENS * CHARS_PER_TOKEN)  # ~420K characters
+        CHARS_PER_TOKEN = 4.0     # conservative estimate based on ~4 chars per token heuristic
+        MAX_SAFE_CHARS = int(MAX_SAFE_TOKENS * CHARS_PER_TOKEN)  # ~480K characters
 
         for turn in range(max_turns):
             payload = {
@@ -180,14 +180,50 @@ class LLMSummarizer:
                 "tools": tools,
             }
 
-            # ── Payload size guard: progressively truncate to fit ─────
+            # ── Payload size guard and Dynamic Compaction ─────
             payload_json = json.dumps(payload)
             payload_chars = len(payload_json)
             est_tokens = int(payload_chars / CHARS_PER_TOKEN)
             logger.info(f"[agent_chat] Turn {turn}: payload={payload_chars:,} chars (~{est_tokens:,} tokens), {len(tools)} tools, {len(messages)} messages")
 
+            SOFT_LIMIT_TOKENS = 6500
+
+            if est_tokens > SOFT_LIMIT_TOKENS and len(messages) > 3:
+                logger.info(f"[agent_chat] Soft token limit exceeded ({est_tokens:,} > {SOFT_LIMIT_TOKENS}). Compacting intermediate context...")
+                # Always keep System [0] and User prompt [1]
+                new_messages = [messages[0], messages[1]] if len(messages) > 1 else [messages[0]]
+                
+                # For intermediate messages, keep tool calls but compress raw tool data
+                for msg in messages[2:-2]:
+                    if msg["role"] == "tool":
+                        new_messages.append({
+                            "role": msg["role"],
+                            "tool_call_id": msg.get("tool_call_id"),
+                            "name": msg.get("name"),
+                            "content": f"[Archived Tool Result: Content removed to reduce context. Result was processed in step]"
+                        })
+                    elif msg["role"] == "assistant" and msg.get("content"):
+                        # Compress verbose intermediate reasoning just in case
+                        content = msg["content"]
+                        if len(content) > 500:
+                            content = content[:500] + "\n...[truncated reasoning]"
+                        new_messages.append({**msg, "content": content})
+                    else:
+                        new_messages.append(msg)
+                
+                # Keep the last 2 messages intact to ensure recent context
+                new_messages.extend(messages[-2:])
+                messages = new_messages
+                payload["messages"] = messages
+                
+                # Re-check payload after soft limit compaction
+                payload_json = json.dumps(payload)
+                payload_chars = len(payload_json)
+                est_tokens = int(payload_chars / CHARS_PER_TOKEN)
+                logger.info(f"  → Compacted payload: {payload_chars:,} chars (~{est_tokens:,} tokens)")
+
             if payload_chars > MAX_SAFE_CHARS:
-                logger.warning(f"[agent_chat] Payload too large ({payload_chars:,} chars). Applying progressive truncation...")
+                logger.warning(f"[agent_chat] Payload STILL too large ({payload_chars:,} chars). Applying hard progressive truncation...")
 
                 # Step 1: Strip tools down to just search_graph (always keep it)
                 if len(tools) > 1:
@@ -195,26 +231,27 @@ class LLMSummarizer:
                     payload["tools"] = tools
                     logger.info(f"  → Stripped tools to {len(tools)} (search_graph only)")
 
-                # Step 2: Truncate system message (meeting context) to 2000 chars
+                # Step 2: Truncate system message (meeting context) to 3000 chars
                 if messages and messages[0]["role"] == "system":
                     sys_content = messages[0]["content"]
                     if len(sys_content) > 3000:
                         messages[0]["content"] = sys_content[:3000] + "\n... (context truncated to fit model window)"
                         logger.info(f"  → Truncated system prompt from {len(sys_content):,} to 3000 chars")
 
-                # Step 3: Trim history — keep only last 2 messages
+                # Step 3: Hard Trim — keep only System, User, and Last 2
                 if len(messages) > 3:
-                    messages = [messages[0]] + messages[-2:]
+                    messages = messages[:2] + messages[-2:]
                     payload["messages"] = messages
-                    logger.info(f"  → Trimmed history to {len(messages)} messages")
+                    logger.info(f"  → Hard Trimmed history to {len(messages)} messages (preserved system+user intent)")
 
                 # Step 4: Truncate any individual message over 2000 chars
-                for msg in messages[1:]:
+                for msg in messages[2:]:  # Start after user prompt to protect intent
                     if len(msg.get("content", "")) > 2000:
                         msg["content"] = msg["content"][:2000] + "\n...(truncated)"
 
+                payload["messages"] = messages
                 payload_json = json.dumps(payload, ensure_ascii=False)
-                logger.info(f"  → Final payload: {len(payload_json):,} chars (~{int(len(payload_json)/CHARS_PER_TOKEN):,} tokens)")
+                logger.info(f"  → Final hard payload: {len(payload_json):,} chars (~{int(len(payload_json)/CHARS_PER_TOKEN):,} tokens)")
 
             try:
                 # ── Stream the LLM response ──────────────────────────
