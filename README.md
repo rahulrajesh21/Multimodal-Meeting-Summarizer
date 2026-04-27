@@ -1,35 +1,64 @@
-# Vela - Agentic Meeting Intelligence Platform
+# Vela
 
-Vela is a state-of-the-art multimodal meeting summarization and automation platform. It moves beyond passive transcription by capturing audio and visual streams, maintaining a persistent memory of organizational knowledge, and acting on it autonomously via an integrated AI Agent.
+**Agentic Meeting Intelligence Platform**
 
-## 🌟 Key Features
+An open-source multimodal meeting summarization and automation platform that moves beyond passive transcription — capturing audio and visual streams, maintaining a persistent memory of organizational knowledge, and acting on it autonomously via an integrated AI agent.
 
-- **Multimodal Extraction Pipeline**: Combines faster-whisper/WhisperX for accurate audio transcription and speaker diarization, with robust visual modeling to detect screen shares and perform OCR on presentation slides.
-- **Temporal Knowledge Graph**: A persistent graph mapping entities (decisions, topics, projects) across multiple meetings to preserve context over time.
-- **Agentic Automation (MCP)**: Utilizes the Model Context Protocol (MCP) to seamlessly communicate with external tools. The autonomous agent can read and draft Google Docs, manipulate Google Sheets, view your Google Calendar, and send messages or notifications in Slack.
-- **Warm Light Dashboard**: A sleek, beautifully crafted Next.js user interface utilizing Cosmic Glassmorphism principles for intuitive meeting review and live agent monitoring.
-- **Local Priority LLM Inference**: Designed to run reasoning models locally via LM Studio to ensure data privacy without sacrificing capability.
+---
 
-## 🛠 Tech Stack
+## About the Project
 
-- **Backend / Pipeline**: Python, FastAPI, Uvicorn, SQLite, ChromaDB
-- **Frontend / Client**: React, Next.js, Tailwind CSS, Lucide Icons, Simple Icons
-- **ML Models**: Whisper, Sentence-Transformers, pyannote.audio (for diarization), DistilBERT
-- **Integration Layer**: Model Context Protocol (MCP)
+Vela is not a transcription tool. It is a reasoning layer placed on top of your meetings.
 
-## 🚀 Getting Started
+While most tools hand you a wall of text after a call, Vela captures what was said, what was shown on screen, who said it, and what decisions were made — then acts on that information directly inside your existing workspace. Documents are drafted, sheets are updated, calendar context is applied, and Slack messages are dispatched, all without manual intervention.
+
+It is designed to run locally. Your meeting data stays on your infrastructure. No vendor lock-in. No cloud dependency. If you stop using Vela, your Google Workspace and Slack remain exactly as you left them.
+
+---
+
+## Key Features
+
+**Multimodal Extraction Pipeline**
+Combines `faster-whisper` / `WhisperX` for accurate audio transcription and speaker diarization with robust visual modeling to detect screen shares and perform OCR on presentation slides.
+
+**Temporal Knowledge Graph**
+A persistent graph that maps entities — decisions, topics, projects — across multiple meetings, preserving context over time rather than treating each session in isolation.
+
+**Agentic Automation via MCP**
+Utilizes the Model Context Protocol (MCP) to communicate with external tools autonomously. The agent can read and draft Google Docs, manipulate Google Sheets, query your Google Calendar, and send messages or notifications in Slack.
+
+**Warm Light Dashboard**
+A Next.js user interface built on Cosmic Glassmorphism design principles for intuitive meeting review and live agent monitoring.
+
+**Local-Priority LLM Inference**
+Designed to run reasoning models locally via LM Studio to ensure data privacy without sacrificing capability.
+
+---
+
+## Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| Backend / Pipeline | Python, FastAPI, Uvicorn, SQLite, ChromaDB |
+| Frontend / Client | React, Next.js, Tailwind CSS, Lucide Icons, Simple Icons |
+| ML Models | Whisper, Sentence-Transformers, pyannote.audio, DistilBERT |
+| Integration Layer | Model Context Protocol (MCP) |
+
+---
+
+## Installation
 
 ### Prerequisites
 
-- **Python 3.8+**
-- **Node.js 18+**
-- **FFmpeg** (required for deep audio processing)
-- **Local LLM Server (e.g., LM Studio)** running on the default port
+- Python 3.8+
+- Node.js 18+
+- FFmpeg (required for audio processing)
+- A local LLM server such as [LM Studio](https://lmstudio.ai) running on the default port
 
 ### Backend Setup
 
 ```bash
-# Create and activate virtual environment
+# Create and activate a virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
@@ -52,12 +81,23 @@ npm install
 npm run dev
 ```
 
-## 🧠 Architectural Highlights
+The dashboard will be available at `http://localhost:3000`.
 
-1. **Active Workflows**: Unlike standard tools which leave you with a massive block of text, Vela connects via MCP directly to your Google Workspace and Slack, turning spoken decisions into dispatched tickets and structured project specs.
-2. **Server-Sent Events (SSE)**: High-speed streaming architecture connects the frontend directly to the agent's real-time reasoning and tool usage chain. 
-3. **Hardware Optimization**: Tested and accelerated natively for Apple Silicon (MPS).
+---
 
-## 📝 License
-Open Source & Available for educational/commercial use.
+## Architectural Highlights
 
+**Active Workflows**
+Unlike standard transcription tools that produce static summaries, Vela connects via MCP directly to your Google Workspace and Slack, turning spoken decisions into dispatched tickets and structured project specifications in real time.
+
+**Server-Sent Events (SSE)**
+A streaming architecture connects the frontend directly to the agent's reasoning chain and tool usage as it happens, so you can observe every step the agent takes during a session.
+
+**Hardware Optimization**
+Tested and natively accelerated for Apple Silicon via MPS. Runs efficiently on consumer hardware without requiring a dedicated GPU server.
+
+---
+
+## License
+
+Open source and available for educational and commercial use.
