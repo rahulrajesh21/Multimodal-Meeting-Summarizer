@@ -43,15 +43,10 @@ export default function Sidebar() {
             {/* Logo */}
             <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid #E8E6E1' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{
-                        width: 32, height: 32, borderRadius: '8px',
-                        background: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                        <Zap style={{ width: 16, height: 16, color: '#fff', fill: '#fff' }} />
-                    </div>
+                    <img src="/vela_logo.svg" alt="Vela Logo" style={{ width: 32, height: 32 }} />
                     <div>
-                        <div style={{ fontSize: '15px', fontWeight: 700, color: '#1A1A18', letterSpacing: '-0.3px', lineHeight: 1 }}>
-                            MeetingIQ
+                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#1A1A18', letterSpacing: '-0.3px', lineHeight: 1 }}>
+                            Vela
                         </div>
                         <div style={{ fontSize: '9px', fontWeight: 600, color: '#4F46E5', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginTop: '2px' }}>
                             Agent Platform

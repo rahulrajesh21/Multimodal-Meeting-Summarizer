@@ -3,7 +3,7 @@ import './globals.css';
 import Sidebar from '@/components/Sidebar';
 
 export const metadata: Metadata = {
-  title: 'MeetingIQ — Agent Platform',
+  title: 'Vela — Agent Platform',
   description: 'Agentic Meeting Intelligence: transcription, knowledge graphs, and autonomous AI analysis',
 };
 
