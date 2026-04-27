@@ -144,17 +144,17 @@ export function LiveToolStep({
                 {/* Arguments display block */}
                 {argsRaw && (
                     <details style={{
-                        background: isSettled ? 'transparent' : '#FAFAF9',
-                        border: isSettled ? 'none' : '0.5px solid #E5E7EB',
+                        background: '#FAFAF9',
+                        border: '0.5px solid #E5E7EB',
                         borderRadius: '6px',
-                        padding: isSettled ? '0 0 0 34px' : '8px 12px',
-                        marginTop: isSettled ? '-4px' : '0',
+                        padding: '6px 12px',
+                        marginTop: '4px',
                         fontSize: '11px',
                         fontFamily: '"JetBrains Mono", monospace',
                         color: isSettled ? '#9B9891' : '#71717A',
-                        transition: 'all 0.3s ease',
+                        transition: 'color 0.3s ease',
                     }}>
-                        <summary style={{ cursor: 'pointer', userSelect: 'none' }}>View arguments</summary>
+                        <summary style={{ cursor: 'pointer', userSelect: 'none', color: isSettled ? '#9B9891' : '#4B5563' }}>View arguments</summary>
                         <div style={{ marginTop: 8, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                             {argsRaw}
                         </div>
