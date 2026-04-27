@@ -1497,6 +1497,12 @@ MCP_TOOL_CATEGORIES = {
         "description": "View and manage calendar events",
         "icon": "📅",
         "tools": ["listEvents", "createEvent", "updateEvent", "deleteEvent", "quickAddEvent"]
+    },
+    "slack": {
+        "label": "Slack",
+        "description": "Communicate and manage channels in Slack",
+        "icon": "💬",
+        "tools": ["listChannels", "sendMessage", "readHistory", "getUserProfile"]
     }
 }
 
