@@ -1,13 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Cable, Power, Check, X, ChevronRight, RefreshCw } from 'lucide-react';
+import { RefreshCw, MoreVertical, ExternalLink } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const ink = '#1A1A18';
 const inkSec = '#6B6A66';
 const inkMuted = '#9B9891';
-const inkFaint = '#B0AEA8';
 const borderColor = '#E8E6E1';
 const warmBg = '#F7F6F3';
 const indigo = '#4F46E5';
@@ -25,6 +24,102 @@ interface McpConfig {
     categories: Record<string, Category>;
     active_tools: string[];
     mcp_connected: boolean;
+}
+
+/* ── iOS-style toggle ── */
+function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
+    return (
+        <div
+            onClick={e => { e.stopPropagation(); onChange(); }}
+            style={{
+                width: 44, height: 26, borderRadius: 100, position: 'relative', cursor: 'pointer', flexShrink: 0,
+                background: on ? indigo : '#D4D2CC',
+                transition: 'background 0.2s',
+                boxShadow: on ? `0 0 0 3px rgba(79,70,229,0.15)` : 'none',
+            }}
+        >
+            <span style={{
+                position: 'absolute', top: 3,
+                left: on ? 21 : 3,
+                width: 20, height: 20, borderRadius: '50%',
+                background: '#FFFFFF',
+                transition: 'left 0.2s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+            }} />
+        </div>
+    );
+}
+
+/* ── Integration card matching reference design ── */
+function IntegrationCard({
+    catId, cat, isOn, onToggle,
+}: {
+    catId: string; cat: Category; isOn: boolean; onToggle: () => void;
+}) {
+    return (
+        <div style={{
+            background: '#FFFFFF',
+            border: `1px solid ${isOn ? 'rgba(79,70,229,0.3)' : borderColor}`,
+            borderRadius: 16,
+            padding: '20px 20px 16px',
+            display: 'flex', flexDirection: 'column', gap: 0,
+            transition: 'border-color 0.15s, box-shadow 0.15s',
+            boxShadow: isOn ? '0 2px 12px rgba(79,70,229,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
+        }}>
+            {/* Top row: icon + kebab */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                <div style={{
+                    width: 48, height: 48, borderRadius: 12,
+                    background: warmBg, border: `1px solid ${borderColor}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 24,
+                }}>
+                    {cat.icon}
+                </div>
+                <button
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: inkMuted, borderRadius: 6 }}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <MoreVertical style={{ width: 16, height: 16 }} />
+                </button>
+            </div>
+
+            {/* Name */}
+            <div style={{ fontSize: 16, fontWeight: 700, color: ink, marginBottom: 6 }}>{cat.label}</div>
+
+            {/* Description */}
+            <div style={{ fontSize: 13, color: inkSec, lineHeight: 1.5, marginBottom: 12, minHeight: 40 }}>
+                {cat.description}
+            </div>
+
+            {/* Tool count */}
+            <div style={{ fontSize: 13, color: inkMuted, fontWeight: 500, marginBottom: 16 }}>
+                {cat.tools.length} {cat.tools.length === 1 ? 'Tool' : 'Tools'}
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: borderColor, margin: '0 -20px', marginBottom: 14 }} />
+
+            {/* Bottom row: View Integration + Toggle */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button
+                    style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '6px 12px', borderRadius: 8, border: `1px solid ${borderColor}`,
+                        background: '#FFFFFF', color: inkSec, fontSize: 12, fontWeight: 500,
+                        cursor: 'pointer', fontFamily: '"DM Sans", system-ui, sans-serif',
+                        transition: 'border-color 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = indigo; (e.currentTarget as HTMLButtonElement).style.color = indigo; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = borderColor; (e.currentTarget as HTMLButtonElement).style.color = inkSec; }}
+                    onClick={e => e.stopPropagation()}
+                >
+                    View integration
+                </button>
+                <Toggle on={isOn} onChange={onToggle} />
+            </div>
+        </div>
+    );
 }
 
 export default function IntegrationsPage() {
@@ -79,126 +174,105 @@ export default function IntegrationsPage() {
         : 0;
 
     return (
-        <div style={{ padding: '36px 40px', maxWidth: '960px', margin: '0 auto' }}>
-            <h1 style={{
-                fontSize: '24px', fontWeight: 600, marginBottom: '6px',
-                fontFamily: '"Instrument Serif", "Playfair Display", Georgia, serif',
-                color: ink,
-            }}>Integrations</h1>
-            <p style={{ color: inkMuted, marginBottom: '32px', fontSize: '14px' }}>
-                Manage MCP connections and control which tools the AI agent can access.
-            </p>
+        <div style={{
+            padding: '36px 40px', maxWidth: 1100, margin: '0 auto',
+            fontFamily: '"DM Sans", system-ui, sans-serif',
+        }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+                <div>
+                    <h1 style={{
+                        fontSize: 26, fontWeight: 700, color: ink, marginBottom: 4,
+                        fontFamily: '"Instrument Serif", "Playfair Display", Georgia, serif',
+                    }}>
+                        Integrations &amp; Workflows
+                    </h1>
+                    <p style={{ fontSize: 14, color: inkMuted }}>
+                        Integrate your applications using our comprehensive directory
+                    </p>
+                </div>
 
-            {/* Connection Status */}
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '28px',
-                padding: '12px 16px', borderRadius: '8px',
-                background: mcpConfig?.mcp_connected ? '#F0FDF4' : warmBg,
-                border: `1px solid ${mcpConfig?.mcp_connected ? 'rgba(22,163,74,0.2)' : borderColor}`,
-            }}>
-                <div style={{
-                    width: 8, height: 8, borderRadius: '50%',
-                    background: mcpConfig?.mcp_connected ? positive : inkFaint,
-                    boxShadow: mcpConfig?.mcp_connected ? `0 0 6px rgba(22,163,74,0.5)` : 'none',
-                }} />
-                <span style={{
-                    fontSize: '13px', fontWeight: 600,
-                    color: mcpConfig?.mcp_connected ? positive : inkMuted,
-                }}>
-                    {mcpConfig?.mcp_connected ? 'Connected' : 'Disconnected'}
-                </span>
-                <span style={{ fontSize: '12px', color: inkMuted, marginLeft: 'auto' }}>
-                    {enabledCats.length} categories -- {totalActiveTools} tools active
-                </span>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    {/* Connection status badge */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '8px 14px', borderRadius: 8,
+                        background: mcpConfig?.mcp_connected ? '#F0FDF4' : warmBg,
+                        border: `1px solid ${mcpConfig?.mcp_connected ? 'rgba(22,163,74,0.25)' : borderColor}`,
+                        fontSize: 13, fontWeight: 600,
+                        color: mcpConfig?.mcp_connected ? positive : inkMuted,
+                    }}>
+                        <div style={{
+                            width: 7, height: 7, borderRadius: '50%',
+                            background: mcpConfig?.mcp_connected ? positive : '#B0AEA8',
+                            boxShadow: mcpConfig?.mcp_connected ? '0 0 5px rgba(22,163,74,0.5)' : 'none',
+                        }} />
+                        {mcpConfig?.mcp_connected ? 'Connected' : 'Disconnected'}
+                    </div>
+
+                    <button
+                        onClick={saveMcpConfig}
+                        disabled={!mcpDirty || mcpSaving}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '8px 18px', borderRadius: 8,
+                            fontWeight: 600, fontSize: 13, border: 'none',
+                            cursor: mcpDirty ? 'pointer' : 'not-allowed',
+                            background: mcpDirty ? indigo : '#E8E6E1',
+                            color: mcpDirty ? '#FFFFFF' : inkMuted,
+                            transition: 'all 0.15s',
+                        }}
+                    >
+                        {mcpSaving
+                            ? <><RefreshCw style={{ width: 13, height: 13, animation: 'spin 1s linear infinite' }} /> Saving...</>
+                            : 'Save Changes'}
+                    </button>
+                </div>
             </div>
 
-            {/* Tool Categories */}
+            {/* Summary bar */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                marginBottom: 24, fontSize: 13, color: inkMuted,
+                borderBottom: `1px solid ${borderColor}`, paddingBottom: 16,
+            }}>
+                <span style={{ fontWeight: 600, color: inkSec }}>Integrations</span>
+                <span>·</span>
+                <span>{enabledCats.length} active</span>
+                <span>·</span>
+                <span>{totalActiveTools} tools enabled</span>
+            </div>
+
+            {/* Cards grid */}
             {mcpConfig ? (
                 <div style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                    gap: '14px', marginBottom: '24px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gap: 20,
+                    marginBottom: 28,
                 }}>
-                    {Object.entries(mcpConfig.categories).map(([catId, cat]) => {
-                        const isOn = enabledCats.includes(catId);
-                        return (
-                            <button
-                                key={catId}
-                                onClick={() => toggleCategory(catId)}
-                                style={{
-                                    display: 'flex', flexDirection: 'column', gap: '10px',
-                                    padding: '18px 20px', borderRadius: '12px', textAlign: 'left',
-                                    cursor: 'pointer', transition: 'all 0.15s ease',
-                                    border: isOn ? `2px solid ${indigo}` : `1px solid ${borderColor}`,
-                                    background: isOn ? '#EEF2FF' : '#FFFFFF',
-                                    fontFamily: '"DM Sans", system-ui, sans-serif',
-                                }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '22px' }}>{cat.icon}</span>
-                                    {/* Toggle */}
-                                    <span style={{
-                                        width: 38, height: 22, borderRadius: '100px', position: 'relative',
-                                        background: isOn ? indigo : '#D4D2CC', transition: 'background 0.15s',
-                                        flexShrink: 0,
-                                    }}>
-                                        <span style={{
-                                            position: 'absolute', top: 3,
-                                            left: isOn ? 19 : 3,
-                                            width: 16, height: 16, borderRadius: '50%',
-                                            background: '#FFFFFF', transition: 'left 0.15s',
-                                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                                        }} />
-                                    </span>
-                                </div>
-                                <div>
-                                    <div style={{ fontWeight: 600, fontSize: '14px', color: ink, marginBottom: '3px' }}>
-                                        {cat.label}
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: inkMuted, lineHeight: 1.4 }}>
-                                        {cat.description}
-                                    </div>
-                                </div>
-                                <div style={{
-                                    fontSize: '11px', fontWeight: 600,
-                                    color: isOn ? indigo : inkMuted,
-                                }}>
-                                    {cat.tools.length} tools
-                                </div>
-                            </button>
-                        );
-                    })}
+                    {Object.entries(mcpConfig.categories).map(([catId, cat]) => (
+                        <IntegrationCard
+                            key={catId}
+                            catId={catId}
+                            cat={cat}
+                            isOn={enabledCats.includes(catId)}
+                            onToggle={() => toggleCategory(catId)}
+                        />
+                    ))}
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '24px' }}>
-                    {[0, 1, 2].map(i => (
-                        <div key={i} className="skeleton" style={{ height: 140, borderRadius: '12px' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 28 }}>
+                    {[0, 1, 2, 3, 4, 5].map(i => (
+                        <div key={i} className="skeleton" style={{ height: 220, borderRadius: 16 }} />
                     ))}
                 </div>
             )}
 
-            {/* Save */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                <button
-                    onClick={saveMcpConfig}
-                    disabled={!mcpDirty || mcpSaving}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                        padding: '9px 20px', borderRadius: '6px',
-                        fontWeight: 600, fontSize: '13px', border: 'none',
-                        cursor: mcpDirty ? 'pointer' : 'not-allowed',
-                        background: mcpDirty ? indigo : '#E8E6E1',
-                        color: mcpDirty ? '#FFFFFF' : inkMuted,
-                        fontFamily: '"DM Sans", system-ui, sans-serif',
-                        transition: 'all 0.15s',
-                    }}>
-                    {mcpSaving ? (
-                        <><RefreshCw style={{ width: 13, height: 13, animation: 'spin 1s linear infinite' }} /> Saving...</>
-                    ) : 'Save Changes'}
-                </button>
-            </div>
-
+            {/* Status message */}
             {mcpStatus && (
                 <div style={{
-                    marginTop: '16px', padding: '11px 16px', borderRadius: '8px', fontSize: '13px',
+                    marginTop: 16, padding: '11px 16px', borderRadius: 8, fontSize: 13,
                     background: mcpStatus.type === 'error' ? '#FEF2F2' : '#F0FDF4',
                     color: mcpStatus.type === 'error' ? '#DC2626' : positive,
                     border: `1px solid ${mcpStatus.type === 'error' ? 'rgba(220,38,38,0.2)' : 'rgba(22,163,74,0.2)'}`,
@@ -206,8 +280,6 @@ export default function IntegrationsPage() {
                     {mcpStatus.text}
                 </div>
             )}
-
-            <style>{`@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }`}</style>
         </div>
     );
 }
