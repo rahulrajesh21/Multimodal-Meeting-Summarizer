@@ -13,7 +13,11 @@ export function stepsToTags(steps: AgentStep[]): { name: string; argsRaw?: strin
             const key = s.id || s.name;
             if (!seen.has(key)) {
                 seen.add(key);
-                tags.push({ name: s.name, argsRaw: s.args_raw });
+                // args_raw is populated during streaming; args (dict) is what the backend
+                // sends in the final reply event — fall back to pretty-printing the dict.
+                const argsRaw = s.args_raw
+                    || (s.args ? JSON.stringify(s.args, null, 2) : undefined);
+                tags.push({ name: s.name, argsRaw });
             }
         }
     }
