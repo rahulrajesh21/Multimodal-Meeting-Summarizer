@@ -146,10 +146,10 @@ export function LiveToolStep({
                     <details style={{
                         background: isSettled ? 'transparent' : '#FAFAF9',
                         border: isSettled ? 'none' : '0.5px solid #E5E7EB',
-                        borderRadius: 6,
+                        borderRadius: '6px',
                         padding: isSettled ? '0 0 0 34px' : '8px 12px',
-                        marginTop: isSettled ? -4 : 0,
-                        fontSize: 11,
+                        marginTop: isSettled ? '-4px' : '0',
+                        fontSize: '11px',
                         fontFamily: '"JetBrains Mono", monospace',
                         color: isSettled ? '#9B9891' : '#71717A',
                         transition: 'all 0.3s ease',
