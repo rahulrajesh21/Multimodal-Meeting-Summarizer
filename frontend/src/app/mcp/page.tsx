@@ -56,6 +56,26 @@ function IntegrationCard({
 }: {
     catId: string; cat: Category; isOn: boolean; onToggle: () => void;
 }) {
+    // Map backend categories to Simple Icons SVG paths and brand colors
+    const getIconSvg = (id: string) => {
+        switch (id) {
+            case 'docs':
+                return { path: 'M14.773 0H2.727C1.227 0 0 1.227 0 2.727v18.546C0 22.773 1.227 24 2.727 24h18.546C22.773 24 24 22.773 24 21.273V9.227L14.773 0zm-1.636 18.545H5.454v-1.636h7.683v1.636zm4.364-3.818H5.454v-1.636h11.999v1.636zm0-3.818H5.454v-1.636h11.999v1.636zm-.546-3.272l-4.91-4.91v4.91h4.91z', color: '#4285F4' }; // Google Docs
+            case 'sheets':
+                return { path: 'M14.773 0H2.727C1.227 0 0 1.227 0 2.727v18.546C0 22.773 1.227 24 2.727 24h18.546C22.773 24 24 22.773 24 21.273V9.227L14.773 0zM12 18.545H5.455v-3.272H12v3.272zm0-4.363H5.455v-3.273H12v3.273zm6.545 4.363H13.636v-3.272h4.909v3.272zm0-4.363H13.636v-3.273h4.909v3.273zm-2.181-6.546l-4.91-4.91v4.91h4.91z', color: '#0F9D58' }; // Google Sheets
+            case 'drive':
+                return { path: 'M12.01 1.485c-1.696 0-3.14.782-4.008 2.052l-5.69 9.84a4.85 4.85 0 0 0 0 4.852l1.64 2.825H8.71l6.452-11.144c.433-.748 1.142-1.332 1.996-1.636L14.07 3.32a4.792 4.792 0 0 0-2.06-1.835zM8.344 19.53L2.65 9.77a4.856 4.856 0 0 0-1.22 1.693L0 13.94l5.65 9.761a4.85 4.85 0 0 0 4.225 2.45h3.31L8.344 19.53zm8.307-8.15H3.593v5.698h13.045a4.78 4.78 0 0 0 2.408-1.558l2.91-5.025a4.846 4.846 0 0 0 0-4.852l-1.464 2.525a5.558 5.558 0 0 1-3.84 3.211z', color: '#1FA463' }; // Google Drive
+            case 'email':
+                return { path: 'M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z', color: '#EA4335' }; // Gmail
+            case 'calendar':
+                return { path: 'M24 2.181a.545.545 0 0 1-.545.546H19.09v-1.636h-4.363v1.636h-5.455v-1.636H4.91v1.636H.545A.545.545 0 0 1 0 2.18V.545A.545.545 0 0 1 .545 0h4.364v1.636h4.363V0h5.455v1.636h4.363V0h4.364A.545.545 0 0 1 24 .545v1.636zM24 23.455a.545.545 0 0 1-.545.545H.545A.545.545 0 0 1 0 23.454V8.181c0-.3.245-.545.545-.545h22.91c.3 0 .545.245.545.545v15.274zm-22.909-6.546h4.364v4.364H1.09v-4.364zm5.454 0h4.364v4.364h-4.364v-4.364zm10.909 0h5.455v4.364h-5.455v-4.364zm-5.455 0h4.364v4.364h-4.364v-4.364zm-10.909-5.455h4.364v4.364H1.09V11.454zm5.454 0h4.364v4.364h-4.364v-4.364zm10.909 0h5.455v4.364h-5.455v-4.364zm-5.455 0h4.364v4.364h-4.364v-4.364z', color: '#4285F4' }; // Google Calendar
+            default:
+                return { path: 'M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 18.25c-3.45 0-6.25-2.8-6.25-6.25S8.55 5.75 12 5.75s6.25 2.8 6.25 6.25-2.8 6.25-6.25 6.25zm.8-6.25h3.45v1.6H10.4V8.4h1.6v3.6z', color: inkSec }; // fallback to simple clock or generic
+        }
+    };
+
+    const iconInfo = getIconSvg(catId);
+
     return (
         <div style={{
             background: '#FFFFFF',
@@ -72,9 +92,10 @@ function IntegrationCard({
                     width: 48, height: 48, borderRadius: 12,
                     background: warmBg, border: `1px solid ${borderColor}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 24,
                 }}>
-                    {cat.icon}
+                    <svg viewBox="0 0 24 24" width={24} height={24} fill={iconInfo.color}>
+                        <path d={iconInfo.path} />
+                    </svg>
                 </div>
                 <button
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: inkMuted, borderRadius: 6 }}
