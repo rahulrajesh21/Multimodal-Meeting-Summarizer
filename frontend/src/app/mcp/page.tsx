@@ -89,7 +89,7 @@ function IntegrationCard({
             {/* Top row: icon + kebab */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                 <div style={{
-                    width: 48, height: 48, borderRadius: 12,
+                    width: 48, height: 48, borderRadius: 12, flexShrink: 0,
                     background: warmBg, border: `1px solid ${borderColor}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
