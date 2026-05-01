@@ -15,6 +15,7 @@ import logging
 import os
 import re
 from typing import Any, Dict, List, Optional
+from sentence_transformers import CrossEncoder
 
 import chromadb
 import numpy as np
@@ -67,6 +68,16 @@ class ContextStore:
         else:
             self._emb_fn = None  # ChromaDB default (not recommended)
             logger.warning("ContextStore created without TextAnalyzer — using ChromaDB default embeddings")
+
+        try:
+            self._reranker = CrossEncoder(
+                'cross-encoder/ms-marco-MiniLM-L-6-v2',
+                max_length=512
+            )
+            print("Cross-encoder reranker loaded successfully")
+        except Exception as e:
+            self._reranker = None
+            print(f"Reranker not available: {e}")
 
         self._transcript = self._client.get_or_create_collection(
             name=self.COL_TRANSCRIPT,
@@ -167,10 +178,50 @@ class ContextStore:
     # Retrieval
     # ================================================================
 
+    def _rerank(self, query: str, documents: list, 
+                 metadatas: list, distances: list,
+                 top_k: int = 5) -> dict:
+        """
+        Reranks retrieved documents using cross-encoder.
+        Falls back to original order if reranker unavailable.
+        """
+        if not self._reranker or not documents:
+            return {
+                'documents': documents[:top_k],
+                'metadatas': metadatas[:top_k],
+                'distances': distances[:top_k]
+            }
+        
+        try:
+            pairs = [[query, doc] for doc in documents]
+            scores = self._reranker.predict(pairs)
+            
+            combined = list(zip(scores, documents, 
+                                metadatas, distances))
+            combined.sort(key=lambda x: x[0], reverse=True)
+            
+            reranked_docs = [x[1] for x in combined[:top_k]]
+            reranked_meta = [x[2] for x in combined[:top_k]]
+            reranked_dist = [x[3] for x in combined[:top_k]]
+            
+            return {
+                'documents': reranked_docs,
+                'metadatas': reranked_meta,
+                'distances': reranked_dist
+            }
+        except Exception as e:
+            print(f"Reranking failed, using original order: {e}")
+            return {
+                'documents': documents[:top_k],
+                'metadatas': metadatas[:top_k],
+                'distances': distances[:top_k]
+            }
+
     def search(
         self,
         query: str,
-        top_k: int = 5,
+        n_results: int = 5,
+        use_reranker: bool = True,
         scope: str = "all",
         meeting_id: Optional[str] = None,
     ) -> str:
@@ -183,35 +234,70 @@ class ContextStore:
         results_parts: List[str] = []
         where_filter = {"meeting_id": meeting_id} if meeting_id else None
 
+        fetch_k = 20 if use_reranker else n_results
+
         if scope in ("all", "transcript"):
             hits = self._transcript.query(
                 query_texts=[query],
-                n_results=min(top_k, 5),
+                n_results=fetch_k,
                 where=where_filter,
             )
-            for doc, meta in zip(hits["documents"][0], hits["metadatas"][0]):
-                speaker = meta.get("speaker", "")
-                t = meta.get("start_time", "")
-                prefix = f"[{t}] [{speaker}] " if speaker else f"[{t}] "
-                results_parts.append(f"📝 {prefix}{doc}")
+            
+            if hits and "documents" in hits and hits["documents"] and hits["documents"][0]:
+                if use_reranker:
+                    reranked = self._rerank(
+                        query,
+                        hits["documents"][0],
+                        hits["metadatas"][0],
+                        hits["distances"][0],
+                        top_k=n_results
+                    )
+                    docs = reranked["documents"]
+                    metas = reranked["metadatas"]
+                else:
+                    docs = hits["documents"][0][:n_results]
+                    metas = hits["metadatas"][0][:n_results]
+
+                for doc, meta in zip(docs, metas):
+                    speaker = meta.get("speaker", "")
+                    t = meta.get("start_time", "")
+                    prefix = f"[{t}] [{speaker}] " if speaker else f"[{t}] "
+                    results_parts.append(f"📝 {prefix}{doc}")
 
         if scope in ("all", "events"):
             hits = self._events.query(
                 query_texts=[query],
-                n_results=min(top_k, 5),
+                n_results=fetch_k,
                 where=where_filter,
             )
-            for doc, meta in zip(hits["documents"][0], hits["metadatas"][0]):
-                meeting_title = meta.get("meeting_id", "")
-                results_parts.append(f"⚡ {doc} (meeting: {meeting_title})")
+            
+            if hits and "documents" in hits and hits["documents"] and hits["documents"][0]:
+                if use_reranker:
+                    reranked = self._rerank(
+                        query,
+                        hits["documents"][0],
+                        hits["metadatas"][0],
+                        hits["distances"][0],
+                        top_k=n_results
+                    )
+                    docs = reranked["documents"]
+                    metas = reranked["metadatas"]
+                else:
+                    docs = hits["documents"][0][:n_results]
+                    metas = hits["metadatas"][0][:n_results]
+                    
+                for doc, meta in zip(docs, metas):
+                    meeting_title = meta.get("meeting_id", "")
+                    results_parts.append(f"⚡ {doc} (meeting: {meeting_title})")
 
         if scope in ("all", "meetings"):
             hits = self._meetings.query(
                 query_texts=[query],
-                n_results=min(top_k, 3),
+                n_results=min(n_results, 3),
             )
-            for doc in hits["documents"][0]:
-                results_parts.append(f"📅 {doc}")
+            if hits and "documents" in hits and hits["documents"] and hits["documents"][0]:
+                for doc in hits["documents"][0]:
+                    results_parts.append(f"📅 {doc}")
 
         if not results_parts:
             return "No relevant context found. Try a different query or scope."
@@ -262,3 +348,4 @@ class ContextStore:
             })
 
         return chunks
+

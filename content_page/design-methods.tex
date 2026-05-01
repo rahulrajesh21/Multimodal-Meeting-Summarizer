@@ -1,0 +1,35 @@
+\chapter{Design and Methodology}
+\noindent
+The implementation of the RoME platform is designed for modularity and high-performance inference.
+
+\section{Software Requirements and Frameworks}
+The system is built primarily in Python 3.9+, leveraging the following core libraries and models:
+\begin{itemize}
+    \item \textbf{WhisperX (large-v3):} For high-accuracy ASR and speaker diarization.
+    \item \textbf{Sentence-Transformers (all-MiniLM-L6-v2):} For generating 384-dimensional semantic text embeddings.
+    \item \textbf{Librosa:} For extracting MFCCs and prosodic energy/pitch/urgency features.
+    \item \textbf{ResNet-50 (Fine-tuned):} For visual context classification (Slides vs. Human speakers).
+    \item \textbf{EasyOCR:} For extraction of text from visual presentation assets.
+    \item \textbf{DistilBERT (Fine-tuned):} A distilled transformer model used for high-speed classification of transcript segments into functional categories (\textit{Problem, Decision, Update, etc.}).
+    \item \textbf{LaMini-Flan-T5-248M:} For generating role-specific natural language summaries.
+    \item \textbf{Gemma 4:} For complex agentic reasoning, tool-call orchestration, and multi-turn dialogue management.
+\end{itemize}
+
+\section{Autonomous Agentic Orchestration}
+RoME implements a multi-turn agentic reasoning loop that enables the AI to interact with productivity tools. 
+\begin{itemize}
+    \item \textbf{Tool Handler:} Uses the Model Context Protocol (MCP) to execute standardized tool calls (e.g., Slack messages, Google Docs updates).
+    \item \textbf{Context Compaction:} To manage the context window during long-running agentic turns, RoME employs a tiered "Context Compaction" strategy:
+    \begin{enumerate}
+        \item \textbf{Result Archival:} When a soft token limit is exceeded, massive tool output payloads are replaced with lightweight placeholders (e.g., \textit{[Archived Tool Result]}). This preserves the logical sequence of tool calls while freeing up 80-90\% of token space.
+        \item \textbf{Reasoning Compression:} Intermediate assistant reasoning chains are truncated to their first 500 characters, retaining the conceptual conclusion of each turn without the verbose "Chain-of-Thought" steps.
+        \item \textbf{Progressive Truncation:} Under hard token pressure, the history is aggressively trimmed to preserve only the initial system context, the primary user intent, and the two most recent messages, ensuring the model remains grounded in the current task state.
+    \end{enumerate}
+\end{itemize}
+
+\section{Online Learning Feedback Loop}
+To personalize summaries, RoME utilizes a real-time feedback loop. When a user approves or rejects a summary segment, the system adjusts the fusion weights $W$ of the Contextual Fusion Transformer using a gradient-based update:
+\begin{equation}
+W_{\text{new}} = W_{\text{old}} + (\eta \cdot \text{Feedback} \cdot C_{\text{score}})
+\end{equation}
+where $\eta$ is the learning rate and $C_{\text{score}}$ is the component signal strength (e.g., tonal vs. semantic importance). This ensures the platform adapts to individual stakeholder preferences over time.

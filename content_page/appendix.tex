@@ -1,0 +1,31 @@
+\chapter{Appendix}
+
+\section{Dataset: AMI Meeting Corpus}
+The AMI Meeting Corpus consists of 100 hours of meeting recordings. It provides multi-modal data including:
+\begin{itemize}
+    \item \textbf{Audio:} High-quality multi-channel recordings.
+    \item \textbf{Video:} Multiple camera views (close-up and room view).
+    \item \textbf{Transcripts:} Manually annotated word-level transcripts used for ground truth comparison.
+\end{itemize}
+
+\section{Model Hyperparameters}
+The following hyperparameters were used for the Contextual Fusion Transformer:
+\begin{itemize}
+    \item \textbf{Attention Heads:} 4
+    \item \textbf{Transformer Layers:} 2
+    \item \textbf{Hidden Dimension:} 256
+    \item \textbf{Learning Rate (Online):} 0.05
+    \item \textbf{Temporal Decay Constant ($\lambda$):} 0.05
+    \item \textbf{Reasoning Engine:} Gemma 4
+\end{itemize}
+
+\section{Topic Classifier Categories}
+The fine-tuned DistilBERT model classifies segments into the following deterministic types:
+\begin{itemize}
+    \item \textbf{Decision:} Final agreements or resolved items.
+    \item \textbf{Problem:} Technical challenges or blockers identified by participants.
+    \item \textbf{Update:} Status reports on ongoing work.
+    \item \textbf{Idea/Discussion:} Exploration of new concepts or general dialogue.
+    \item \textbf{Risk:} Potential future issues requiring mitigation.
+\end{itemize}
+The agent utilizes a structured system prompt to ensure JSON extraction accuracy (Layer 1) and tool-calling reliability. The prompt includes "Few-Shot" examples clearly distinguishing between conversational filler and substantive technical updates.

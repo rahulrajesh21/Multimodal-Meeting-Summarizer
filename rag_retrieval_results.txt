@@ -1,0 +1,29 @@
+============================================================
+3. TEMPORAL GRAPH RAG RETRIEVAL ACCURACY
+============================================================
+Evaluated 50 test queries (25 Cross-Meeting, 25 Single-Meeting).
+
+--- VANILLA RAG BASELINE (ChromaDB Transcripts Only) ---
+Overall MRR:       0.6933
+Cross-Meeting MRR: 0.7500
+Single-Meeting MRR:0.6367
+Hit@1: 60.0%
+Hit@3: 78.0%
+Hit@5: 82.0%
+
+--- ROME GRAPHRAG (Transcripts + Temporal Graph Events) ---
+Overall MRR:       0.8250 ( +0.1317 )
+Cross-Meeting MRR: 0.9533 ( +0.2033 )
+Single-Meeting MRR:0.6967 ( +0.0600 )
+Hit@1: 76.0%
+Hit@3: 90.0%
+Hit@5: 92.0%
+
+------------------------------------------------------------
+Analysis for Research Paper:
+------------------------------------------------------------
+Temporal Graph RAG vs. Vanilla Vector Retrieval
+
+To evaluate the efficacy of the Temporal Knowledge Graph, we compiled a dataset of 50 natural language queries representing typical user interactions (25 single-meeting factual inquiries and 25 cross-meeting decision tracking inquiries). The system's performance was measured against a vanilla RAG baseline operating solely on semantically chunked transcripts.
+
+The RoME GraphRAG architecture achieved an Overall Mean Reciprocal Rank (MRR) of 0.825, a significant improvement over the vanilla baseline's 0.693. Notably, the system excels in cross-meeting retrieval tasks, achieving a Cross-Meeting MRR of 0.953 (+0.20 over baseline). This demonstrates that by extracting and storing entities as structured graph events, the system successfully filters out conversational noise and reliably retrieves historical decisions and unresolved issues, achieving a Hit@3 rate of 90%.

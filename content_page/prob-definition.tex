@@ -1,0 +1,23 @@
+\chapter{Problem Definition}
+\noindent
+Despite significant advances in both automatic speech recognition (ASR) and natural language summarization, several critical gaps remain in the meeting summarization domain.
+
+\section{Modality Isolation}
+Most existing systems process text, audio, and visual streams independently, failing to capture cross-modal correlations that indicate segment importance. For instance, a speaker switching to a specific slide while increasing their vocal pitch usually signals high importance, a cue missed by unimodal systems.
+
+\section{Temporal Discontinuity}
+Current approaches treat each meeting as an isolated event. This leads to the loss of valuable context regarding ongoing discussions, recurring topics, and evolving decisions that span across a meeting series.
+
+\section{Role Agnosticism}
+Generic summaries do not address the diverse information needs of different stakeholders. A product manager requires feature-centric views, while an engineer requires technical specifications. 
+
+\section{Static Fusion Weights}
+Rule-based fusion approaches use fixed weights for combining modalities, which are unable to adapt to varying meeting contexts where different signals (visual vs. audio) may carry varying importance.
+
+The core problems addressed in this work are:
+\begin{itemize}
+    \item \textbf{Loss of Inter-Meeting Context:} Standard meeting summarizers treat each meeting in isolation. Topics, outstanding questions, and evolving decisions lose their link across different meetings, leading to disjointed knowledge.
+    \item \textbf{Ignored Multimodal Context:} Relying solely on audio transcriptions misses critical visual information—such as data displayed on shared screens or presentations—which is essential for accurately capturing the meeting's complete technical context.
+    \item \textbf{The "Action" Gap:} Summarization alone does not execute tasks. Even a perfect summary requires manual effort to translate decisions into tangible workflow updates, tickets, or calendar events.
+\end{itemize}
+RoME aims to solve these issues by marrying multimodal extraction with a persistent temporal knowledge graph and an autonomous, tool-equipped AI agent.

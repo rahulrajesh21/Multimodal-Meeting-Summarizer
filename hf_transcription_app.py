@@ -133,7 +133,8 @@ if st.session_state.raw_segments:
     meeting_name = st.text_input("Meeting Name", value="Imported Transcript from App")
     
     if st.button("Save Transcript to Teams Server", type="secondary"):
-        with st.spinner("Saving to Teams Media Server (http://localhost:8001)..."):
+        with st.spinner("Saving to Teams Media Server (
+        )..."):
             try:
                 # 1. Create a meeting
                 meeting_resp = requests.post(

@@ -1,0 +1,15 @@
+\chapter{Related Work}
+\noindent
+This section reviews the literature across four key areas relevant to our research.
+
+\section{Meeting Summarization}
+Early approaches to meeting summarization treated the problem as extractive text summarization, selecting important sentences from transcripts based on features like term frequency and speaker turns [2]. Murray et al. [3] demonstrated that combining prosodic features with lexical features improved extractive summarization performance on the ICSI meeting corpus. The advent of neural sequence-to-sequence models enabled abstractive summarization. Shang et al. [4] applied attention-based encoder-decoder architectures, showing improvements over extractive baselines. More recently, pre-trained language models like BERT [5] and T5 [6] have been fine-tuned for summarization tasks, achieving state-of-the-art results.
+
+\section{Multi-Modal Fusion}
+Multi-modal learning aims to build models that can relate information from multiple modalities [7]. Fusion strategies can be categorized as early, late, and hybrid approaches. Attention mechanisms have proven particularly effective. Vaswani et al. [8] introduced the Transformer architecture, which has since been adapted for cross-modal attention. Lu et al. [9] proposed ViLBERT, learning joint representations of images and text through co-attentional transformer layers. For meeting analysis specifically, Nihei et al. [11] used multi-modal features including gaze patterns to predict meeting outcomes.
+
+\section{Temporal Reasoning and Memory Networks}
+Maintaining context across time is crucial. Memory-augmented neural networks [12] introduced external memory mechanisms. Graph neural networks have emerged as powerful tools for representing relational information. Schlichtkrull et al. [13] proposed Relational Graph Convolutional Networks. In the temporal domain, Trivedi et al. [14] developed temporal knowledge graph embeddings. For dialogue systems, Wu et al. [15] proposed graph-structured memory networks that track entity states across conversation turns.
+
+\section{Role-Aware Summarization}
+Personalized summarization has received increasing attention. Yan et al. [16] developed aspect-based summarization focused on specific topics. In the enterprise context, role-aware summarization—generating different summaries for different stakeholders from the same source—remains underexplored. Our system addresses this gap by incorporating role embeddings into the fusion mechanism.

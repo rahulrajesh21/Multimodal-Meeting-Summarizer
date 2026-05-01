@@ -1,0 +1,21 @@
+\chapter{Introduction}
+\noindent
+\section{Background}
+The rapid adoption of remote work and virtual collaboration tools has led to an unprecedented increase in the volume of digital meetings. Organizations now conduct a significant portion of their communications through video conferencing platforms, generating vast amounts of unstructured audiovisual data. According to recent studies, knowledge workers spend approximately 23 hours per week in meetings, with a substantial portion of this time often perceived as unproductive [1]. The challenge of extracting meaningful, actionable insights from these lengthy recordings has become a critical problem in organizational knowledge management.
+
+Traditional meeting summarization approaches primarily rely on text-based analysis of transcripts, treating the problem as a natural language processing task. However, meetings are inherently multi-modal experiences where the "how" of communication carries as much significance as the "what".
+
+\section{Motivation}
+The motivation for this research stems from several practical observations. First, different stakeholders require different views of the same meeting—a product manager needs to track feature decisions, while an engineer focuses on technical specifications and action items. Second, meeting context extends beyond individual sessions; discussions reference previous meetings, decisions build upon prior agreements, and action items follow up on earlier commitments. Third, the importance of a meeting segment cannot be determined solely from its textual content; prosodic features like pitch variation, energy levels, and speaking rate provide crucial signals about emphasis and urgency.
+
+\section{Objectives}
+The primary objectives of this research are:
+\begin{enumerate}
+    \item To design and implement a multi-modal fusion architecture that combines semantic (text), prosodic (audio), and visual features through learned attention mechanisms.
+    \item To develop a Temporal Graph Memory structure that maintains cross-meeting context across meeting series.
+    \item To create a role-aware summarization pipeline that generates tailored summaries based on stakeholder-specific criteria.
+    \item To evaluate the effectiveness of multi-modal fusion compared to unimodal baselines.
+\end{enumerate}
+
+\section{Report Structure}
+The remainder of this report is organized as follows. Chapter 2 defines the core problem statement. Chapter 3 reviews the related literature in meeting summarization and multimodal learning. Chapter 4 and 5 detail the design methodology and the proposed RoME architecture respectively. Chapter 6 presents the experimental results and analysis, while Chapter 7 concludes the report and discusses future work.

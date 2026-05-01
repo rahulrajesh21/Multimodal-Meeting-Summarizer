@@ -1,19 +1,19 @@
 {
   "lily": {
     "display_name": "Lily",
-    "role": "Analyst",
+    "role": "Attendee",
     "department": "",
     "is_external": false,
-    "authority_score": 0.4,
+    "authority_score": 0.5,
     "weights": {
-      "semantic": 0.45,
-      "tonal": 0.16,
-      "role": 0.23,
-      "temporal": 0.16
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-02-20T10:30:33.032351",
-    "updated_at": "2026-02-20T10:30:33.032356"
+    "added_at": "2026-04-28T10:27:09.645418",
+    "updated_at": "2026-04-28T10:27:09.645420"
   },
   "craig": {
     "display_name": "Craig",
@@ -444,8 +444,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-18T15:41:28.980370",
-    "updated_at": "2026-04-18T15:41:28.980375"
+    "added_at": "2026-05-01T04:08:55.355888",
+    "updated_at": "2026-05-01T04:08:55.355889"
   },
   "speaker_d": {
     "display_name": "Speaker_D",
@@ -460,8 +460,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-18T15:41:28.981076",
-    "updated_at": "2026-04-18T15:41:28.981078"
+    "added_at": "2026-05-01T04:08:55.355077",
+    "updated_at": "2026-05-01T04:08:55.355080"
   },
   "speaker_a": {
     "display_name": "Speaker_A",
@@ -476,8 +476,8 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-18T15:41:28.980770",
-    "updated_at": "2026-04-18T15:41:28.980772"
+    "added_at": "2026-05-01T04:08:55.355511",
+    "updated_at": "2026-05-01T04:08:55.355512"
   },
   "speaker_c": {
     "display_name": "Speaker_C",
@@ -492,8 +492,120 @@
       "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-04-18T15:41:28.981382",
-    "updated_at": "2026-04-18T15:41:28.981385"
+    "added_at": "2026-05-01T04:08:55.356258",
+    "updated_at": "2026-05-01T04:08:55.356258"
+  },
+  "eric_johnson": {
+    "display_name": "Eric Johnson",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-28T10:27:09.644700",
+    "updated_at": "2026-04-28T10:27:09.644704"
+  },
+  "sid_sijbrandij": {
+    "display_name": "Sid Sijbrandij",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-28T10:27:09.645092",
+    "updated_at": "2026-04-28T10:27:09.645094"
+  },
+  "christopher_lefelhocz": {
+    "display_name": "Christopher Lefelhocz",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-28T10:27:09.645705",
+    "updated_at": "2026-04-28T10:27:09.645707"
+  },
+  "steve_abt": {
+    "display_name": "Steve Abt",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-28T10:27:09.646018",
+    "updated_at": "2026-04-28T10:27:09.646020"
+  },
+  "mac_cohen": {
+    "display_name": "Mac Cohen",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-28T10:27:09.646344",
+    "updated_at": "2026-04-28T10:27:09.646346"
+  },
+  "craig_gomes": {
+    "display_name": "Craig Gomes",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-28T10:27:09.646675",
+    "updated_at": "2026-04-28T10:27:09.646676"
+  },
+  "christie_lunn": {
+    "display_name": "Christie Lunn",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-04-28T10:27:09.646976",
+    "updated_at": "2026-04-28T10:27:09.646977"
   },
   "_speaker_id_mapping": {
     "SPEAKER_07": {

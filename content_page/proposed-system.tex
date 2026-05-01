@@ -1,0 +1,103 @@
+\chapter{Proposed Methodology}
+\noindent
+This section presents our multi-modal meeting summarization system, detailing the overall architecture and the novel Temporal Graph Memory mechanism.
+
+\section{Overview}
+\noindent
+The RoME architecture is designed as a modular, multimodal pipeline that integrates heterogeneous data streams into a unified temporal knowledge representation. The system follows a top-down flow from input ingestion to agentic task execution and role-specific output generation.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{architecture.png}
+    \caption{RoME System Architecture: Multimodal Fusion and Temporal Graph Memory Workflow.}
+    \label{fig:architecture}
+\end{figure}
+
+\section{System Architecture}
+The proposed system follows a pipeline architecture with four main stages: (1) multi-modal feature extraction, (2) modality-specific encoding, (3) fusion and importance scoring, and (4) role-aware summary generation.
+
+\subsection{Input Processing and Feature Extraction}
+Meeting recordings are processed through automatic speech recognition using WhisperX, providing word-level timestamps and speaker diarization.
+\begin{itemize}
+    \item \textbf{Semantic Features (Text):} We employ the sentence-transformers/all-MiniLM-L6-v2 model to generate 384-dimensional dense embeddings $e_{text}$.
+    \item \textbf{Prosodic Features (Audio):} Using librosa, we extract 13-dimensional MFCCs and prosodic features (Energy, Pitch, Zero Crossing Rate) into a 64-dimensional audio embedding $e_{audio}$.
+    \item \textbf{Visual Features:} A fine-tuned ResNet-50 model processes video frames to extract 2048-dimensional visual embeddings $e_{visual}$.
+\end{itemize}
+
+\section{Contextual Fusion Transformer}
+The core of our approach is the Contextual Fusion Transformer (CFT).
+\subsection{Architecture and Equations}
+Modality projection layers project each modality to a common dimension ($d_{model} = 256$):
+\begin{equation}
+h_{text} = W_{text} \cdot e_{text} + b_{text}
+\end{equation}
+\begin{equation}
+h_{audio} = W_{audio} \cdot e_{audio} + b_{audio}
+\end{equation}
+\begin{equation}
+h_{role} = W_{role} \cdot e_{role} + b_{role}
+\end{equation}
+The projected embeddings are combined through additive fusion:
+\begin{equation}
+h_{fused} = LayerNorm(h_{text} + h_{audio} + h_{role})
+\end{equation}
+A 2-layer Transformer encoder with 4 attention heads processes the fused representations to produce $H_{context}$, which is passed to an MLP for the final importance score $s_{importance} = \sigma(MLP(H_{context}))$.
+
+\section{Temporal Graph Memory (TGM)}
+\noindent
+RoME introduces a 4-layer Temporal Graph Memory (TGM) architecture that maps meeting segments to canonical entities across time without requiring a heavy graph database.
+
+\subsection{Layer 1: Universal Event Extraction}
+The system uses context-enriched sliding windows (\textit{[Previous], [Current], [Next]}) to ensure pronoun resolution. The extraction pipeline leverages LLM-driven JSON extraction to identify events (\textit{decisions, risks, updates}) and entities (\textit{components, participants, topics}).
+
+\subsection{Layer 2: Multi-Pass Entity Resolution}
+To maintain consistency, entities are canonicalized using a double-pass verification process:
+\begin{enumerate}
+    \item \textbf{Semantic Pass:} Cosine similarity of high-dimensional embeddings.
+    \item \textbf{Lexical Pass:} Normalized Levenshtein distance for name verification.
+\end{enumerate}
+The final resolution score $R(e_1, e_2)$ is a weighted hybrid:
+\begin{equation}
+R(e_1, e_2) = 0.6 \cdot \cos(\theta_{\text{emb}}) + 0.4 \cdot (1 - \text{Lev}(e_1, e_2))
+\end{equation}
+
+\subsection{Layer 3: Relational Graph Construction}
+Logical edges are formed between entities and meeting events. This implicit graph tracks the frequency of mentions and participant involvement without the overhead of specialized graph engines.
+
+\subsection{Layer 4: Temporal Reasoning Signals}
+The TGM computes dynamic signals to represent the state of organizational knowledge:
+\begin{itemize}
+    \item \textbf{Recurrence ($S_{rec}$):} Logarithmic frequency of entity mentions across the meeting series.
+    \item \textbf{Unresolved State ($S_{unres}$):} Tracks entities associated with problems or risks that have not yet reached a decision event.
+    \item \textbf{Temporal Decay:} To prioritize recent context, the unresolved score is subject to exponential decay:
+    \begin{equation}
+    S_{\text{unres}}(t) = S_{\text{base}} \cdot e^{-\lambda \Delta t}
+    \end{equation}
+    where $\lambda = 0.05$ (approximately a 14-day half-life).
+\end{itemize}
+
+\section{Cross-Meeting Thread Detection}
+\noindent
+A specialized \textbf{ThreadDetector} algorithm traverses the TGM to cluster semantically similar topics across meetings into logical "Threads". This enables the platform to provide automated UI annotations such as \textit{``⚠️ Revisited topic — first discussed 5 days ago''}.
+
+\subsection{Context Retrieval Algorithm}
+When processing a new segment, the TGM retrieves relevant context through semantic similarity search:
+\begin{algorithm}
+\caption{Temporal Context Retrieval}
+\begin{algorithmic}[1]
+\State \textbf{Input:} Current segment embedding $e_{curr}$, similarity threshold $\tau$
+\State \textbf{Output:} Context nodes $C$, temporal boost $\delta$
+\State $C \gets \emptyset$
+\State \textbf{for each} node $v \in V_{topic} \cup V_{decision} \cup V_{action}$ \textbf{do}
+\State \quad $sim \gets \cos(e_{curr}, e_v)$
+\State \quad \textbf{if} $sim > \tau$ \textbf{then}
+\State \quad \quad $C \gets C \cup \{(v, sim)\}$
+\State \quad \textbf{end if}
+\State \textbf{end for}
+\State Sort $C$ by similarity, keep top-k
+\State $\delta \gets \frac{1}{|C|} \sum_{(v,s) \in C} s \cdot recency(v)$
+\State \textbf{return} $C, \delta$
+\end{algorithmic}
+\end{algorithm}
+
+The temporal boost $\delta$ increases importance scores for segments that reference ongoing discussions or unresolved action items. Proprietary role embeddings are incorporated to tailor the importance scoring to specific stakeholder interests.

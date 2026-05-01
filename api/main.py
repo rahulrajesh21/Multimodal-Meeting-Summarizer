@@ -871,8 +871,10 @@ async def process_teams_job(job_id: str):
 
             # 6. Fusion scoring
             from src.fusion_layer import FusionLayer
+            from src.audio_analysis import AudioTonalAnalyzer
             ta = get_text_analyzer()
-            fl = FusionLayer(text_analyzer=ta, temporal_memory=get_temporal_memory())
+            aa = AudioTonalAnalyzer()
+            fl = FusionLayer(text_analyzer=ta, audio_analyzer=aa, temporal_memory=get_temporal_memory())
 
             loop = asyncio.get_event_loop()
             scored = await loop.run_in_executor(

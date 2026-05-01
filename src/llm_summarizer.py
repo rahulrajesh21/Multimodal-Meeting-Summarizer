@@ -48,7 +48,7 @@ class LLMSummarizer:
     using a local LM Studio instance (OpenAI-compatible API).
     """
 
-    def __init__(self, model_name: str = "qwen3-4b", endpoint: str = "http://localhost:1234/v1/chat/completions"):
+    def __init__(self, model_name: str = "qwen3-4b", endpoint: str = "http://127.0.0.1:1234/v1/chat/completions"):
         self.model_name = model_name
         self.endpoint = endpoint
         self.is_ready = False
@@ -128,6 +128,8 @@ class LLMSummarizer:
 
         try:
             response = requests.post(self.endpoint, json=payload, timeout=120)
+            if not response.ok:
+                logger.error(f"LM Studio API Error. Status: {response.status_code}, Body: {response.text}")
             response.raise_for_status()
             data = response.json()
             return data["choices"][0]["message"]["content"]
@@ -577,6 +579,10 @@ Expected JSON Schema:
         clean_lines = []
         for line in text.strip().splitlines():
             clean = re.sub(r"^\[\d+\.?\d*s\]\s*", "", line.strip())
+            # Replace Speaker_X labels with readable "Participant X" 
+            clean = re.sub(r'\bSpeaker_([A-Z])\b', r'Participant \1', clean)
+            clean = re.sub(r'\bspeaker_([a-z])\b', 
+                           lambda m: f'Participant {m.group(1).upper()}', clean)
             if clean:
                 clean_lines.append(clean)
         clean_text = " ".join(clean_lines)
@@ -612,19 +618,29 @@ Expected JSON Schema:
         if not temporal_prefix:
             temporal_prefix = self._build_temporal_prefix(temporal_context or {})
 
-        prompt = f"""
-You are an expert AI assistant tasked with summarizing meeting transcripts.
-Your target audience is a person in the following role: {role}
-Your primary focus should be on: {focus}
+        prompt = f"""You are summarizing a product design team meeting. 
+Write a single flowing paragraph in formal academic prose.
 
-{temporal_prefix}
+Your paragraph MUST cover:
+- The main purpose or agenda of the meeting
+- What the central product or design topic was
+- What specific decisions were made (include exact numbers, 
+  costs, materials, components if mentioned)
+- What problems or concerns were raised by the team
+- What action items or next steps were identified
+- Any technical specifications discussed
 
-Please summarize the following transcript chunk. Make sure the summary is concise, professional, and directly addresses the perspective of a {role}.
-Do not include any introductory filler text like "Here is the summary". Just provide the summary directly.
-
-CRITICAL INSTRUCTION:
-Use the provided Cross-Meeting Context (if any) to explain how today's discussion connects to past decisions or unresolved issues.
-When referencing cross-meeting history, you MUST use the provided Markdown-style citations (e.g. (Meeting D, Speaker A, 11:32)). Do not hallucinate history or citations.
+Writing rules:
+- Use formal third-person prose
+- Refer to speakers as "the project manager", "the team", 
+  "the industrial designer", "the marketing expert", 
+  "participants" — do NOT invent or guess real names
+- Use specific numbers, costs, and technical terms 
+  directly from the transcript
+- Do NOT use bullet points, headers, bold text, or markdown
+- Do NOT start with "The meeting..." 
+- Do NOT add filler like "Certainly!" or "Here is a summary"
+- Write 150 to 250 words in a single paragraph
 
 Transcript:
 {clean_text}
@@ -632,9 +648,7 @@ Transcript:
         try:
             summary = self._call_ollama(prompt, temperature=0.3)
             
-            # Prepend a small role header + any temporal alerts
-            header = f"[{role}] "
-            return header + temporal_prefix + summary.strip()
+            return summary.strip()
 
         except Exception as e:
             logger.error(f"Summarization failed: {e}")

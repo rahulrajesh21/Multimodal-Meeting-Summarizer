@@ -1,0 +1,1597 @@
+WEBVTT
+
+1
+00:01:25.330 --> 00:01:35.210
+<v Speaker_A>Okay. Um welcome to our second meeting. This is the functional design meeting. And I hope you all had a good individual working time. Okay, let's
+
+2
+00:01:35.210 --> 00:01:47.180
+<v Speaker_A>get started. Okay, here's the agenda for the meeting. After the opening um I am going to fulfil the role of secretary, take the meeting minutes.
+
+3
+00:01:47.180 --> 00:01:55.960
+<v Speaker_A>And we're gonna have three presentations, one from each of you. Then we're gonna discuss some new project requirements. Um gonna come to a decision on the functions
+
+4
+00:01:55.960 --> 00:02:05.550
+<v Speaker_A>of the remote control. And then we're gonna close up the meeting. And we're gonna do this all in about forty minutes. Okay. First I want to
+
+5
+00:02:05.550 --> 00:02:13.460
+<v Speaker_A>discuss the goals of this meeting. First we need to determine the user requirements and the question that we can ask ourselves is what needs and desires are to be
+
+6
+00:02:13.460 --> 00:02:26.950
+<v Speaker_A>fulfilled by this remote control. And then we're going to determine the technical functions, what is the effect of the apparatus, what actually is it supposed to do
+
+7
+00:02:26.950 --> 00:02:29.230
+<v Speaker_A>, what do people pick up the remote and use it for.
+
+8
+00:02:31.700 --> 00:02:39.010
+<v Speaker_A>And then lastly we're going to determine its working design, how exactly will it perform its functions, that's the whole technical side of
+
+9
+00:02:42.570 --> 00:02:45.940
+<v Speaker_A>'Kay I'll just give you a minute, 'cause it looks like you're making some notes.
+
+10
+00:02:49.820 --> 00:02:50.160
+<v Speaker_A>'Kay.
+
+11
+00:02:52.440 --> 00:03:03.800
+<v Speaker_A>Oh, well let's go ahead and, back, previous. So what I wanna do right now is hear from all three of you, on your research that
+
+12
+00:03:03.800 --> 00:03:06.190
+<v Speaker_A>you just did. Who would like to start us off?
+
+13
+00:03:10.180 --> 00:03:11.250
+<v Speaker_C>I don't mind going first.
+
+14
+00:03:10.300 --> 00:03:14.890
+<v Speaker_A>'Kay. Okay. Um do you have a PowerPoint or no?
+
+15
+00:03:14.880 --> 00:03:21.100
+<v Speaker_C>Yeah, it's in the should be in the m Project. You know you could you could do it yourself actually.
+
+16
+00:03:16.580 --> 00:03:16.910
+<v Speaker_A>Okay.
+
+17
+00:03:16.880 --> 00:03:18.450
+<v Speaker_D>Do you want us to do our PowerPoints now or
+
+18
+00:03:21.340 --> 00:03:25.250
+<v Speaker_A>Oh. Save it in the project documents. Okay.
+
+19
+00:03:21.800 --> 00:03:22.550
+<v Speaker_B>Did you send it?
+
+20
+00:03:23.240 --> 00:03:24.980
+<v Speaker_C>Put it in Project Documents, yeah.
+
+21
+00:03:32.330 --> 00:03:32.760
+<v Speaker_A>Mm-mm-mm.
+
+22
+00:03:37.030 --> 00:03:39.660
+<v Speaker_A>This one? Okay.
+
+23
+00:03:38.200 --> 00:03:38.600
+<v Speaker_C>Sure.
+
+24
+00:03:42.150 --> 00:03:42.400
+<v Speaker_C>Yeah.
+
+25
+00:03:44.630 --> 00:03:46.070
+<v Speaker_B>Okay. Great.
+
+26
+00:03:44.900 --> 00:03:45.260
+<v Speaker_C>Okay.
+
+27
+00:03:48.640 --> 00:03:59.980
+<v Speaker_C>Um well, the function of a remote control, as what uh we've been informed, is basically to send messages to the television set, for example, switch
+
+28
+00:03:59.980 --> 00:04:04.570
+<v Speaker_C>it on, switch it off, go to this channel, go to channel nine, turn the volume up, etcetera.
+
+29
+00:04:09.350 --> 00:04:17.610
+<v Speaker_C>Um some of the considerations is just um for example the what it needs to include it's the numbers, you know, zero to nine, so you can move
+
+30
+00:04:17.610 --> 00:04:20.570
+<v Speaker_C>to a channel, the power button on slash off,
+
+31
+00:04:23.460 --> 00:04:25.260
+<v Speaker_C>the channel going up and down,
+
+32
+00:04:26.770 --> 00:04:28.810
+<v Speaker_C>volume going up and down, and then mute,
+
+33
+00:04:30.470 --> 00:04:39.050
+<v Speaker_C>a mute function. And then functions for V_H_S_, D_V_D_, for example, play, rewind, fast-forward, stop, pause, enter. And enter would be
+
+34
+00:04:39.050 --> 00:04:48.660
+<v Speaker_C>for like, you know, the menus. And then other menus for D_V_ as well as T_V_, whether that means like um we can go and decide the
+
+35
+00:04:48.660 --> 00:04:52.750
+<v Speaker_C>brightness of the screen, things like that, all the more complicated functions of menus.
+
+36
+00:04:54.880 --> 00:05:00.730
+<v Speaker_C>And we can decide if that's what we want,, um if we want to include that on the remote, if that's something that would stay on the T_V_
+
+37
+00:04:57.360 --> 00:04:57.580
+<v Speaker_A>Okay.
+
+38
+00:05:00.730 --> 00:05:01.820
+<v Speaker_C>itself, for example.
+
+39
+00:05:02.070 --> 00:05:02.330
+<v Speaker_A>Okay.
+
+40
+00:05:03.400 --> 00:05:10.480
+<v Speaker_C>These are two examples. Um and you can see on the left, it's got a lot more buttons, and I don't know if you can read it,
+
+41
+00:05:10.480 --> 00:05:21.700
+<v Speaker_C>but it says, step, go to, freeze, um slow, repeat, program, mute, and so those are some of the buttons and so it
+
+42
+00:05:21.700 --> 00:05:28.190
+<v Speaker_C>gives you an idea of s one example. And then on the right, it's a lot more simpler, it's got volume, it's got the play the like
+
+43
+00:05:28.190 --> 00:05:37.730
+<v Speaker_C>circle set, which is play, rewind, but it's also what is fast-forward is also like next on a menu. So you have functions that are d uh
+
+44
+00:05:37.730 --> 00:05:44.400
+<v Speaker_C>duplicating. And you have a mute button and then the numbers and the eject, and the power button. So that gives you two different kinds, a more
+
+45
+00:05:39.160 --> 00:05:39.310
+<v Speaker_A>Right.
+
+46
+00:05:44.400 --> 00:05:55.090
+<v Speaker_C>complex and more simple version. Okay. And then lastly, it's just the questions that we want to consider like what functions do we want it to include,
+
+47
+00:05:48.220 --> 00:05:48.760
+<v Speaker_A>Ready.
+
+48
+00:05:55.090 --> 00:06:05.730
+<v Speaker_C>and how simple, complex it should be? And what functions it needs to complete. Uh, what are needed to complete insulation process, 'cause, you know
+
+49
+00:06:05.730 --> 00:06:12.130
+<v Speaker_C>, that's something that also has to be considered and it's gonna be hopefully a one-time thing, when you set it up it should be set to go, but
+
+50
+00:06:12.130 --> 00:06:16.080
+<v Speaker_C>we have to include the functions that can allow it to set up i in the first place.
+
+51
+00:06:18.790 --> 00:06:19.380
+<v Speaker_C>So that's it.
+
+52
+00:06:20.730 --> 00:06:32.670
+<v Speaker_A>Alright. Very good presentation. Thank you. You speak with such authority on the matter. Okay. Who would like to um follow that one up? Now
+
+53
+00:06:26.900 --> 00:06:28.510
+<v Speaker_C>Mm. Left.
+
+54
+00:06:32.670 --> 00:06:36.770
+<v Speaker_A>, that we've discussed Okay. Do you want me to run it or you wanna Okay.
+
+55
+00:06:32.840 --> 00:06:33.380
+<v Speaker_D>I can go.
+
+56
+00:06:35.720 --> 00:06:36.500
+<v Speaker_D>Yeah, you should run it.
+
+57
+00:06:40.660 --> 00:06:42.880
+<v Speaker_A>Functional requirements. 'Kay.
+
+58
+00:06:42.020 --> 00:06:43.130
+<v Speaker_D>Mm yes.
+
+59
+00:06:50.720 --> 00:06:54.030
+<v Speaker_A>Alright. Now we have Courtney with the functional requirements.
+
+60
+00:06:54.010 --> 00:07:03.910
+<v Speaker_D>Yes, okay so we tested a hundred subjects in our lab, and we just we watched them and we also made them fill out a questionnaire, and we
+
+61
+00:07:03.910 --> 00:07:14.730
+<v Speaker_D>found that the users are not typically happy with current remote controls. Seventy five percent think they're ugly. Eighty percent want they've are willing to spend more, which
+
+62
+00:07:14.730 --> 00:07:24.780
+<v Speaker_D>is good news for us um if we make it look fancier, and basically w we just need something that really I mean there's some other points up there,
+
+63
+00:07:24.780 --> 00:07:33.900
+<v Speaker_D>but they it needs to be snazzy and it but yet simple. So that's really what we need to do. And we need we need it to be simple
+
+64
+00:07:31.350 --> 00:07:31.600
+<v Speaker_C>Wait.
+
+65
+00:07:33.900 --> 00:07:43.900
+<v Speaker_D>, yet it needs to be high-tech looking. So Like They like I guess use the buttons a lot. Yeah.
+
+66
+00:07:37.280 --> 00:07:38.840
+<v Speaker_C>And that meaning what?
+
+67
+00:07:43.220 --> 00:07:43.680
+<v Speaker_C>Okay.
+
+68
+00:07:45.480 --> 00:07:51.710
+<v Speaker_D>I don't know. It's from my uh research. My team wasn't very clear. That's okay.
+
+69
+00:07:48.570 --> 00:07:51.620
+<v Speaker_C>Right. Only use ten percent of the buttons.
+
+70
+00:07:49.050 --> 00:07:57.510
+<v Speaker_A>Okay, what do you m Oh, I'm sorry. What do you mean by um the current remote controls do not match well with the operating behaviour of the
+
+71
+00:07:57.510 --> 00:07:59.290
+<v Speaker_A>user, like they have to press the buttons.
+
+72
+00:07:58.200 --> 00:08:09.300
+<v Speaker_D>I I think it's like the engineering versus user, whereas like the engineering she showed that the engineering ones are more complex and users don't really need all of the
+
+73
+00:08:01.000 --> 00:08:01.200
+<v Speaker_A>Okay.
+
+74
+00:08:05.840 --> 00:08:06.330
+<v Speaker_A>Oh, right.
+
+75
+00:08:09.220 --> 00:08:11.580
+<v Speaker_A>The buttons. Okay.
+
+76
+00:08:09.300 --> 00:08:13.370
+<v Speaker_D>buttons that are contained on there, because they only use ten percent of the buttons really.
+
+77
+00:08:13.350 --> 00:08:14.930
+<v Speaker_A>Yeah. Okay.
+
+78
+00:08:14.660 --> 00:08:17.060
+<v Speaker_B>We only use ten per cent of our brains.
+
+79
+00:08:17.140 --> 00:08:19.990
+<v Speaker_D>Good point. It's a necessary evil.
+
+80
+00:08:18.230 --> 00:08:21.570
+<v Speaker_A>It works. Ready for the next slide?
+
+81
+00:08:20.270 --> 00:08:20.690
+<v Speaker_B>yeah.
+
+82
+00:08:21.540 --> 00:08:31.430
+<v Speaker_D>Mm-hmm. And so people say that they typically lose it, as you yourself know, because you probably lose your remote control all the time, much like any
+
+83
+00:08:30.270 --> 00:08:30.390
+<v Speaker_A>Hmm.
+
+84
+00:08:31.430 --> 00:08:42.010
+<v Speaker_D>small appliance like a cellphone, and they we need something simple, because most people, well thirty four percent say that it's just too much time to learn how
+
+85
+00:08:31.750 --> 00:08:32.130
+<v Speaker_C>Lost.
+
+86
+00:08:42.010 --> 00:08:48.750
+<v Speaker_D>to use a new one, and we don't want to go we don't want to vary too far from the normal standard remote, but I mean they do need
+
+87
+00:08:46.530 --> 00:08:46.750
+<v Speaker_C>S
+
+88
+00:08:48.750 --> 00:08:56.980
+<v Speaker_D>to be able to identify it, and R_S_I_, I'm not very sure what that is. Yes, it is important for the remote control world.
+
+89
+00:08:53.410 --> 00:08:55.800
+<v Speaker_A>It's okay. It's very important.
+
+90
+00:08:56.870 --> 00:09:02.060
+<v Speaker_C>Wait, is that like your ergonomics like your hand movements or something?
+
+91
+00:08:59.880 --> 00:09:00.090
+<v Speaker_D>Sh
+
+92
+00:09:02.400 --> 00:09:03.280
+<v Speaker_A>Could be, yeah.
+
+93
+00:09:02.930 --> 00:09:03.890
+<v Speaker_D>Uh possibly.
+
+94
+00:09:05.000 --> 00:09:08.780
+<v Speaker_B>Do we really need t to provide more information on what R_S_I_ is?
+
+95
+00:09:07.560 --> 00:09:08.790
+<v Speaker_C>Like
+
+96
+00:09:09.010 --> 00:09:09.940
+<v Speaker_A>Oh.
+
+97
+00:09:09.010 --> 00:09:17.090
+<v Speaker_D>Uh yeah, that's what my web site said, I don't know. Yeah, I would assume so. I think we're supposed to know it as remote control
+
+98
+00:09:11.270 --> 00:09:11.940
+<v Speaker_C>Channel, volume, power.
+
+99
+00:09:11.970 --> 00:09:13.500
+<v Speaker_A>I think that's a pretty good guess though.
+
+100
+00:09:15.580 --> 00:09:16.770
+<v Speaker_C>It's like if you're holding it
+
+101
+00:09:17.090 --> 00:09:29.960
+<v Speaker_D>experts. But also s so the channel, the volume and the power buttons are the most important on our company website you can find like the specific statistics concerning
+
+102
+00:09:18.850 --> 00:09:21.090
+<v Speaker_A>Yeah. It's okay.
+
+103
+00:09:29.960 --> 00:09:34.190
+<v Speaker_D>to how much each button is used, but those are the definitely the top ones.
+
+104
+00:09:34.640 --> 00:09:36.550
+<v Speaker_A>Okay. Next slide?
+
+105
+00:09:36.310 --> 00:09:47.220
+<v Speaker_D>Yes. And so personally I think that we need a modern eye-catching design, but it it really needs to be simple. So saying from y your slide,
+
+106
+00:09:47.220 --> 00:09:57.190
+<v Speaker_D>your presentation, the engineering versus the user-specified remotes, I think that we should go with something that's more user-friendly. Where the engineering ones, the boxes, tend
+
+107
+00:09:53.760 --> 00:09:54.350
+<v Speaker_A>User-friendly.
+
+108
+00:09:57.190 --> 00:10:06.690
+<v Speaker_D>to make it look more complicated than it really is. Um the functionality of the product really needs to be considered as to like what type of buttons do we
+
+109
+00:10:06.690 --> 00:10:14.980
+<v Speaker_D>really need on it. And it needs to be open to a wide range of consumers, so even though we need a small number of buttons, we also
+
+110
+00:10:14.980 --> 00:10:24.700
+<v Speaker_D>need to take in like are most people going to be using it for a D_V_D_ player, a TiVo, what what exactly are we using it for, as
+
+111
+00:10:24.700 --> 00:10:34.190
+<v Speaker_D>well as the age range. So we need a hip, but not a corny marketing scheme for promoting our product. And also we found our team found that
+
+112
+00:10:34.190 --> 00:10:45.610
+<v Speaker_D>speech recognition is it's like an up-and-coming thing they really consumers are really interested in it, and since our findings found that people are willing to pay more money for
+
+113
+00:10:45.610 --> 00:10:49.790
+<v Speaker_D>a remote for it to be more high-class we could consider it.
+
+114
+00:10:48.580 --> 00:10:55.220
+<v Speaker_A>And so just to just to clarify by speech recognition you mean they would say, channel five, and the thing would go to channel five?
+
+115
+00:10:54.370 --> 00:10:55.270
+<v Speaker_D>I guess so, yeah.
+
+116
+00:10:56.820 --> 00:10:57.580
+<v Speaker_A>Okay.
+
+117
+00:10:57.930 --> 00:11:01.190
+<v Speaker_C>to just say, where are you, and thing beeps, you know.
+
+118
+00:11:00.390 --> 00:11:07.450
+<v Speaker_D>Yeah, I guess we can interpret it like, we can just try out different types of speech recognition within our remote programme.
+
+119
+00:11:01.050 --> 00:11:02.460
+<v Speaker_A>Oh, that'd be lovely.
+
+120
+00:11:04.520 --> 00:11:04.710
+<v Speaker_C>Yeah.
+
+121
+00:11:06.820 --> 00:11:15.680
+<v Speaker_A>Didn't they um didn't our rival companies manufacture a remote that you would press the button on the T_V_ and it would the remote would beep so if you have lost
+
+122
+00:11:15.140 --> 00:11:17.100
+<v Speaker_C>It's kinda like what the remote phone used to do.
+
+123
+00:11:15.680 --> 00:11:26.320
+<v Speaker_A>it Mm. Oh, yeah, that's true. We could definitely include that if we wanted to. If it's within our price. Okay. Are we ready
+
+124
+00:11:18.740 --> 00:11:22.300
+<v Speaker_C>You know like go to the base. Yeah.
+
+125
+00:11:26.320 --> 00:11:27.930
+<v Speaker_A>for our last presentation, Amber?
+
+126
+00:11:28.210 --> 00:11:30.130
+<v Speaker_B>Yeah, I'm just trying to move it.
+
+127
+00:11:29.630 --> 00:11:29.960
+<v Speaker_A>Okay.
+
+128
+00:11:38.800 --> 00:11:41.740
+<v Speaker_B>'Kay. I think it should be there, working design.
+
+129
+00:11:40.700 --> 00:11:41.500
+<v Speaker_C>Working design.
+
+130
+00:11:42.550 --> 00:11:43.070
+<v Speaker_A>There we go.
+
+131
+00:11:45.030 --> 00:11:45.830
+<v Speaker_A>'Kay.
+
+132
+00:11:46.110 --> 00:11:59.350
+<v Speaker_B>'Kay. Uh I didn't get a chance to complete this one, 'cause some of the tools that I was given were frustrating. Uh okay, so method method
+
+133
+00:11:48.140 --> 00:11:49.120
+<v Speaker_A>Oh my bad.
+
+134
+00:11:53.920 --> 00:11:54.380
+<v Speaker_D>Oh that's fine.
+
+135
+00:11:55.220 --> 00:11:55.500
+<v Speaker_C>Help me.
+
+136
+00:11:59.350 --> 00:12:05.830
+<v Speaker_B>of our design, I think I just start listing th some of the things that we actually need to put into this. We need a power source, we're
+
+137
+00:12:05.830 --> 00:12:15.860
+<v Speaker_B>gonna need a smart chip if we're gonna make it multi-functional. Um extra functions will probably need an additional chip. Either that or the smart chip will have to
+
+138
+00:12:15.860 --> 00:12:17.730
+<v Speaker_B>be extremely smart.
+
+139
+00:12:19.730 --> 00:12:21.120
+<v Speaker_D>What exactly is a smart chip?
+
+140
+00:12:21.460 --> 00:12:29.170
+<v Speaker_B>Usually a smart chip is just a chip that's been programmed and designed so that it can complete a fair range of functions.
+
+141
+00:12:29.570 --> 00:12:34.610
+<v Speaker_C>Well, how much extra would the additional chip be? Is that gonna push us over our production costs?
+
+142
+00:12:34.980 --> 00:12:43.160
+<v Speaker_B>I wouldn't think so, 'cause we could probably get it from like, in bulk, from a a newer company. And they tend to sell their chips pretty
+
+143
+00:12:41.450 --> 00:12:41.730
+<v Speaker_C>Mm-hmm.
+
+144
+00:12:43.160 --> 00:12:43.720
+<v Speaker_B>cheap.
+
+145
+00:12:43.960 --> 00:12:46.110
+<v Speaker_A>Okay. Ready?
+
+146
+00:12:45.860 --> 00:12:48.270
+<v Speaker_B>Um yep, nothing here.
+
+147
+00:12:48.550 --> 00:12:49.360
+<v Speaker_A>That's okay.
+
+148
+00:12:50.320 --> 00:13:01.470
+<v Speaker_B>Um power source, I figured, batteries, 'cause they're easily available. Typically a remote has either two double A_s or four triple A_s, sometimes three. Uh
+
+149
+00:13:01.470 --> 00:13:14.050
+<v Speaker_B>it really kinda depends on the size of the actual remote itself. Um a large on-off button, demographically we're moving towards an older generation of people, so a
+
+150
+00:13:14.050 --> 00:13:25.200
+<v Speaker_B>large on-off button would probably be good. Selection button for various entertainment devices, so you want something that will permit you to select the D_V_D_ player or the T_V_
+
+151
+00:13:16.980 --> 00:13:17.090
+<v Speaker_A>Hmm.
+
+152
+00:13:25.200 --> 00:13:26.380
+<v Speaker_B>or the stereo system.
+
+153
+00:13:27.920 --> 00:13:42.800
+<v Speaker_B>Um smart chip that perverts uh that permits, sorry, universal application again, something that'll allow us to skip over between devices, and that's kinda it. Uh
+
+154
+00:13:42.800 --> 00:13:46.210
+<v Speaker_B>this is my fifty second design.
+
+155
+00:13:47.970 --> 00:13:56.770
+<v Speaker_B>Power source over here. We're gonna have a switch obviously between the power source and the rest of it, and you're gonna need the switch. Um extra bulb
+
+156
+00:13:56.770 --> 00:14:10.870
+<v Speaker_B>could just be for flashiness, um subcomponent which would be like a way of diverting the power to different parts of the the device. Um the chip and of
+
+157
+00:14:10.870 --> 00:14:15.560
+<v Speaker_B>course the infra-red bulb, so it can communicate with the various devices that it needs to talk to.
+
+158
+00:14:15.910 --> 00:14:19.700
+<v Speaker_D>So what exactly we are looking at, is this like the front of the remote?
+
+159
+00:14:18.390 --> 00:14:22.620
+<v Speaker_B>This is just like a rough schematic. So this is the internal workings.
+
+160
+00:14:20.820 --> 00:14:25.760
+<v Speaker_A>So this would be the front? So the red would be the front of the remote though, right? Okay.
+
+161
+00:14:22.960 --> 00:14:23.380
+<v Speaker_D>Oh okay.
+
+162
+00:14:24.920 --> 00:14:25.320
+<v Speaker_B>Yeah.
+
+163
+00:14:25.430 --> 00:14:31.550
+<v Speaker_C>Yeah, that's gonna be what's communicating with the T_V_, but the other bulb, I think, is good to just to indicate, I'm doing something, it's
+
+164
+00:14:31.550 --> 00:14:33.670
+<v Speaker_C>sort of like a reassurance.
+
+165
+00:14:32.560 --> 00:14:36.270
+<v Speaker_A>The l the light up kind of Yeah.
+
+166
+00:14:32.840 --> 00:14:34.490
+<v Speaker_D>Like that we know the battery's working.
+
+167
+00:14:33.320 --> 00:14:39.900
+<v Speaker_B>Yeah, so you don't have to stare at that infra-red, 'cause you know when the battery starts dying in your remote currently, you have to actually stare at
+
+168
+00:14:39.900 --> 00:14:48.940
+<v Speaker_B>that bulb and go, okay, when I push this button, is it working? We can skip that whole thing. Yep. So you can put it
+
+169
+00:14:41.840 --> 00:14:42.030
+<v Speaker_A>Hmm.
+
+170
+00:14:43.680 --> 00:14:44.130
+<v Speaker_D>Okay.
+
+171
+00:14:43.990 --> 00:14:47.000
+<v Speaker_A>It'd probably be lighting up the key too, right? 'Kay.
+
+172
+00:14:46.260 --> 00:14:46.610
+<v Speaker_D>Yeah.
+
+173
+00:14:46.580 --> 00:14:46.830
+<v Speaker_C>Yeah.
+
+174
+00:14:48.560 --> 00:14:49.050
+<v Speaker_A>The buttons.
+
+175
+00:14:48.940 --> 00:14:49.970
+<v Speaker_B>in the dark.
+
+176
+00:14:50.180 --> 00:14:53.660
+<v Speaker_D>Yeah, and that's good. We should make it glow in the dark.
+
+177
+00:14:51.510 --> 00:14:58.430
+<v Speaker_A>Okay. Yeah, definitely. 'Kay nex R Ready? 'Kay, any p 'Kay?
+
+178
+00:14:55.480 --> 00:14:56.200
+<v Speaker_B>Yeah, that's it.
+
+179
+00:14:57.850 --> 00:14:58.130
+<v Speaker_D>Mm 'kay.
+
+180
+00:14:59.990 --> 00:15:05.900
+<v Speaker_A>Anything you wanna add for personal preferences though, you f you said already that we needed a large on-off button, you think. Anything else?
+
+181
+00:15:05.330 --> 00:15:09.630
+<v Speaker_B>I think that that's a good idea, because you know that's one of the most important buttons.
+
+182
+00:15:08.580 --> 00:15:15.900
+<v Speaker_C>Just Well, should it be larger buttons in general, you know like uh the examples that I had, they were swi quite small. So should we try
+
+183
+00:15:09.950 --> 00:15:10.210
+<v Speaker_A>Okay.
+
+184
+00:15:15.900 --> 00:15:19.110
+<v Speaker_C>and go for something that has l larger buttons?
+
+185
+00:15:19.190 --> 00:15:25.970
+<v Speaker_D>I think we should. Like I think that would be in a as in like in for the design, sorry, um. I think we should definitely go
+
+186
+00:15:25.970 --> 00:15:33.470
+<v Speaker_D>with buttons that don't look like a normal remote, 'cause most remotes have small square buttons, I think we should do something like maybe bigger and round like bubbles
+
+187
+00:15:29.780 --> 00:15:29.930
+<v Speaker_A>Mm.
+
+188
+00:15:31.260 --> 00:15:33.530
+<v Speaker_C>Ovals. Yeah, yeah.
+
+189
+00:15:33.470 --> 00:15:33.470
+<v Speaker_D>.
+
+190
+00:15:33.960 --> 00:15:37.130
+<v Speaker_A>Okay. Okay, let's talk about all of our
+
+191
+00:15:38.740 --> 00:15:47.380
+<v Speaker_A>We'll come to decision later about all the components that we need to include, let's um wrap up this one, and I'm gonna go back to my PowerPoint,
+
+192
+00:15:47.380 --> 00:15:55.290
+<v Speaker_A>'cause we need to discuss the new project requirements which you might've already seen flashed up on the screen a bit earlier. Wait, come back.
+
+193
+00:15:57.470 --> 00:16:07.640
+<v Speaker_A>Alright. Sorry, let's go through this. Alright. Here we go. New product requirements. First it's only going to be a T_V_ remote. We're trying
+
+194
+00:16:07.640 --> 00:16:14.250
+<v Speaker_A>not to over-complicate things. So no D_V_D_, no TiVo, no stereo. It's not gonna be multi-functional.
+
+195
+00:16:12.520 --> 00:16:13.070
+<v Speaker_B>Okay.
+
+196
+00:16:17.290 --> 00:16:25.950
+<v Speaker_A>Hey. And we th need to promote our company more, so we need to somehow include our colour and our company slogan on the remote.
+
+197
+00:16:27.640 --> 00:16:39.060
+<v Speaker_A>We're trying to get our name out there in the world. Okay. And you know what teletext is? in States we don't have it, but um it's
+
+198
+00:16:35.730 --> 00:16:35.890
+<v Speaker_C>Yeah.
+
+199
+00:16:37.940 --> 00:16:38.460
+<v Speaker_C>I know.
+
+200
+00:16:37.960 --> 00:16:38.400
+<v Speaker_D>What is it?
+
+201
+00:16:39.060 --> 00:16:48.250
+<v Speaker_A>like they just have this channel where just has news and weather, kind of sports, it's very um bland looking, it's just text on the screen, not
+
+202
+00:16:47.520 --> 00:16:49.610
+<v Speaker_C>Yeah, it's like black, black and white kind of
+
+203
+00:16:48.250 --> 00:16:52.390
+<v Speaker_A>even Yeah, just black with just text. Yeah.
+
+204
+00:16:50.360 --> 00:16:51.850
+<v Speaker_D>Like running along the bottom?
+
+205
+00:16:52.230 --> 00:16:54.730
+<v Speaker_B>You can also get the kind of the T_V_ guide so
+
+206
+00:16:52.390 --> 00:16:54.900
+<v Speaker_C>It'll give you the sports.
+
+207
+00:16:55.240 --> 00:16:59.480
+<v Speaker_D>Wait, is it like the Weather Channel where it's got like the ticker running on the bottom or something?
+
+208
+00:16:58.760 --> 00:17:01.760
+<v Speaker_A>Kind of. Yeah it's the whole screen.
+
+209
+00:16:58.840 --> 00:17:00.670
+<v Speaker_C>Except the entire screen.
+
+210
+00:17:00.310 --> 00:17:05.550
+<v Speaker_B>It's the entire screen is just running information at random. Seemingly.
+
+211
+00:17:04.440 --> 00:17:08.040
+<v Speaker_C>You can pick sports, you can pick the news, you entertainment, you know it's like
+
+212
+00:17:04.600 --> 00:17:05.020
+<v Speaker_A>So anyway
+
+213
+00:17:08.020 --> 00:17:10.220
+<v Speaker_D>So it's like a separate channel from like what you're watching?
+
+214
+00:17:08.460 --> 00:17:16.920
+<v Speaker_A>Right. Right. But it's becoming out-dated now, because of the Internet. Nobody needs to go to the teletext channel to check the news, and we have
+
+215
+00:17:10.390 --> 00:17:10.630
+<v Speaker_C>Yeah.
+
+216
+00:17:16.920 --> 00:17:23.270
+<v Speaker_A>twenty four hour news channels now too, so Those are our new product requirements. Alright. Mm-hmm.
+
+217
+00:17:21.460 --> 00:17:21.810
+<v Speaker_D>Okay.
+
+218
+00:17:21.750 --> 00:17:25.670
+<v Speaker_B>Okay. So, do we have to include the company colour within that?
+
+219
+00:17:25.970 --> 00:17:28.660
+<v Speaker_A>Yes. It's part of the logo.
+
+220
+00:17:30.600 --> 00:17:30.940
+<v Speaker_A>Okay.
+
+221
+00:17:31.030 --> 00:17:33.070
+<v Speaker_C>Company colour being yellow.
+
+222
+00:17:33.740 --> 00:17:44.350
+<v Speaker_A>What we're going to do right now is come to some decisions, definitive that we can all agree on, about um the target group and the functions and just
+
+223
+00:17:44.350 --> 00:17:51.260
+<v Speaker_A>definite things that we need to do and then we'll close up the meeting. So. Alright.
+
+224
+00:17:55.380 --> 00:17:55.840
+<v Speaker_A>Whatever.
+
+225
+00:17:57.420 --> 00:17:58.120
+<v Speaker_A>Okay.
+
+226
+00:18:05.320 --> 00:18:17.490
+<v Speaker_A>So our target group is You mentioned um older people? Would it just be universal for everyone, you think? Because I think even if something has large buttons
+
+227
+00:18:11.020 --> 00:18:11.430
+<v Speaker_C>Mm-hmm.
+
+228
+00:18:17.220 --> 00:18:20.140
+<v Speaker_C>It's gonna make it nicer. Yeah.
+
+229
+00:18:17.490 --> 00:18:20.540
+<v Speaker_A>, as long as they are not childishly large, like even technically
+
+230
+00:18:22.320 --> 00:18:27.130
+<v Speaker_A>non-technically challenged people are gonna use it. I mean they want something user-friendly, so
+
+231
+00:18:26.930 --> 00:18:33.740
+<v Speaker_B>Mm well, even if we kept the regular standard size of remote, if we reduced the buttons down to the ones that people are saying that they use the
+
+232
+00:18:33.740 --> 00:18:42.890
+<v Speaker_B>most often and a couple extra, 'cause they're saying they only use ten per cent of them, then we should be able to accommodate fairly decent sized buttons.
+
+233
+00:18:36.200 --> 00:18:36.450
+<v Speaker_A>Yeah.
+
+234
+00:18:38.310 --> 00:18:39.290
+<v Speaker_A>Yeah.
+
+235
+00:18:43.080 --> 00:18:52.840
+<v Speaker_A>Okay, so we want um for our target group would we say, I mean, young and old, all age ranges, all um, not kids obviously
+
+236
+00:18:52.840 --> 00:18:54.690
+<v Speaker_A>, right? Or kids?
+
+237
+00:18:55.130 --> 00:19:01.570
+<v Speaker_D>No, kids need to know how to use a remote, I would think. They gotta change between Disney Channel, Cartoon Network.
+
+238
+00:18:57.630 --> 00:18:59.680
+<v Speaker_B>Most of them will intuitively pick it up though.
+
+239
+00:19:01.290 --> 00:19:17.180
+<v Speaker_A>Okay, so we're going to go anywhere from kids to adult in the age range Um what about technic technical um specifications, like how how technically literate are these
+
+240
+00:19:03.400 --> 00:19:04.800
+<v Speaker_D>Yeah, I think we need it all.
+
+241
+00:19:17.180 --> 00:19:18.660
+<v Speaker_A>people who are going to be using our remote?
+
+242
+00:19:19.540 --> 00:19:23.170
+<v Speaker_D>Um I would say we should say dumber than the average person.
+
+243
+00:19:23.320 --> 00:19:25.230
+<v Speaker_C>We should go for the lowest denominator.
+
+244
+00:19:23.360 --> 00:19:23.610
+<v Speaker_A>Okay.
+
+245
+00:19:25.280 --> 00:19:25.720
+<v Speaker_D>Yeah.
+
+246
+00:19:25.990 --> 00:19:31.500
+<v Speaker_A>Right, okay. So so they need no technical experience to operate
+
+247
+00:19:27.820 --> 00:19:29.130
+<v Speaker_C>High school educated.
+
+248
+00:19:31.480 --> 00:19:36.450
+<v Speaker_B>how 'bout little to no, because there is no way that you are gonna be able to make it no.
+
+249
+00:19:49.930 --> 00:19:58.860
+<v Speaker_A>Okay. And we also need to determine the specific functions of this, just to get it all out on paper. So we said it needs to send messages
+
+250
+00:19:58.860 --> 00:20:07.360
+<v Speaker_A>to the T_V_, needs to change the channel, turn on and off, just basic simple stuff like this. So if you have something just say it and
+
+251
+00:20:07.360 --> 00:20:10.040
+<v Speaker_A>we'll add it to my meeting minutes.
+
+252
+00:20:13.140 --> 00:20:17.340
+<v Speaker_C>Well it's channel, on-off button, volume, mute.
+
+253
+00:20:15.180 --> 00:20:16.660
+<v Speaker_A>Mm-hmm, volume.
+
+254
+00:20:17.300 --> 00:20:20.400
+<v Speaker_D>And channel. Yeah. Those are the most important ones.
+
+255
+00:20:20.520 --> 00:20:27.900
+<v Speaker_A>Right. And we wanna keep um I'll make a note here that we wanna keep the number of buttons down. Correct, because people only use ten percent.
+
+256
+00:20:27.350 --> 00:20:27.610
+<v Speaker_D>Yeah.
+
+257
+00:20:27.900 --> 00:20:28.110
+<v Speaker_A>'Kay.
+
+258
+00:20:33.230 --> 00:20:34.110
+<v Speaker_A>Hey, what else?
+
+259
+00:20:33.510 --> 00:20:33.960
+<v Speaker_C>Um.
+
+260
+00:20:42.340 --> 00:20:43.700
+<v Speaker_A>Um.
+
+261
+00:20:44.840 --> 00:20:49.540
+<v Speaker_B>Do we want this thing to be able to be found easily?
+
+262
+00:20:49.750 --> 00:20:51.370
+<v Speaker_A>I think so. What do you
+
+263
+00:20:52.700 --> 00:20:53.220
+<v Speaker_D>Sure, yeah.
+
+264
+00:20:54.440 --> 00:20:58.510
+<v Speaker_A>A finding kind of device or Yeah, ho homing device.
+
+265
+00:20:54.980 --> 00:21:03.200
+<v Speaker_B>And like if this is gonna get lost underneath the coach, how are we going to accommodate the quick ability to find it?
+
+266
+00:20:55.460 --> 00:20:57.660
+<v Speaker_D>I need we we need a like homing device.
+
+267
+00:20:57.050 --> 00:20:58.030
+<v Speaker_C>Oh right yeah okay.
+
+268
+00:21:02.170 --> 00:21:02.670
+<v Speaker_A>Mm 'kay.
+
+269
+00:21:02.760 --> 00:21:03.280
+<v Speaker_C>Tracking.
+
+270
+00:21:06.670 --> 00:21:12.160
+<v Speaker_D>Because people really are looking for a remote that's more high-tech.
+
+271
+00:21:06.710 --> 00:21:07.210
+<v Speaker_A>Okay.
+
+272
+00:21:12.390 --> 00:21:12.860
+<v Speaker_A>Right.
+
+273
+00:21:12.430 --> 00:21:18.340
+<v Speaker_B>What if we gave it a charger? And on the charger, just like a phone, like you get a portable phone and it's got a charger, and
+
+274
+00:21:18.210 --> 00:21:18.890
+<v Speaker_C>But you got a base.
+
+275
+00:21:18.340 --> 00:21:24.990
+<v Speaker_B>if you d leave your phone somewhere, you push the button to find it, and it finds th the phone beeps for you.
+
+276
+00:21:23.850 --> 00:21:25.270
+<v Speaker_D>Do you think people'll really go for that though?
+
+277
+00:21:26.870 --> 00:21:27.120
+<v Speaker_D>Because
+
+278
+00:21:27.010 --> 00:21:28.870
+<v Speaker_B>It's useful for the remote phone.
+
+279
+00:21:29.920 --> 00:21:32.890
+<v Speaker_A>Hmm. Would that add to our costs at all, I wonder?
+
+280
+00:21:30.130 --> 00:21:30.540
+<v Speaker_D>Yeah.
+
+281
+00:21:33.440 --> 00:21:35.590
+<v Speaker_D>I would think so, because you'd have to develop a base.
+
+282
+00:21:35.620 --> 00:21:35.890
+<v Speaker_A>Right.
+
+283
+00:21:35.920 --> 00:21:40.010
+<v Speaker_C>Well, if you have the base, you could start putting in a charger and then you have a different kind of battery.
+
+284
+00:21:40.310 --> 00:21:40.710
+<v Speaker_B>Yeah.
+
+285
+00:21:42.770 --> 00:21:43.450
+<v Speaker_D>Hmm.
+
+286
+00:21:43.440 --> 00:21:46.100
+<v Speaker_B>Rechargeable batteries are cheaper usually.
+
+287
+00:21:46.120 --> 00:21:46.650
+<v Speaker_C>Yeah.
+
+288
+00:21:47.610 --> 00:21:53.490
+<v Speaker_A>Okay. I I think we can make a decision about that later. Uh we'll still put that as a point that we need to discuss. So that would
+
+289
+00:21:53.490 --> 00:21:54.880
+<v Speaker_A>include battery source
+
+290
+00:21:57.250 --> 00:22:06.790
+<v Speaker_A>Power source rather. Is it going to have a charger, or is it going to be run strictly off batteries? And we also need to deal with the
+
+291
+00:22:06.790 --> 00:22:11.230
+<v Speaker_A>issue you mentioned of speech recognition, if we want that.
+
+292
+00:22:09.330 --> 00:22:09.810
+<v Speaker_D>Right.
+
+293
+00:22:11.650 --> 00:22:11.900
+<v Speaker_D>Do w
+
+294
+00:22:11.760 --> 00:22:21.280
+<v Speaker_C>Well, then we could If we have the speech recognition then we can start aiming at a like another kind of more handicapped disabled uh demo demographic.
+
+295
+00:22:19.750 --> 00:22:19.950
+<v Speaker_A>Mm.
+
+296
+00:22:21.710 --> 00:22:30.520
+<v Speaker_D>Well, th there's the people who desire speech recognition, there's the different demog demographics have different desires, I don't know if you guys ge
+
+297
+00:22:30.930 --> 00:22:34.250
+<v Speaker_A>You could um we could hook it up. Oh.
+
+298
+00:22:32.460 --> 00:22:44.070
+<v Speaker_D>It wouldn't copy onto the the thing 'cause it's black, but all the different age groups have different desires for speech recognition. So basically older people don't really care
+
+299
+00:22:44.070 --> 00:22:51.220
+<v Speaker_D>. It's really the people twenty five to thirty five. I feel those are the people that really watch a lot of T_V_ though. They're the ones that get
+
+300
+00:22:50.470 --> 00:22:50.720
+<v Speaker_A>Mm-hmm.
+
+301
+00:22:51.220 --> 00:22:56.320
+<v Speaker_D>addicted to soap operas and just sitcoms and stuff.
+
+302
+00:22:55.090 --> 00:22:55.290
+<v Speaker_C>Well
+
+303
+00:22:55.110 --> 00:23:00.400
+<v Speaker_A>And if and if we introduced it when they're this age, they're going to probably always buy a remote that has
+
+304
+00:22:59.670 --> 00:23:01.210
+<v Speaker_D>Right. So
+
+305
+00:23:01.060 --> 00:23:08.280
+<v Speaker_C>Well, then then do you put the voice recognition do you put the r like receiver on the actual television, in the base, or in the actual remote
+
+306
+00:23:08.280 --> 00:23:14.870
+<v Speaker_C>, 'cause then you've already got remote in your hand, why you just gonna speak to the remote, whereas if you just speak in general and you don't have
+
+307
+00:23:11.760 --> 00:23:12.270
+<v Speaker_A>Right.
+
+308
+00:23:14.870 --> 00:23:17.110
+<v Speaker_C>to have the remote in your hand and like talk at it.
+
+309
+00:23:17.390 --> 00:23:25.680
+<v Speaker_A>Yeah. and the speech recognition could be part of the lost and found device, too. If we said, find remote, locate remote, or something.
+
+310
+00:23:23.180 --> 00:23:23.450
+<v Speaker_D>Right.
+
+311
+00:23:27.100 --> 00:23:32.550
+<v Speaker_A>A certain phrase then it could beep. I dunno. Just throwing it out there.
+
+312
+00:23:32.790 --> 00:23:33.020
+<v Speaker_D>Yeah.
+
+313
+00:23:37.890 --> 00:23:40.000
+<v Speaker_A>Well
+
+314
+00:23:42.710 --> 00:23:44.360
+<v Speaker_C>Still fifteen minutes.
+
+315
+00:23:48.070 --> 00:23:48.710
+<v Speaker_C>Um.
+
+316
+00:23:48.160 --> 00:23:50.090
+<v Speaker_A>Okay, anything else we wanna discuss?
+
+317
+00:23:51.000 --> 00:23:56.870
+<v Speaker_C>Well, do we wanna include the numbers like zero through nine? Can we conceive of leaving them out?
+
+318
+00:23:58.710 --> 00:23:59.390
+<v Speaker_A>Um.
+
+319
+00:23:59.200 --> 00:24:00.370
+<v Speaker_D>Wait, on the remote itself?
+
+320
+00:24:00.340 --> 00:24:03.470
+<v Speaker_C>Yeah, like you have one, two, three, four, five, six, seven, eight, nine, zero.
+
+321
+00:24:03.570 --> 00:24:04.800
+<v Speaker_D>Well, we definitely need those.
+
+322
+00:24:03.690 --> 00:24:05.800
+<v Speaker_A>How how, yeah, how would you leave those out?
+
+323
+00:24:05.030 --> 00:24:05.530
+<v Speaker_B>Yeah.
+
+324
+00:24:06.260 --> 00:24:11.450
+<v Speaker_C>Well, I don't know, I mean, if you can like well I don't know, if there's just a way of leaving them out?
+
+325
+00:24:09.610 --> 00:24:10.930
+<v Speaker_A>Unless you could say the channel.
+
+326
+00:24:11.800 --> 00:24:13.430
+<v Speaker_B>I think people would find that too foreign.
+
+327
+00:24:13.730 --> 00:24:15.670
+<v Speaker_D>Yeah. You definitely need
+
+328
+00:24:14.120 --> 00:24:21.180
+<v Speaker_A>Yeah, that's true. And also remember that in this day in age we need, you know, like a hundred button, too. I used to have
+
+329
+00:24:21.180 --> 00:24:28.010
+<v Speaker_A>a remote that did not even go up past like fifty. So I couldn't whenever I got cable, I had to get a new T_V_.
+
+330
+00:24:30.140 --> 00:24:31.510
+<v Speaker_B>It's when we get satellite.
+
+331
+00:24:31.920 --> 00:24:38.310
+<v Speaker_A>Mm. get your own remote, or digital cable. 'Kay. Um.
+
+332
+00:24:34.980 --> 00:24:35.530
+<v Speaker_B>Yeah.
+
+333
+00:24:40.800 --> 00:24:50.750
+<v Speaker_A>I guess, we're gonna discuss the project financing later, making sure that we can fit all of the stuff that we want to on our budget. Um.
+
+334
+00:24:53.650 --> 00:24:57.610
+<v Speaker_B>Yeah, 'cause I don't have any material pricing information available to me at the moment, so
+
+335
+00:24:57.820 --> 00:25:03.970
+<v Speaker_A>'Kay. And don't forget we need to include the colour of our company and the logo.
+
+336
+00:25:04.210 --> 00:25:06.400
+<v Speaker_C>The colour being yellow?
+
+337
+00:25:04.380 --> 00:25:04.840
+<v Speaker_D>Wait.
+
+338
+00:25:06.820 --> 00:25:09.500
+<v Speaker_A>I'm guessing. And the R_R_.
+
+339
+00:25:08.280 --> 00:25:08.800
+<v Speaker_C>And how do we
+
+340
+00:25:08.470 --> 00:25:11.520
+<v Speaker_D>I feel like a ye I feel like a yellow one would be too garish.
+
+341
+00:25:09.380 --> 00:25:11.660
+<v Speaker_B>R_ the double R_.
+
+342
+00:25:11.600 --> 00:25:15.960
+<v Speaker_A>We could just have the logo in yellow, or maybe a yellow light for the keys.
+
+343
+00:25:12.060 --> 00:25:13.250
+<v Speaker_C>Can't make it entirely
+
+344
+00:25:14.400 --> 00:25:15.300
+<v Speaker_B>Or is the l
+
+345
+00:25:15.680 --> 00:25:18.620
+<v Speaker_D>Or put like stripes, oh yeah, yellow lights.
+
+346
+00:25:18.170 --> 00:25:21.600
+<v Speaker_B>Yeah, yellow could be and it could doesn't have to be huge.
+
+347
+00:25:22.640 --> 00:25:22.970
+<v Speaker_D>Yeah.
+
+348
+00:25:22.920 --> 00:25:31.130
+<v Speaker_C>Well if you have like a Hang on. If you have this sort of strip kind of down at the bottom the base of it, just like yellow with
+
+349
+00:25:31.130 --> 00:25:32.010
+<v Speaker_C>the R_R_.
+
+350
+00:25:32.190 --> 00:25:32.800
+<v Speaker_A>Right.
+
+351
+00:25:37.250 --> 00:25:41.490
+<v Speaker_A>So we've simplified, we don't need all those um play, fast-forward, rewind,
+
+352
+00:25:41.670 --> 00:25:42.480
+<v Speaker_C>Right, yeah.
+
+353
+00:25:42.550 --> 00:25:42.970
+<v Speaker_D>Yeah.
+
+354
+00:25:43.010 --> 00:25:51.520
+<v Speaker_A>or no menu buttons. So we've pretty much pared it down to on-off, volume, mute, channel up and down, um the numbers
+
+355
+00:25:55.060 --> 00:25:55.850
+<v Speaker_A>Yeah.
+
+356
+00:25:56.710 --> 00:25:57.050
+<v Speaker_D>Yeah.
+
+357
+00:26:02.720 --> 00:26:12.400
+<v Speaker_A>Um can we go back to I'm gonna look really quickly back at those examples and see if there is anything. Which one is yours, technical functions or functional
+
+358
+00:26:07.250 --> 00:26:08.890
+<v Speaker_C>Two examples. Yeah.
+
+359
+00:26:11.440 --> 00:26:12.330
+<v Speaker_C>Oh, it's a Yeah.
+
+360
+00:26:12.400 --> 00:26:13.130
+<v Speaker_A>requirement? Okay.
+
+361
+00:26:14.400 --> 00:26:22.990
+<v Speaker_D>Yeah, audi audio settings and screen settings, we need those like audio settings mono, stereo, pitch, screen settings like brightness, colour, or do we
+
+362
+00:26:22.990 --> 00:26:26.170
+<v Speaker_D>just want that accessed accessed from the television itself?
+
+363
+00:26:25.190 --> 00:26:31.800
+<v Speaker_A>The T_V_. I think that that's fine just for the T_V_. I mean how often does the average user need to do that kind of stuff?
+
+364
+00:26:32.070 --> 00:26:40.020
+<v Speaker_C>Well, the other option is sort of like down at the bottom, like farther away, you just have this sort of box inset where it's like the buttons
+
+365
+00:26:40.020 --> 00:26:44.440
+<v Speaker_C>that you don't use as much, but occasionally you will use. and so it's like
+
+366
+00:26:41.170 --> 00:26:41.390
+<v Speaker_A>Hmm.
+
+367
+00:26:43.450 --> 00:26:50.570
+<v Speaker_D>Yeah, 'cause we need to we definitely need to have buttons for like sub-titles and things like that. It's 'cause the foreign film market is expanding and stuff,
+
+368
+00:26:50.570 --> 00:27:00.960
+<v Speaker_D>and like on television like I know f k living in Los Angeles it's tons of Spanish network television if it has English sub-titles it's definitely helpful.
+
+369
+00:27:01.170 --> 00:27:07.630
+<v Speaker_A>Couldn't we do that all through one button, something, a menu button, that pops up with a menu on the T_V_ that says, you know, audio
+
+370
+00:27:03.060 --> 00:27:04.190
+<v Speaker_C>I don't well, I don't know.
+
+371
+00:27:07.630 --> 00:27:10.220
+<v Speaker_A>, video, whatever, language, you know?
+
+372
+00:27:10.400 --> 00:27:10.720
+<v Speaker_C>Right.
+
+373
+00:27:10.640 --> 00:27:12.670
+<v Speaker_D>So we need up, down, and side-to-side buttons.
+
+374
+00:27:13.250 --> 00:27:17.440
+<v Speaker_C>Well, that could be No you could just double up with like the channel or the volume buttons.
+
+375
+00:27:13.460 --> 00:27:14.370
+<v Speaker_A>For the menus.
+
+376
+00:27:17.480 --> 00:27:17.830
+<v Speaker_B>Mm-hmm.
+
+377
+00:27:18.630 --> 00:27:19.150
+<v Speaker_A>That's true.
+
+378
+00:27:19.230 --> 00:27:20.090
+<v Speaker_D>Yeah, okay.
+
+379
+00:27:19.680 --> 00:27:20.880
+<v Speaker_C>Channel is just up and down.
+
+380
+00:27:21.840 --> 00:27:22.410
+<v Speaker_D>Okay, yeah.
+
+381
+00:27:22.680 --> 00:27:23.600
+<v Speaker_C>And then add a
+
+382
+00:27:24.560 --> 00:27:31.810
+<v Speaker_A>Something that looks mayb you know. Y right, right right right. That one?
+
+383
+00:27:25.800 --> 00:27:30.420
+<v Speaker_D>Such as, yeah, the one the one over there on the left the engineering centred one.
+
+384
+00:27:30.570 --> 00:27:40.800
+<v Speaker_C>Yeah. So we just have it like add a menu button then for the various things needed, including v voice recognition if we have any like settings for voice
+
+385
+00:27:37.030 --> 00:27:39.360
+<v Speaker_A>Right. In the middle perhaps.
+
+386
+00:27:40.800 --> 00:27:41.580
+<v Speaker_C>recognition now
+
+387
+00:27:43.250 --> 00:27:44.230
+<v Speaker_C>included in the menu.
+
+388
+00:27:44.950 --> 00:27:45.170
+<v Speaker_A>Yep.
+
+389
+00:27:47.360 --> 00:27:49.390
+<v Speaker_D>Ooh, I just got an idea for a design.
+
+390
+00:27:49.960 --> 00:27:50.290
+<v Speaker_A>good.
+
+391
+00:28:02.290 --> 00:28:05.840
+<v Speaker_A>Anybody have anything else they'd like to bring up in this meeting?
+
+392
+00:28:06.430 --> 00:28:07.550
+<v Speaker_B>I had something, but I forgot.
+
+393
+00:28:09.070 --> 00:28:18.470
+<v Speaker_A>Okay. get out of here. Let's go back to the meeting closure then and see what we need to do next. Mm.
+
+394
+00:28:25.130 --> 00:28:33.940
+<v Speaker_A>Alright. After this meeting we're gonna be sent a questionnaire and summary again which we need to reply to that e-mail. And then we're gonna have lunch break.
+
+395
+00:28:33.940 --> 00:28:41.190
+<v Speaker_A>And after lunch thirty minutes of individual work time. Um I'm gonna put the minutes I put the minutes for the first meeting already in the project documents folder,
+
+396
+00:28:41.190 --> 00:28:49.370
+<v Speaker_A>if you'd like to review them. And I'm gonna type up the minutes for this one as well. Um here's what we're each going to do. The I_D_
+
+397
+00:28:49.370 --> 00:29:00.230
+<v Speaker_A>is going to work on the components concept, um U_I_D_ the user interface concept, and you're going to do some trend watching. 'Kay. Specific instructions will be
+
+398
+00:29:00.230 --> 00:29:09.290
+<v Speaker_A>sent to you by your personal coach. And if anybody has anything they would like to add? No? Okay, well, this meeting is officially over.
+
+399
+00:29:11.390 --> 00:29:11.930
+<v Speaker_A>Thank you all.

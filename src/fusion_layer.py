@@ -580,6 +580,123 @@ class FusionLayer:
         
         return segment
     
+    def compute_adaptive_weights(
+        self,
+        scored_segments: List[SegmentFeatures]
+    ) -> Dict[str, float]:
+        """
+        Computes adaptive fusion weights based on signal 
+        variance across all segments in a meeting.
+        
+        High variance in a modality = informative signal
+                                    = increase its weight
+        Low variance in a modality  = flat/noisy signal
+                                    = decrease its weight
+        
+        Returns normalized weights that always sum to 1.0
+        """
+        import numpy as np
+        
+        # Extract all scores per modality
+        semantic_scores = [s.semantic_score 
+                           for s in scored_segments 
+                           if s.semantic_score > 0]
+        tonal_scores    = [s.tonal_score 
+                           for s in scored_segments 
+                           if s.tonal_score > 0]
+        role_scores     = [s.role_relevance 
+                           for s in scored_segments 
+                           if s.role_relevance > 0]
+        temporal_scores = [s.temporal_context_score 
+                           for s in scored_segments]
+        recurrence_scores = [s.recurrence_score 
+                             for s in scored_segments]
+        unresolved_scores = [s.unresolved_score 
+                             for s in scored_segments]
+        
+        # Compute variance (std deviation) per modality
+        # Higher std = more informative signal
+        def safe_std(values, min_val=0.01):
+            if len(values) < 2:
+                return min_val
+            std = float(np.std(values))
+            return max(std, min_val)
+        
+        sem_var  = safe_std(semantic_scores)
+        ton_var  = safe_std(tonal_scores)
+        rol_var  = safe_std(role_scores)
+        
+        # For temporal signals: use mean instead of variance
+        # because temporal is about presence not variation
+        tem_mean = float(np.mean(temporal_scores)) \
+                   if temporal_scores else 0.0
+        rec_mean = float(np.mean(recurrence_scores)) \
+                   if recurrence_scores else 0.0
+        unr_mean = float(np.mean(unresolved_scores)) \
+                   if unresolved_scores else 0.0
+        
+        # Base weights from self.weights
+        base = self.weights.copy()
+        
+        # RULE 1: Adjust tonal weight by variance
+        # If tonal std > 0.2: audio is very informative
+        # If tonal std < 0.05: audio is flat/noisy
+        if ton_var > 0.20:
+            tonal_multiplier = 1.5   # boost tonal
+        elif ton_var < 0.05:
+            tonal_multiplier = 0.3   # reduce tonal
+        else:
+            tonal_multiplier = 1.0   # keep as is
+        
+        # RULE 2: Adjust semantic weight by variance
+        # High semantic variance = diverse content = more weight
+        if sem_var > 0.15:
+            semantic_multiplier = 1.2
+        elif sem_var < 0.05:
+            semantic_multiplier = 0.8
+        else:
+            semantic_multiplier = 1.0
+        
+        # RULE 3: If no temporal history available
+        # (all scores near 0) redistribute to semantic
+        if tem_mean < 0.05 and rec_mean < 0.05:
+            temporal_multiplier = 0.1  # near-zero, no history
+        else:
+            temporal_multiplier = 1.0
+        
+        # Apply multipliers
+        adapted = {
+            'semantic':   base['semantic'] * semantic_multiplier,
+            'tonal':      base['tonal'] * tonal_multiplier,
+            'role':       base['role'],
+            'temporal':   base['temporal'] * temporal_multiplier,
+            'recurrence': base['recurrence'] * \
+                          (1.0 if rec_mean > 0.05 else 0.1),
+            'unresolved': base['unresolved'] * \
+                          (1.0 if unr_mean > 0.05 else 0.1),
+        }
+        
+        # Normalize so weights always sum to 1.0
+        total = sum(adapted.values())
+        if total == 0:
+            return base  # fallback to original
+        
+        normalized = {k: v/total for k, v in adapted.items()}
+        
+        # Log the adapted weights for transparency
+        import logging
+        logging.getLogger(__name__).info(
+            f"Adaptive weights: "
+            f"sem={normalized['semantic']:.2f} "
+            f"ton={normalized['tonal']:.2f} "
+            f"rol={normalized['role']:.2f} "
+            f"tem={normalized['temporal']:.2f} "
+            f"(tonal_var={ton_var:.3f} "
+            f"tem_mean={tem_mean:.3f})"
+        )
+        
+        return normalized
+
     def score_segments(
         self,
         segments: List[Dict],
@@ -619,6 +736,27 @@ class FusionLayer:
                 focus_query
             )
             scored.append(scored_segment)
+        
+        # Compute adaptive weights based on signal variance
+        try:
+            adaptive_weights = self.compute_adaptive_weights(scored)
+            # Re-fuse all segments with adaptive weights
+            for seg in scored:
+                seg.fused_score = self._fuse_with_weights(
+                    seg.semantic_score,
+                    seg.tonal_score,
+                    seg.role_relevance,
+                    seg.temporal_context_score,
+                    seg.recurrence_score,
+                    seg.unresolved_score,
+                    adaptive_weights
+                )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Adaptive weighting failed, "
+                f"using static weights: {e}"
+            )
         
         return scored
 
