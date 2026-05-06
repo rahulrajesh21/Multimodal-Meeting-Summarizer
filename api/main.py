@@ -362,6 +362,27 @@ async def lifespan(app: FastAPI):
             "command": "npx",
             "args": ["-y", "@modelcontextprotocol/server-slack"],
             "env": dict(os.environ)
+        },
+        {
+            # Official Atlassian Rovo MCP Server (cloud-based, uses mcp-remote proxy)
+            # Docs: https://github.com/atlassian/atlassian-mcp-server
+            # Auth: Rovo MCP scoped API token (not a regular Jira token)
+            # Get token: Atlassian Admin → Rovo → MCP Server → API Tokens
+            "name": "jira",
+            "command": "npx",
+            "args": [
+                "-y", "mcp-remote",
+                "https://mcp.atlassian.com/v1/mcp",
+                "--header", f"Authorization: Bearer {os.environ.get('ATLASSIAN_API_TOKEN', '')}",
+            ],
+            "env": dict(os.environ)
+        },
+        {
+            # Custom Jira MCP Server to create issues
+            "name": "custom-jira",
+            "command": sys.executable,
+            "args": [str(ROOT / "api" / "custom_jira_mcp.py")],
+            "env": dict(os.environ)
         }
     ]
     
@@ -371,6 +392,10 @@ async def lifespan(app: FastAPI):
         for config in server_configs:
             if config["name"] == "slack" and not (os.environ.get("SLACK_BOT_TOKEN") and os.environ.get("SLACK_TEAM_ID")):
                 logger.info("Skipping Slack MCP: SLACK_BOT_TOKEN and SLACK_TEAM_ID require to be set in environment.")
+                continue
+
+            if config["name"] == "jira" and not os.environ.get("ATLASSIAN_API_TOKEN"):
+                logger.info("Skipping Jira MCP: ATLASSIAN_API_TOKEN must be set (Rovo MCP scoped token from Atlassian Admin).")
                 continue
 
             try:
@@ -1032,6 +1057,252 @@ async def get_models():
         logger.error(f"Failed to fetch models from LM Studio: {e}")
         return []
 
+@app.post("/api/chat")
+async def chat_global(body: dict):
+    """
+    Global chat endpoint. Uses LLM with full context/graph search tools.
+    """
+    user_msg = (body.get("message") or "").strip()
+    if not user_msg:
+        raise HTTPException(400, "message is required")
+
+    history = body.get("history", [])[-10:]  # Keep last 10 exchanges
+    model_choice = body.get("model", None)
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "search_graph",
+                "description": "Search the cross-meeting knowledge graph for historical decisions, context, and events.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "keywords": {
+                            "type": "string",
+                            "description": "Comma-separated keywords or entity names to search (e.g., 'cost, lcd screen, remote')."
+                        }
+                    },
+                    "required": ["keywords"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_context",
+                "description": "Search the full meeting knowledge base — including raw transcripts, action items, decisions, problems, and summaries across all meetings. ALWAYS call this before answering any question about meetings. Use queries like 'action items', 'decisions', 'blockers', 'next steps', 'who is responsible for', etc. Returns actual transcript text and structured events.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Natural language search query (e.g., 'action items and next steps', 'budget decisions', 'blockers and risks', 'who owns what task')."
+                        },
+                        "scope": {
+                            "type": "string",
+                            "enum": ["all", "transcript", "events", "meetings"],
+                            "description": "Which collection to search. Use 'transcript' for raw spoken content, 'events' for structured decisions/actions, 'all' for everything. Default: all."
+                        }
+                    },
+                    "required": ["query"]
+                }
+            }
+        }
+    ]
+    
+    global mcp_tools_cache
+    if mcp_tools_cache:
+        tools.extend(mcp_tools_cache)
+
+    main_loop = asyncio.get_running_loop()
+
+    def tool_handler(fn_name: str, args: dict) -> str:
+        if fn_name == "search_context":
+            query = args.get("query", "")
+            scope = args.get("scope", "all")
+            if not query:
+                return "Error: query not provided."
+            cs = get_context_store()
+            return cs.search(query, top_k=5, scope=scope, meeting_id=None)
+
+        if fn_name == "search_graph":
+            keywords = args.get("keywords", "")
+            if not keywords:
+                return "Error: keywords not provided."
+                
+            tm_instance = get_temporal_memory()
+            kws = [k.strip() for k in keywords.split(",") if k.strip()]
+            
+            all_items = []
+            for kw in kws[:3]:
+                items = tm_instance.query_temporal_context(kw, top_k=3)
+                all_items.extend(items)
+                
+            seen = set()
+            unique_items = []
+            for item in all_items:
+                uid = f"{item['meeting_id']}_{item['timestamp']}"
+                if uid not in seen:
+                    seen.add(uid)
+                    unique_items.append(item)
+
+            if not unique_items:
+                for kw in kws[:3]:
+                    kw_lower = kw.lower()
+                    for mid, meta in tm_instance.meetings.items():
+                        title = (meta.get("title") or "").lower()
+                        if kw_lower in title:
+                            event_ids = tm_instance.events_by_meeting.get(mid, [])
+                            for eid in event_ids:
+                                ev = tm_instance.events.get(eid)
+                                if not ev:
+                                    continue
+                                ent = tm_instance.entities.get(ev.entity_id)
+                                ent_name = ent.canonical_name if ent else "Unknown"
+                                minutes = int(ev.start_time // 60)
+                                seconds = int(ev.start_time % 60)
+                                time_str = f"{minutes}:{seconds:02d}"
+                                unique_items.append({
+                                    'entity': ent_name,
+                                    'entity_type': ent.type if ent else 'topic',
+                                    'event_type': ev.event_type,
+                                    'summary': ev.summary,
+                                    'speaker': ev.speaker,
+                                    'meeting_title': meta.get("title", mid[:8]),
+                                    'meeting_id': mid,
+                                    'timestamp': time_str,
+                                    'sentiment': ev.sentiment,
+                                    'unresolved_score': ent.unresolved_score if ent else 0,
+                                    'relevance_score': ev.confidence,
+                                    'citation': f"({meta.get('title', mid[:8])}, {ev.speaker}, {time_str})",
+                                })
+                            break
+
+                importance_order = {'decision': 0, 'problem': 1, 'risk': 2, 'idea': 3, 'deadline': 4}
+                unique_items.sort(key=lambda x: (importance_order.get(x['event_type'], 9), -x.get('relevance_score', 0)))
+            else:
+                unique_items.sort(key=lambda x: x['relevance_score'], reverse=True)
+            
+            if not unique_items:
+                return f"No historical events found for keywords: {keywords}"
+                
+            lines = []
+            for item in unique_items[:10]:
+                state = " ⚠️ UNRESOLVED" if item['unresolved_score'] > 0.6 else ""
+                if item['event_type'] == 'decision': state = " ✅ DECIDED"
+                lines.append(
+                    f"- [{item['event_type'].upper()}] {item['entity']}: "
+                    f"{item['summary'][:350]}{state} "
+                    f"{item['citation']}"
+                )
+            return "\n".join(lines)
+            
+        global mcp_tool_session_map
+        session = mcp_tool_session_map.get(fn_name)
+        if session:
+            try:
+                future = asyncio.run_coroutine_threadsafe(
+                    session.call_tool(fn_name, arguments=args),
+                    main_loop
+                )
+                result = future.result(timeout=30)
+                if result.isError:
+                    return f"MCP Tool Error: {result.content}"
+                
+                return "\n".join(c.text for c in result.content if getattr(c, 'type', '') == 'text')
+            except Exception as e:
+                logger.error(f"MCP Exception executing {fn_name}: {e}")
+                return f"MCP Tool System Error: {e}"
+        
+        return f"Unknown tool: {fn_name}"
+
+    try:
+        from src.llm_summarizer import LLMSummarizer
+        llm = LLMSummarizer()
+        if not llm.is_ready:
+            raise HTTPException(503, "LLM (LM Studio) is not available")
+    except Exception as e:
+        logger.error(f"LLM import failed: {e}")
+        raise HTTPException(500, "Internal component error")
+
+    jira_project = os.environ.get("JIRA_DEFAULT_PROJECT", "PROJ")
+    cloud_id = os.environ.get("ATLASSIAN_CLOUD_ID", "")
+    
+    system_prompt = f"""You are Vela, an intelligent meeting intelligence assistant with full access to all processed meeting transcripts, decisions, action items, and notes.
+
+CRITICAL RULES — follow these without exception:
+1. ALWAYS call search_context BEFORE answering any question about meetings, action items, decisions, or people. Never say you don't have access.
+2. Search MULTIPLE times with different queries if needed (e.g., 'action items', 'next steps', 'decisions', 'tasks assigned'). 
+3. If the first search returns only meeting titles, search AGAIN using scope='transcript' or scope='events' with more specific terms.
+4. NEVER ask the user to provide information that you can retrieve from the tools — always try the tools first.
+5. For Jira ticket creation: search for action items → extract them → create tickets using Jira MCP tools. Do not wait for user to list them.
+6. Synthesize results professionally. Cite the meeting name and speaker when relevant.
+7. Do not use emojis.
+
+## Atlassian Rovo MCP Configuration
+When calling any Jira/Confluence MCP tools:
+- **MUST** use Jira project key = "{jira_project}"
+- **MUST** use cloudId = "{cloud_id}"
+- **MUST** use `maxResults: 10` or `limit: 10` for ALL search operations.
+- Do NOT call getAccessibleAtlassianResources.
+- NEVER ask the user for a project key, just use "{jira_project}"."""
+
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    raw_history = []
+    for turn in history[-5:]:
+        role = turn.get("role", "user")
+        content = turn.get("content", "")
+        raw_history.append({"role": role if role in ['user', 'assistant'] else 'user', "content": content})
+
+    raw_history.append({"role": "user", "content": user_msg})
+    
+    for msg in raw_history:
+        if messages[-1]["role"] == msg["role"]:
+            messages[-1]["content"] += f"\n\n{msg['content']}"
+        else:
+            messages.append(msg)
+
+    import queue as _queue
+    step_queue = _queue.Queue()
+
+    def _step_callback(step: dict):
+        step_queue.put(step)
+
+    async def _event_stream():
+        loop = asyncio.get_event_loop()
+        fut = loop.run_in_executor(
+            None,
+            lambda: llm.agent_chat(
+                messages, tools, tool_handler,
+                max_turns=15, step_callback=_step_callback,
+                model_name=model_choice
+            ),
+        )
+
+        while not fut.done():
+            await asyncio.sleep(0.1)
+            while not step_queue.empty():
+                step = step_queue.get_nowait()
+                yield f"data: {json.dumps({'type': 'step', 'step': step}, ensure_ascii=False)}\n\n"
+
+        while not step_queue.empty():
+            step = step_queue.get_nowait()
+            yield f"data: {json.dumps({'type': 'step', 'step': step}, ensure_ascii=False)}\n\n"
+
+        try:
+            result = fut.result()
+            yield f"data: {json.dumps({'type': 'reply', 'content': result['reply'].strip(), 'steps': result.get('steps', []), 'model': result.get('model', 'unknown')}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            logger.error(f"Chat failed: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    from starlette.responses import StreamingResponse as _SR
+    return _SR(_event_stream(), media_type="text/event-stream")
+
 @app.post("/api/meetings/{job_id}/chat")
 async def chat_with_meeting(job_id: str, body: dict):
     """
@@ -1252,20 +1523,21 @@ async def chat_with_meeting(job_id: str, body: dict):
         logger.error(f"LLM import failed: {e}")
         raise HTTPException(500, "Internal component error")
 
-    system_prompt = f"""You are an intelligent AI assistant answering questions about a project.
-You have access to the current meeting's brief metadata below. For detailed transcript, events, or cross-meeting history, you MUST use your retrieval tools.
+    system_prompt = f"""You are Vela, an intelligent meeting AI assistant with full access to meeting transcripts, action items, decisions, and cross-meeting history.
 
 --- CURRENT MEETING ---
 {meeting_context}
 
-IMPORTANT INSTRUCTIONS:
-1. ALWAYS call `search_context` first to retrieve relevant transcript segments and events before answering detailed questions or writing documents.
-2. Use `search_graph` for cross-meeting historical decisions and context.
-3. If the user asks you to modify or add to a document/sheet, DO NOT ask for permission. Use your editing tools to write directly.
-4. Provide citations when stating facts (e.g., `(Meeting ES2002b, Speaker_A, 12:45)`).
-5. Be highly detailed and comprehensive. Do not summarize too aggressively. Extract as much explicit factual data as possible.
-6. The source transcripts are raw spoken dialogue containing verbal tics ("um", "uh", "yeah"). **NEVER quote this raw text verbatim in your final output or tool calls.** Always rewrite and paraphrase the decisions and facts into polished, professional business English.
-7. NEVER use emojis or unicode symbols in your output. Use plain text only — no ✅, 🎯, ❌, 📊, etc.
+CRITICAL RULES — follow these without exception:
+1. ALWAYS call search_context BEFORE answering detailed questions. Never say the information isn't available without searching first.
+2. Search MULTIPLE times with different queries if the first returns limited results. For action items try: 'action items', 'next steps', 'tasks', 'who will', 'follow up', 'assigned to'.
+3. For deep transcript content, call search_context with scope='transcript'. For decisions/blockers, use scope='events'.
+4. NEVER ask the user to provide information that you can retrieve from tools — always search first.
+5. For Jira ticket creation: search for action items → extract them → immediately call Jira MCP tools to create tickets. Do not ask the user to list them manually.
+6. Provide citations when stating facts (e.g., Meeting ES2002b, Speaker_A, 12:45).
+7. Be comprehensive. Extract as much explicit factual data as possible — do not over-summarize.
+8. Never quote raw transcript verbatim. Rewrite into professional business English.
+9. NEVER use emojis or unicode symbols. Plain text only.
 
 GOOGLE DOCS FORMATTING RULES (critical):
 When writing to Google Docs with `replaceDocumentWithMarkdown`, you MUST use proper markdown:
@@ -1503,6 +1775,18 @@ MCP_TOOL_CATEGORIES = {
         "description": "Communicate and manage channels in Slack",
         "icon": "💬",
         "tools": ["listChannels", "sendMessage", "readHistory", "getUserProfile"]
+    },
+    "jira": {
+        "label": "Jira & Confluence",
+        "description": "Official Atlassian Rovo MCP: create Jira tickets, search issues, manage sprints, and read/write Confluence pages",
+        "icon": "🎫",
+        "tools": [
+            "getAccessibleAtlassianResources",
+            "searchJiraIssues", "getJiraIssue", "createJiraIssue",
+            "updateJiraIssue", "addJiraComment", "transitionJiraIssue",
+            "getJiraSprint", "getJiraBoard",
+            "searchConfluencePages", "getConfluencePage", "createConfluencePage"
+        ]
     }
 }
 

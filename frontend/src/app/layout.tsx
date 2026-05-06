@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ background: '#F7F6F3' }}>
         <div style={{ display: 'flex', minHeight: '100vh' }}>
           <Sidebar />
-          <main style={{ marginLeft: '220px', flex: 1, minHeight: '100vh', overflow: 'hidden' }}>
+          <main style={{ flex: 1, minHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {children}
           </main>
         </div>

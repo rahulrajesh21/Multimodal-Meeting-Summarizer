@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { fetchTeamsMeetings, TeamsMeeting } from '@/lib/api';
+import { fetchTeamsMeetings, fetchMeetings, TeamsMeeting, Job } from '@/lib/api';
 import Link from 'next/link';
 import UploadModal from '@/components/UploadModal';
 import { motion } from 'framer-motion';
@@ -166,14 +166,135 @@ function MeetingRow({ m, index }: { m: TeamsMeeting; index: number }) {
     );
 }
 
+function JobRow({ job, index }: { job: Job; index: number }) {
+    const [hovered, setHovered] = useState(false);
+    const organizerName = job.participants?.[0]?.name || 'Unknown';
+    const participantCount = job.participants?.length || 0;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 * index }}
+            style={{
+                display: 'flex', alignItems: 'center', padding: '14px 20px',
+                gap: '24px', borderBottom: `1px solid ${borderColor}`,
+                background: hovered ? warmBg : '#FFFFFF',
+                cursor: 'pointer', transition: 'background 0.12s ease',
+            }}
+            onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+
+            {/* Thumbnail + Title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 2, minWidth: '280px' }}>
+                <div style={{
+                    width: 96, height: 56, borderRadius: '8px', flexShrink: 0,
+                    background: `linear-gradient(135deg, ${mutedBg} 0%, #E8E6E1 100%)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    position: 'relative', overflow: 'hidden',
+                }}>
+                    {hovered && (
+                        <div style={{
+                            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'rgba(0,0,0,0.06)',
+                        }}>
+                            <Play style={{ width: 16, height: 16, color: indigo, fill: indigo }} />
+                        </div>
+                    )}
+                </div>
+                <div>
+                    <div style={{
+                        fontSize: '14px', fontWeight: 500, color: hovered ? indigo : ink,
+                        transition: 'color 0.12s', marginBottom: '3px',
+                    }}>{job.title || 'Untitled Meeting'}</div>
+                    <div style={{
+                        fontSize: '11px', color: inkMuted,
+                        fontFamily: '"JetBrains Mono", monospace',
+                    }}>
+                        {new Date(job.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {' '}
+                        {new Date(job.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                    </div>
+                </div>
+            </div>
+
+            {/* Organizer */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 0.7, minWidth: '100px' }}>
+                <div style={{
+                    width: 22, height: 22, borderRadius: '50%', background: '#10B981',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '9px', fontWeight: 700, color: '#fff',
+                }}>
+                    {organizerName.charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontSize: '13px', color: ink }}>{organizerName}</span>
+            </div>
+
+            {/* Platform */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 0.7 }}>
+                <div style={{
+                    width: 18, height: 18, borderRadius: '4px', background: '#FFFFFF',
+                    border: `1px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '2px', background: indigo }} />
+                </div>
+                <span style={{ fontSize: '13px', color: inkSec }}>Vela Processed</span>
+            </div>
+
+            {/* Participants */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '60px', color: inkMuted }}>
+                <Users style={{ width: 14, height: 14 }} />
+                <span style={{ fontSize: '13px' }}>{participantCount}</span>
+            </div>
+
+            {/* AI Insight */}
+            <Link href={`/meetings/${job.job_id}`} onClick={e => e.stopPropagation()}>
+                <button style={{
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    padding: '6px 12px', borderRadius: '6px',
+                    border: `1px solid ${borderColor}`, background: '#FFFFFF',
+                    color: indigo, fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                    fontFamily: '"DM Sans", system-ui, sans-serif',
+                    transition: 'all 0.12s',
+                }}
+                    onMouseEnter={e => {
+                        (e.currentTarget as HTMLElement).style.background = '#EEF2FF';
+                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(79,70,229,0.3)';
+                    }}
+                    onMouseLeave={e => {
+                        (e.currentTarget as HTMLElement).style.background = '#FFFFFF';
+                        (e.currentTarget as HTMLElement).style.borderColor = borderColor;
+                    }}>
+                    <Sparkles style={{ width: 12, height: 12 }} />
+                    AI insight
+                </button>
+            </Link>
+
+            {/* More */}
+            <button style={{
+                background: 'none', border: 'none', cursor: 'pointer', color: inkFaint,
+                padding: '4px', display: 'flex',
+            }}>
+                <MoreHorizontal style={{ width: 16, height: 16 }} />
+            </button>
+        </motion.div>
+    );
+}
+
 export default function MeetingsPage() {
-    const [meetings, setMeetings] = useState<TeamsMeeting[]>([]);
+    const [teamsMeetings, setTeamsMeetings] = useState<TeamsMeeting[]>([]);
+    const [jobs, setJobs] = useState<Job[]>([]);
     const [showUpload, setShowUpload] = useState(false);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('all');
 
     const load = async () => {
-        try { setMeetings(await fetchTeamsMeetings()); }
+        try {
+            const [t, j] = await Promise.all([
+                fetchTeamsMeetings().catch(() => []),
+                fetchMeetings().catch(() => [])
+            ]);
+            setTeamsMeetings(t);
+            setJobs(j);
+        }
         catch { }
         finally { setLoading(false); }
     };
@@ -279,7 +400,7 @@ export default function MeetingsPage() {
                         <div>
                             {[0, 1, 2, 3, 4].map(i => <SkeletonRow key={i} delay={i * 0.08} />)}
                         </div>
-                    ) : meetings.length === 0 ? (
+                    ) : (activeTab === 'all' && teamsMeetings.length === 0 && jobs.length === 0) || (activeTab === 'mine' && jobs.length === 0) || (activeTab === 'shared' && teamsMeetings.length === 0) ? (
                         <div style={{ textAlign: 'center', padding: '60px 32px', color: inkMuted }}>
                             <Calendar style={{ width: 40, height: 40, color: inkFaint, marginBottom: '12px' }} />
                             <div style={{ fontSize: '16px', fontWeight: 600, color: inkSec, marginBottom: '6px' }}>No meetings found</div>
@@ -297,7 +418,8 @@ export default function MeetingsPage() {
                         </div>
                     ) : (
                         <div>
-                            {meetings.map((m, idx) => <MeetingRow key={m.id} m={m} index={idx} />)}
+                            {(activeTab === 'all' || activeTab === 'mine') && jobs.map((j, idx) => <JobRow key={j.job_id} job={j} index={idx} />)}
+                            {(activeTab === 'all' || activeTab === 'shared') && teamsMeetings.map((m, idx) => <MeetingRow key={m.id} m={m} index={jobs.length + idx} />)}
                         </div>
                     )}
                 </div>

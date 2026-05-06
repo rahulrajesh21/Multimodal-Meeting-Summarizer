@@ -69,6 +69,8 @@ function IntegrationCard({
                 return '/icons/Google_Calendar_icon_(2020).svg';
             case 'slack':
                 return '/icons/Slack_icon_2019.svg';
+            case 'jira':
+                return '/icons/jira_logo.svg';
             case 'email':
                 // We don't have a specific gmail icon, fallback to docs to match Google formatting style
                 return '/icons/Google_Docs_logo_(2014-2020).svg';

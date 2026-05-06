@@ -1,6 +1,7 @@
 {
   "enabled_categories": [
+    "sheets",
     "docs",
-    "sheets"
+    "jira"
   ]
 }

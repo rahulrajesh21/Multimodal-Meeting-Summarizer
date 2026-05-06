@@ -129,7 +129,7 @@ function ChatPanel({ jobId, onSeek }: { jobId: string; onSeek?: (t: number) => v
             <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {messages.length === 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 20, padding: 20 }}>
-                        <div style={{ width: 52, height: 52, borderRadius: '50%', background: BRAND, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🧠</div>
+                        <img src="/vela_logo.svg" alt="Vela" style={{ width: 52, height: 52, borderRadius: 10 }} />
                         <div style={{ textAlign: 'center', fontSize: 13, color: TEXT_MUTED }}>Ask anything about this meeting</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%', maxWidth: 360 }}>
                             {SUGGESTED.map((p, i) => (
