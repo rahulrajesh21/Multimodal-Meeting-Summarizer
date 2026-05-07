@@ -217,23 +217,6 @@ export default function IntegrationsPage() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    {/* Connection status badge */}
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '8px 14px', borderRadius: 8,
-                        background: mcpConfig?.mcp_connected ? '#F0FDF4' : warmBg,
-                        border: `1px solid ${mcpConfig?.mcp_connected ? 'rgba(22,163,74,0.25)' : borderColor}`,
-                        fontSize: 13, fontWeight: 600,
-                        color: mcpConfig?.mcp_connected ? positive : inkMuted,
-                    }}>
-                        <div style={{
-                            width: 7, height: 7, borderRadius: '50%',
-                            background: mcpConfig?.mcp_connected ? positive : '#B0AEA8',
-                            boxShadow: mcpConfig?.mcp_connected ? '0 0 5px rgba(22,163,74,0.5)' : 'none',
-                        }} />
-                        {mcpConfig?.mcp_connected ? 'Connected' : 'Disconnected'}
-                    </div>
-
                     <button
                         onClick={saveMcpConfig}
                         disabled={!mcpDirty || mcpSaving}
