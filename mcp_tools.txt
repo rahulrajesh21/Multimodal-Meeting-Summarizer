@@ -1,0 +1,28 @@
+---
+Name: getTeamworkGraphContext
+Desc: Retrieves connected context from Teamwork Graph for any Atlassian entity. Returns all relationships and linked objects within one traversal – including cross-product and third-party connections. Use when the answer requires connections between entities, not just a single entity's fields.
+
+Supported entry points:
+
+Jira: issues, projects, sprints, versions, comments
+
+Confluence: pages, blogposts, whiteboards, databases, spaces
+
+Goals, Projects, Focus Areas, Tags and updates
+
+People: users, teams, organisations
+
+DevOps: PRs, repos, deployments, services, builds, designs
+
+Loom: videos, meetings
+
+Compass: components
+
+Incidents, conversations, calendar events, external documents
+
+After calling this tool, call getTeamworkGraphObject on returned ARIs to get full content.
+Schema: {'type': 'object', 'properties': {'cloudId': {'type': 'string', 'description': 'Cloud ID (UUID or site URL)'}, 'objectType': {'type': 'string', 'enum': ['AtlassianGoal', 'AtlassianGoalUpdate', 'AtlassianHomeComment', 'AtlassianHomeTag', 'AtlassianProject', 'AtlassianProjectUpdate', 'AtlassianTeam', 'AtlassianUser', 'CompassComponent', 'ConfluenceBlogPost', 'ConfluenceComment', 'ConfluenceDatabase', 'ConfluencePage', 'ConfluenceSpace', 'ConfluenceWhiteboard', 'ExternalCalendarEvent', 'ExternalConversation', 'ExternalDeployment', 'ExternalDesign', 'ExternalDocument', 'ExternalOrganisation', 'ExternalPosition', 'ExternalPullRequest', 'ExternalRepository', 'ExternalService', 'FocusFocusArea', 'JiraSpace', 'JiraSprint', 'JiraVersion', 'JiraWorkItem', 'JiraWorkItemComment', 'LoomMeeting', 'LoomMeetingRecurrence', 'LoomVideo'], 'description': 'Type of object to fetch context for.'}, 'objectIdentifier': {'type': 'string', 'maxLength': 500, 'description': 'Identifier for the object. It could be a key (e.g. ENG-1234), ID, ARI, or full URL; format depends on objectType.'}, 'detailLevel': {'type': 'string', 'enum': ['summary', 'full'], 'default': 'summary', 'description': "'summary' (counts/metadata) or 'full' (detailed content)."}, 'relationshipTypes': {'type': 'array', 'items': {'type': 'string', 'maxLength': 200}, 'maxItems': 20, 'description': "Filter full results to specific relationship types to save tokens (e.g. 'jira-work-item-links-external-build' for Jira work items)."}, 'targetObjectTypes': {'type': 'array', 'items': {'type': 'string', 'maxLength': 200}, 'maxItems': 20, 'description': 'Filter results to only include relationships targeting specific object types (e.g. AtlassianUser, ConfluenceComment).'}, 'timeRange': {'type': 'object', 'properties': {'from': {'type': 'string', 'format': 'date-time', 'description': 'ISO 8601 date-time string for the start of the time range (e.g. "2025-01-01T00:00:00Z").'}, 'to': {'type': 'string', 'format': 'date-time', 'description': 'ISO 8601 date-time string for the end of the time range (e.g. "2025-12-31T23:59:59Z").'}}, 'additionalProperties': False, 'description': 'Optional time range to filter relationships by creation or update time.'}, 'first': {'type': 'integer', 'maximum': 50, 'default': 50, 'description': 'Max number of related items to return.'}, 'after': {'type': 'string', 'description': 'Pagination cursor for fetching the next page of results.'}}, 'required': ['cloudId', 'objectType', 'objectIdentifier'], 'additionalProperties': False, '$schema': 'http://json-schema.org/draft-07/schema#'}
+---
+Name: getTeamworkGraphObject
+Desc: Fetches the entire available data for one or more objects (Atlassian or third-party) using their ARIs or URLs. Use for the objects gathered from getTeamworkGraphContext tool.
+Schema: {'type': 'object', 'properties': {'cloudId': {'type': 'string', 'description': 'Cloud ID (UUID or site URL)'}, 'objects': {'type': 'array', 'items': {'type': 'string', 'maxLength': 500}, 'maxItems': 25, 'description': "A list of object identifiers to hydrate. Supports both ARIs (e.g., 'ari:cloud:jira::issue/123') and full browser URLs (e.g., 'https://mysite.atlassian.net/browse/PROJ-1')."}}, 'required': ['cloudId', 'objects'], 'additionalProperties': False, '$schema': 'http://json-schema.org/draft-07/schema#'}

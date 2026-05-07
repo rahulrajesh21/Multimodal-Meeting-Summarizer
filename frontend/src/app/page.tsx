@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { fetchMeetings, Job } from '@/lib/api';
 import UploadModal from '@/components/UploadModal';
-import Header from '@/components/Header';
 import { format } from 'date-fns';
 import {
   Video, Activity, Zap, CheckCircle2, Calendar, Clock,
@@ -239,7 +238,15 @@ export default function DashboardPage() {
     refresh();
     const id = setInterval(refresh, 5000);
     const clock = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => { clearInterval(id); clearInterval(clock); };
+    
+    const handleUpload = () => setShowUpload(true);
+    window.addEventListener('open-upload', handleUpload);
+    
+    return () => { 
+      clearInterval(id); 
+      clearInterval(clock); 
+      window.removeEventListener('open-upload', handleUpload);
+    };
   }, [refresh]);
 
   const queue = jobs.filter(j => j.status === 'queued' || j.status === 'processing');
@@ -256,8 +263,6 @@ export default function DashboardPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: warmBg }}>
       {showUpload && <UploadModal onClose={() => { setShowUpload(false); refresh(); }} />}
-
-      <Header onUpload={() => setShowUpload(true)} />
 
       <div style={{ display: 'flex', flex: 1, padding: '32px', gap: '28px' }}>
         {/* Main Column */}

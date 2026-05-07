@@ -1,104 +1,112 @@
 'use client';
-import { Search, Upload, Bell, Shield } from 'lucide-react';
+import { useState } from 'react';
+import { Search, Upload, Bell, Shield, ArrowLeft, ArrowRight, Clock, HelpCircle } from 'lucide-react';
 
-export default function Header({ onUpload }: { onUpload: () => void }) {
+export default function Header() {
+    const [uploadHovered, setUploadHovered] = useState(false);
+
     return (
         <div style={{
-            position: 'sticky', top: 0, zIndex: 40, width: '100%',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0 32px', height: '60px',
-            background: 'rgba(247, 246, 243, 0.85)', backdropFilter: 'blur(16px)',
-            borderBottom: '1px solid #E8E6E1',
+            position: 'sticky', top: 0, zIndex: 60, width: '100%',
+            display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center',
+            height: '44px',
+            background: '#FFFFFF',
         }}>
-            {/* Search */}
-            <div style={{ flex: 1, maxWidth: '400px' }}>
-                <label style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <Search style={{ position: 'absolute', left: '12px', width: 16, height: 16, color: '#B0AEA8' }} />
-                    <input
-                        type="text"
-                        placeholder="Search anything..."
-                        style={{
-                            width: '100%', paddingLeft: '38px', paddingRight: '50px',
-                            height: '38px', fontSize: '13px', fontWeight: 400,
-                            borderRadius: '8px', border: '1px solid #E8E6E1',
-                            background: '#FFFFFF', color: '#1A1A18', outline: 'none',
-                            fontFamily: '"DM Sans", system-ui, sans-serif',
-                            transition: 'border-color 0.15s, box-shadow 0.15s',
-                        }}
-                        onFocus={e => {
-                            e.currentTarget.style.borderColor = '#4F46E5';
-                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(79,70,229,0.08)';
-                        }}
-                        onBlur={e => {
-                            e.currentTarget.style.borderColor = '#E8E6E1';
-                            e.currentTarget.style.boxShadow = 'none';
-                        }}
-                    />
-                    <div style={{ position: 'absolute', right: '10px' }}>
-                        <kbd style={{
-                            fontFamily: '"JetBrains Mono", monospace', fontSize: '10px',
-                            padding: '2px 6px', borderRadius: '4px',
-                            background: '#F7F6F3', border: '1px solid #E8E6E1', color: '#9B9891',
-                        }}>
-                            Cmd+K
-                        </kbd>
-                    </div>
-                </label>
-            </div>
+            {/* Left section: Empty to balance the grid */}
+            <div />
 
-            {/* Right */}
+            {/* Center section: Navigation, Search, Upload */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                {/* System Status */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    padding: '5px 12px', borderRadius: '100px',
-                    background: '#F0FDF4', border: '1px solid rgba(22,163,74,0.2)',
-                }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#16A34A', boxShadow: '0 0 6px rgba(22,163,74,0.6)' }} />
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#16A34A' }}>System Nominal</span>
+                {/* Navigation */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <ArrowLeft style={{ width: 16, height: 16, color: '#9B9891', cursor: 'pointer' }} />
+                    <ArrowRight style={{ width: 16, height: 16, color: '#D4D2CC', cursor: 'pointer' }} />
+                    <Clock style={{ width: 16, height: 16, color: '#9B9891', cursor: 'pointer' }} />
                 </div>
 
+                {/* Search Bar */}
+                <div style={{ width: '560px' }}>
+                    <label style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <Search style={{ position: 'absolute', left: '10px', width: 14, height: 14, color: '#9B9891' }} />
+                        <input
+                            type="text"
+                            placeholder="Describe what you are looking for"
+                            style={{
+                                width: '100%', paddingLeft: '32px', paddingRight: '10px',
+                                height: '28px', fontSize: '13px', fontWeight: 400,
+                                borderRadius: '6px', border: '1px solid #E8E6E1',
+                                background: '#F7F6F3', color: '#1A1A18', outline: 'none',
+                                fontFamily: '"DM Sans", system-ui, sans-serif',
+                                transition: 'border-color 0.15s, box-shadow 0.15s, background 0.15s',
+                            }}
+                            onFocus={e => {
+                                e.currentTarget.style.borderColor = '#4F46E5';
+                                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(79,70,229,0.08)';
+                                e.currentTarget.style.background = '#FFFFFF';
+                            }}
+                            onBlur={e => {
+                                e.currentTarget.style.borderColor = '#E8E6E1';
+                                e.currentTarget.style.boxShadow = 'none';
+                                e.currentTarget.style.background = '#F7F6F3';
+                            }}
+                        />
+                    </label>
+                </div>
+
+                {/* Upload button */}
+                <button
+                    onClick={() => window.dispatchEvent(new Event('open-upload'))}
+                    onMouseEnter={() => setUploadHovered(true)}
+                    onMouseLeave={() => setUploadHovered(false)}
+                    style={{
+                        display: 'flex', alignItems: 'center', 
+                        height: '28px', 
+                        maxWidth: uploadHovered ? '90px' : '28px',
+                        paddingRight: uploadHovered ? '12px' : '0',
+                        borderRadius: '6px',
+                        color: '#FFFFFF',
+                        background: uploadHovered ? '#4338CA' : '#4F46E5', 
+                        border: 'none', cursor: 'pointer',
+                        fontFamily: '"DM Sans", system-ui, sans-serif',
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                    }}>
+                    <div style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Upload style={{ width: 14, height: 14 }} />
+                    </div>
+                    <span style={{ 
+                        fontSize: '12px', fontWeight: 600,
+                        opacity: uploadHovered ? 1 : 0,
+                        transition: 'opacity 0.2s',
+                    }}>
+                        Upload
+                    </span>
+                </button>
+            </div>
+
+            {/* Right section: User controls */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '20px', gap: '14px' }}>
                 {/* Notifications */}
                 <button style={{
-                    position: 'relative', width: 36, height: 36,
+                    position: 'relative', width: 28, height: 28,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    borderRadius: '8px', background: '#FFFFFF',
-                    border: '1px solid #E8E6E1', cursor: 'pointer',
-                    color: '#9B9891', transition: 'all 0.15s',
+                    borderRadius: '6px', background: 'transparent',
+                    border: 'none', cursor: 'pointer',
+                    color: '#9B9891', transition: 'color 0.15s, background 0.15s',
                 }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#D4D2CC'; (e.currentTarget as HTMLElement).style.color = '#1A1A18'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#E8E6E1'; (e.currentTarget as HTMLElement).style.color = '#9B9891'; }}>
-                    <Bell style={{ width: 17, height: 17 }} />
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#F7F6F3'; (e.currentTarget as HTMLElement).style.color = '#1A1A18'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#9B9891'; }}>
+                    <Bell style={{ width: 16, height: 16 }} />
                     <div style={{
-                        position: 'absolute', top: 7, right: 7,
-                        width: 6, height: 6, borderRadius: '50%',
-                        background: '#4F46E5', border: '2px solid #FFFFFF',
+                        position: 'absolute', top: 4, right: 6,
+                        width: 5, height: 5, borderRadius: '50%',
+                        background: '#4F46E5',
                     }} />
                 </button>
 
-                {/* Upload */}
-                <button
-                    onClick={onUpload}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        height: '38px', padding: '0 18px', borderRadius: '6px',
-                        fontSize: '13px', fontWeight: 600, color: '#FFFFFF',
-                        background: '#4F46E5', border: 'none', cursor: 'pointer',
-                        fontFamily: '"DM Sans", system-ui, sans-serif',
-                        transition: 'all 0.15s ease',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                    }}
-                    onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.background = '#4338CA';
-                        (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(79,70,229,0.3)';
-                    }}
-                    onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.background = '#4F46E5';
-                        (e.currentTarget as HTMLElement).style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
-                    }}>
-                    <Upload style={{ width: 15, height: 15 }} />
-                    Upload Meeting
-                </button>
+                {/* Help Icon */}
+                <HelpCircle style={{ width: 18, height: 18, color: '#9B9891', cursor: 'pointer' }} />
             </div>
         </div>
     );

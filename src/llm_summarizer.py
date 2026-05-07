@@ -135,7 +135,7 @@ class LLMSummarizer:
             logger.error(f"LM Studio generation failed: {e}")
             raise e
 
-    def agent_chat(self, messages: List[Dict], tools: List[Dict], tool_handler: callable, max_turns: int = 5, step_callback: callable = None, model_name: str = None) -> Dict:
+    def agent_chat(self, messages: List[Dict], tools: List[Dict], tool_handler: callable, max_turns: int = 5, step_callback: callable = None, model_name: str = None, llm_backend: str = "lmstudio") -> Dict:
         """
         Agent orchestration loop with real-time streaming.
         Uses stream=True to get token-by-token reasoning and content.
@@ -144,11 +144,24 @@ class LLMSummarizer:
         """
         import json
         import re as _re
+        import os
         
-        # If model_name is explicitly provided, use it. Otherwise use fallback.
-        if not model_name:
-            # Gemma 4 is safe now — RAG reduced payload from 300K to ~6K tokens
-            model_name = self._get_model_name(["gemma", "qwen3.5-9b", "qwen"])
+        # Determine backend and model
+        if llm_backend == "openrouter":
+            if not model_name:
+                model_name = "google/gemini-2.5-flash" # Fast, cheap fallback for OpenRouter
+            api_endpoint = "https://openrouter.ai/api/v1/chat/completions"
+            api_headers = {
+                "Authorization": f"Bearer {os.environ.get('OPENROUTER_API_KEY', '')}",
+                "Content-Type": "application/json"
+            }
+        else:
+            if not model_name:
+                # Gemma 4 is safe now — RAG reduced payload from 300K to ~6K tokens
+                model_name = self._get_model_name(["gemma", "qwen3.5-9b", "qwen"])
+            api_endpoint = self.endpoint
+            api_headers = {}
+
         steps: List[Dict] = []
 
         def _emit(step: Dict):
@@ -255,13 +268,13 @@ class LLMSummarizer:
 
             try:
                 # ── Stream the LLM response ──────────────────────────
-                resp = requests.post(self.endpoint, json=payload, timeout=120, stream=True)
+                resp = requests.post(api_endpoint, headers=api_headers, json=payload, timeout=120, stream=True)
                 try:
                     resp.raise_for_status()
                 except requests.exceptions.HTTPError as http_err:
                     error_body = resp.text[:500] if resp.text else 'No body'
-                    logger.error(f"LM Studio returned {resp.status_code}: {error_body} (payload was {len(payload_json):,} chars)")
-                    raise RuntimeError(f"LM Studio error {resp.status_code}: The payload ({est_tokens:,} est. tokens) may exceed the model's context window. Try reducing enabled MCP tools or conversation history.") from http_err
+                    logger.error(f"{llm_backend} returned {resp.status_code}: {error_body} (payload was {len(payload_json):,} chars)")
+                    raise RuntimeError(f"{llm_backend} error {resp.status_code}: The payload ({est_tokens:,} est. tokens) may exceed the model's context window. Try reducing enabled MCP tools or conversation history.") from http_err
 
                 # Accumulators
                 reasoning_buf = ""

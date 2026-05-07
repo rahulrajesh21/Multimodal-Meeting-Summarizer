@@ -360,7 +360,7 @@ async def lifespan(app: FastAPI):
         {
             "name": "slack",
             "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-slack"],
+            "args": ["-y", "-p", "@modelcontextprotocol/server-slack", "mcp-server-slack"],
             "env": dict(os.environ)
         },
         {
@@ -416,13 +416,25 @@ async def lifespan(app: FastAPI):
                     if config["name"] == "google-docs" and enabled_tools and t.name not in enabled_tools:
                         continue
 
+                    schema = t.inputSchema or {}
+                    def _sanitize(node):
+                        if isinstance(node, dict):
+                            if node.get("type") == "array" and "items" not in node:
+                                node["items"] = {"type": "string"}
+                            for k, v in node.items():
+                                _sanitize(v)
+                        elif isinstance(node, list):
+                            for x in node:
+                                _sanitize(x)
+                    _sanitize(schema)
+
                     mcp_tool_session_map[t.name] = session
                     mcp_tools_cache.append({
                         "type": "function",
                         "function": {
                             "name": t.name,
                             "description": t.description,
-                            "parameters": t.inputSchema
+                            "parameters": schema
                         }
                     })
                 logger.info(f"MCP Server '{config['name']}' initialized. Loaded {len(tools_resp.tools)} tools.")
@@ -1068,6 +1080,7 @@ async def chat_global(body: dict):
 
     history = body.get("history", [])[-10:]  # Keep last 10 exchanges
     model_choice = body.get("model", None)
+    llm_backend = body.get("llm_backend", "lmstudio")
 
     tools = [
         {
@@ -1220,11 +1233,13 @@ async def chat_global(body: dict):
     try:
         from src.llm_summarizer import LLMSummarizer
         llm = LLMSummarizer()
-        if not llm.is_ready:
+        if llm_backend != "openrouter" and not llm.is_ready:
             raise HTTPException(503, "LLM (LM Studio) is not available")
     except Exception as e:
-        logger.error(f"LLM import failed: {e}")
-        raise HTTPException(500, "Internal component error")
+        if not isinstance(e, HTTPException):
+            logger.error(f"LLM import failed: {e}")
+            raise HTTPException(500, "Internal component error")
+        raise e
 
     jira_project = os.environ.get("JIRA_DEFAULT_PROJECT", "PROJ")
     cloud_id = os.environ.get("ATLASSIAN_CLOUD_ID", "")
@@ -1277,7 +1292,8 @@ When calling any Jira/Confluence MCP tools:
             lambda: llm.agent_chat(
                 messages, tools, tool_handler,
                 max_turns=15, step_callback=_step_callback,
-                model_name=model_choice
+                model_name=model_choice,
+                llm_backend=llm_backend
             ),
         )
 
@@ -1321,6 +1337,7 @@ async def chat_with_meeting(job_id: str, body: dict):
 
     history = body.get("history", [])[-10:]  # Keep last 10 exchanges
     model_choice = body.get("model", None)
+    llm_backend = body.get("llm_backend", "lmstudio")
 
     # ── Build meeting context ──────────────────────────────────────────────
     ctx_parts: list[str] = []
@@ -1517,11 +1534,13 @@ async def chat_with_meeting(job_id: str, body: dict):
     try:
         from src.llm_summarizer import LLMSummarizer
         llm = LLMSummarizer()
-        if not llm.is_ready:
+        if llm_backend != "openrouter" and not llm.is_ready:
             raise HTTPException(503, "LLM (LM Studio) is not available")
     except Exception as e:
-        logger.error(f"LLM import failed: {e}")
-        raise HTTPException(500, "Internal component error")
+        if not isinstance(e, HTTPException):
+            logger.error(f"LLM import failed: {e}")
+            raise HTTPException(500, "Internal component error")
+        raise e
 
     system_prompt = f"""You are Vela, an intelligent meeting AI assistant with full access to meeting transcripts, action items, decisions, and cross-meeting history.
 
@@ -1586,7 +1605,8 @@ When writing to Google Docs with `replaceDocumentWithMarkdown`, you MUST use pro
             lambda: llm.agent_chat(
                 messages, tools, tool_handler,
                 max_turns=15, step_callback=_step_callback,
-                model_name=model_choice
+                model_name=model_choice,
+                llm_backend=llm_backend
             ),
         )
 
