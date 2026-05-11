@@ -65,21 +65,71 @@ function tryParseMeetingWidget(content: string): MeetingData | null {
   return null;
 }
 
+function getInitialSessions(): ChatSession[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const s = localStorage.getItem("vela_ai_sessions");
+    return s ? JSON.parse(s) : [];
+  } catch {
+    return [];
+  }
+}
+
+function getInitialSessionId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("vela_ai_current_session") || null;
+}
+
 export default function GlobalAIPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sessionsState, setSessionsState] = useState<ChatSession[]>(getInitialSessions);
+  const [currentSessionIdState, setCurrentSessionIdState] = useState<string | null>(getInitialSessionId);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const s = getInitialSessions();
+    const id = getInitialSessionId();
+    const active = s.find((x) => x.id === id);
+    return active ? active.messages : [];
+  });
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [liveSteps, setLiveSteps] = useState<AgentStep[]>([]);
   const [models, setModels] = useState<{ id: string }[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
 
-  // History State
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [modelOpen, setModelOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Custom setters that sync with localStorage synchronously
+  const setSessions = (val: ChatSession[] | ((prev: ChatSession[]) => ChatSession[])) => {
+    setSessionsState((prev) => {
+      const next = typeof val === "function" ? val(prev) : val;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("vela_ai_sessions", JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  const setCurrentSessionId = (val: string | null | ((prev: string | null) => string | null)) => {
+    setCurrentSessionIdState((prev) => {
+      const next = typeof val === "function" ? val(prev) : val;
+      if (typeof window !== "undefined") {
+        if (next) {
+          localStorage.setItem("vela_ai_current_session", next);
+        } else {
+          localStorage.removeItem("vela_ai_current_session");
+        }
+      }
+      return next;
+    });
+  };
+
+  // Aliases for convenience
+  const sessions = sessionsState;
+  const currentSessionId = currentSessionIdState;
 
   useEffect(() => {
     const llmBackend = localStorage.getItem("chatLlmBackend") || "lmstudio";
@@ -103,21 +153,7 @@ export default function GlobalAIPage() {
         })
         .catch(() => {});
     }
-
-    // Load sessions
-    const stored = localStorage.getItem("vela_ai_sessions");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setSessions(parsed);
-      } catch (e) {}
-    }
   }, []);
-
-  // Save sessions whenever they change
-  useEffect(() => {
-    localStorage.setItem("vela_ai_sessions", JSON.stringify(sessions));
-  }, [sessions]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
