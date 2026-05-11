@@ -261,10 +261,10 @@ export default function DashboardPage() {
   const displayCards = done.length > 0 ? done.slice(0, 3) : mockCards;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: warmBg }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: warmBg, overflow: 'hidden' }}>
       {showUpload && <UploadModal onClose={() => { setShowUpload(false); refresh(); }} />}
 
-      <div style={{ display: 'flex', flex: 1, padding: '32px', gap: '28px' }}>
+      <div style={{ display: 'flex', flex: 1, padding: '32px', gap: '28px', overflowY: 'auto', minHeight: 0 }}>
         {/* Main Column */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '36px' }}>
 
@@ -284,36 +284,7 @@ export default function DashboardPage() {
             }}>
               Welcome back, Rahul
             </h1>
-            <p style={{ fontSize: '14px', color: inkMuted, maxWidth: '480px', lineHeight: 1.6 }}>
-              Your intelligence dashboard. Let AI handle the notes.{' '}
-              <span style={{ color: queue.length > 0 ? indigo : positive, fontWeight: 600 }}>
-                {queue.length > 0 ? 'Agent is processing...' : 'Agent is idle.'}
-              </span>
-            </p>
 
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-              <button onClick={() => setShowUpload(true)} className="btn-primary" style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '10px 20px', borderRadius: '6px',
-                fontSize: '13px', fontWeight: 600, color: '#fff',
-                background: indigo, border: 'none', cursor: 'pointer',
-                fontFamily: '"DM Sans", system-ui, sans-serif',
-              }}>
-                <Upload style={{ width: 15, height: 15 }} />
-                Start a new meeting
-              </button>
-              <button className="btn-secondary" style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '10px 20px', borderRadius: '6px',
-                fontSize: '13px', fontWeight: 500, color: inkSec,
-                background: '#FFFFFF', border: `1px solid ${borderColor}`, cursor: 'pointer',
-                fontFamily: '"DM Sans", system-ui, sans-serif',
-              }}>
-                <Sparkles style={{ width: 15, height: 15 }} />
-                Agent Analysis
-              </button>
-            </div>
           </motion.div>
 
           {/* Stats */}
@@ -352,7 +323,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Panel */}
-        <div style={{ width: '280px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ width: '280px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
 
           {/* Clock Widget */}
           <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}

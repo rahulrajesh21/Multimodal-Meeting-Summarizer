@@ -1255,6 +1255,41 @@ CRITICAL RULES — follow these without exception:
 6. Synthesize results professionally. Cite the meeting name and speaker when relevant.
 7. Do not use emojis.
 
+## Output Format Rules
+
+**Use a visual widget (tabbed dashboard) when:**
+- User asks to summarize multiple meetings
+- User asks to "show", "display", or "visualize" meeting data
+- User asks for action items across all meetings
+- User asks for themes, trends, or patterns across meetings
+- The data has 3+ structured sections that benefit from cards/tabs
+
+**To output the visual widget, use a markdown code block with the language `json-meeting-widget` containing ONLY valid JSON matching this structure:**
+```json-meeting-widget
+{{
+  "overview": {{ "themes": ["theme1", "theme2"], "nextSteps": ["step1", "step2"] }},
+  "meetings": [
+    {{
+      "id": "meeting1",
+      "title": "Meeting Title",
+      "keyDecisions": ["decision1"],
+      "majorUpdates": ["update1"],
+      "actionItems": [{{ "owner": "Speaker A", "task": "task1" }}]
+    }}
+  ]
+}}
+```
+Ensure speaker names in the JSON match Speaker A, Speaker B, etc., if possible for color coding.
+
+**Use plain text when:**
+- User asks a simple question ("Who owns X task?")
+- User asks about a single specific detail
+- User is having a casual conversation about the meetings
+
+**Use a markdown table when:**
+- User asks to compare 2 meetings side by side
+- User asks for a list of all action items with owners
+
 ## Atlassian Rovo MCP Configuration
 When calling any Jira/Confluence MCP tools:
 - **MUST** use Jira project key = "{jira_project}"
@@ -1557,6 +1592,41 @@ CRITICAL RULES — follow these without exception:
 7. Be comprehensive. Extract as much explicit factual data as possible — do not over-summarize.
 8. Never quote raw transcript verbatim. Rewrite into professional business English.
 9. NEVER use emojis or unicode symbols. Plain text only.
+
+## Output Format Rules
+
+**Use a visual widget (tabbed dashboard) when:**
+- User asks to summarize multiple meetings
+- User asks to "show", "display", or "visualize" meeting data
+- User asks for action items across all meetings
+- User asks for themes, trends, or patterns across meetings
+- The data has 3+ structured sections that benefit from cards/tabs
+
+**To output the visual widget, use a markdown code block with the language `json-meeting-widget` containing ONLY valid JSON matching this structure:**
+```json-meeting-widget
+{{
+  "overview": {{ "themes": ["theme1", "theme2"], "nextSteps": ["step1", "step2"] }},
+  "meetings": [
+    {{
+      "id": "meeting1",
+      "title": "Meeting Title",
+      "keyDecisions": ["decision1"],
+      "majorUpdates": ["update1"],
+      "actionItems": [{{ "owner": "Speaker A", "task": "task1" }}]
+    }}
+  ]
+}}
+```
+Ensure speaker names in the JSON match Speaker A, Speaker B, etc., if possible for color coding.
+
+**Use plain text when:**
+- User asks a simple question ("Who owns X task?")
+- User asks about a single specific detail
+- User is having a casual conversation about the meetings
+
+**Use a markdown table when:**
+- User asks to compare 2 meetings side by side
+- User asks for a list of all action items with owners
 
 GOOGLE DOCS FORMATTING RULES (critical):
 When writing to Google Docs with `replaceDocumentWithMarkdown`, you MUST use proper markdown:

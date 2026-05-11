@@ -23,7 +23,10 @@ sudo apt-get install -y \
     pkg-config \
     libavcodec-dev \
     libavformat-dev \
-    libswscale-dev
+    libswscale-dev \
+    libgl1 \
+    libglib2.0-0 \
+    libsndfile1
 
 echo "--- Installing Node.js 20.x ---"
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -

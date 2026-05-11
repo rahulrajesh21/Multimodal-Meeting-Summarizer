@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { chatWithGlobal, fetchModels, ChatMessage, AgentStep } from "@/lib/api";
 import ReactMarkdown from "react-markdown";
+import { MeetingWidget, MeetingData } from "@/components/MeetingWidget";
 import remarkGfm from "remark-gfm";
 import {
   Send,
@@ -41,6 +42,29 @@ type ChatSession = {
   updatedAt: number;
 };
 
+/** Detect meeting widget JSON in assistant replies.
+ *  Handles the fenced ```json-meeting-widget block (ideal) and
+ *  bare JSON objects the model outputs when it forgets the fence. */
+function tryParseMeetingWidget(content: string): MeetingData | null {
+  // 1. Fenced code block — preferred path
+  const fenced = content.match(/```json-meeting-widget\s*([\s\S]*?)```/);
+  if (fenced) {
+    try { return JSON.parse(fenced[1].trim()); } catch { return null; }
+  }
+  // 2. Bare JSON object anywhere in the reply
+  const jsonStart = content.indexOf("{");
+  const jsonEnd = content.lastIndexOf("}");
+  if (jsonStart !== -1 && jsonEnd > jsonStart) {
+    try {
+      const parsed = JSON.parse(content.slice(jsonStart, jsonEnd + 1));
+      if (parsed && Array.isArray(parsed.meetings) && parsed.meetings.length > 0) {
+        return parsed as MeetingData;
+      }
+    } catch { /* not valid JSON */ }
+  }
+  return null;
+}
+
 export default function GlobalAIPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -53,6 +77,7 @@ export default function GlobalAIPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [modelOpen, setModelOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -227,7 +252,7 @@ export default function GlobalAIPage() {
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        height: "100%",
         background: PAGE_BG,
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
@@ -655,53 +680,67 @@ export default function GlobalAIPage() {
                               done
                             />
                           ))}
-                        <div
-                          style={{
-                            background: PAGE_BG,
-                            border: `0.5px solid ${BORDER}`,
-                            borderRadius: "4px 16px 16px 16px",
-                            padding: "10px 14px",
-                            fontSize: 13,
-                            lineHeight: 1.6,
-                            color: TEXT_PRIMARY,
-                          }}
-                        >
-                          <div className="markdown-body">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {msg.content}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
+                        {(() => {
+                          const widgetData = tryParseMeetingWidget(msg.content);
+                          if (widgetData) return <MeetingWidget data={widgetData} />;
+                          return (
+                            <div
+                              style={{
+                                background: PAGE_BG,
+                                border: `0.5px solid ${BORDER}`,
+                                borderRadius: "4px 16px 16px 16px",
+                                padding: "10px 14px",
+                                fontSize: 13,
+                                lineHeight: 1.6,
+                                color: TEXT_PRIMARY,
+                              }}
+                            >
+                              <div className="markdown-body">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {msg.content}
+                                </ReactMarkdown>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </>
-                    ) : (
-                      <div
-                        style={{
-                          background: msg.role === "user" ? BRAND : PAGE_BG,
-                          color: msg.role === "user" ? "#fff" : TEXT_PRIMARY,
-                          border:
-                            msg.role === "user"
-                              ? "none"
-                              : `0.5px solid ${BORDER}`,
-                          borderRadius:
-                            msg.role === "user"
-                              ? "16px 16px 4px 16px"
-                              : "4px 16px 16px 16px",
-                          padding: "10px 14px",
-                          fontSize: 13,
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {msg.role === "user" ? (
-                          msg.content
-                        ) : (
-                          <div className="markdown-body">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {msg.content}
-                            </ReactMarkdown>
+                    ) : (() => {
+                        // For assistant messages: try widget first, then normal bubble
+                        if (msg.role === "assistant") {
+                          const widgetData = tryParseMeetingWidget(msg.content);
+                          if (widgetData) return <MeetingWidget data={widgetData} />;
+                        }
+                        return (
+                          <div
+                            style={{
+                              background: msg.role === "user" ? BRAND : PAGE_BG,
+                              color: msg.role === "user" ? "#fff" : TEXT_PRIMARY,
+                              border:
+                                msg.role === "user"
+                                  ? "none"
+                                  : `0.5px solid ${BORDER}`,
+                              borderRadius:
+                                msg.role === "user"
+                                  ? "16px 16px 4px 16px"
+                                  : "4px 16px 16px 16px",
+                              padding: "10px 14px",
+                              fontSize: 13,
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            {msg.role === "user" ? (
+                              msg.content
+                            ) : (
+                              <div className="markdown-body">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {msg.content}
+                                </ReactMarkdown>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    )}
+                        );
+                      })()
+                    }
                   </div>
                 </div>
               ))}
@@ -925,26 +964,82 @@ export default function GlobalAIPage() {
                   }}
                 />
                 {models.length > 0 && (
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    style={{
-                      background: PAGE_BG,
-                      border: `0.5px solid ${BORDER}`,
-                      color: TEXT_SEC,
-                      fontSize: 11,
-                      borderRadius: 6,
-                      padding: "4px 8px",
-                      outline: "none",
-                      maxWidth: 100,
-                    }}
-                  >
-                    {models.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.id.split("/").pop()}
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ position: "relative", flexShrink: 0 }}>
+                    <button
+                      onClick={() => setModelOpen((o) => !o)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "4px 6px",
+                        borderRadius: 6,
+                        color: TEXT_SEC,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        fontFamily: "inherit",
+                        whiteSpace: "nowrap",
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.background = "#F1F5F9")}
+                      onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      {selectedModel
+                        .split("/").pop()
+                        ?.replace(/:free$/, "")
+                        .replace(/-it$/, "") ?? selectedModel}
+                      <ChevronDown style={{ width: 13, height: 13, opacity: 0.6 }} />
+                    </button>
+                    {modelOpen && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          bottom: "calc(100% + 6px)",
+                          right: 0,
+                          background: "#1A1A18",
+                          border: "1px solid #2A2A28",
+                          borderRadius: 10,
+                          padding: "6px",
+                          minWidth: 200,
+                          boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+                          zIndex: 50,
+                        }}
+                      >
+                        {models.map((m) => {
+                          const label = m.id
+                            .split("/").pop()
+                            ?.replace(/:free$/, "")
+                            .replace(/-it$/, "") ?? m.id;
+                          const isActive = m.id === selectedModel;
+                          return (
+                            <button
+                              key={m.id}
+                              onClick={() => { setSelectedModel(m.id); setModelOpen(false); }}
+                              style={{
+                                display: "block",
+                                width: "100%",
+                                textAlign: "left",
+                                padding: "8px 12px",
+                                borderRadius: 7,
+                                border: "none",
+                                background: isActive ? "rgba(255,255,255,0.1)" : "transparent",
+                                color: isActive ? "#FFFFFF" : "rgba(255,255,255,0.65)",
+                                fontSize: 13,
+                                fontWeight: isActive ? 500 : 400,
+                                cursor: "pointer",
+                                fontFamily: "inherit",
+                              }}
+                              onMouseOver={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
+                              onMouseOut={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )}
                 <button
                   onClick={() => send()}
