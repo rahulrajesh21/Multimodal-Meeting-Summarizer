@@ -5,16 +5,16 @@ import { createTeamsMeeting, uploadTeamsRecording, uploadTeamsTranscript } from 
 
 export default function UploadModal({ onClose }: { onClose: () => void }) {
     const router = useRouter();
-    const videoRef    = useRef<HTMLInputElement>(null);
+    const videoRef = useRef<HTMLInputElement>(null);
     const transcriptRef = useRef<HTMLInputElement>(null);
-    const [videoFile, setVideoFile]           = useState<File | null>(null);
+    const [videoFile, setVideoFile] = useState<File | null>(null);
     const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
-    const [dragging, setDragging]             = useState(false);
-    const [title, setTitle]                   = useState('');
-    const [organizer, setOrganizer]           = useState('');
-    const [loading, setLoading]               = useState(false);
-    const [stage, setStage]                   = useState('');
-    const [error, setError]                   = useState('');
+    const [dragging, setDragging] = useState(false);
+    const [title, setTitle] = useState('');
+    const [organizer, setOrganizer] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [stage, setStage] = useState('');
+    const [error, setError] = useState('');
 
     const onVideoDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
