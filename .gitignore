@@ -1,10 +1,10 @@
 # Python virtual environment
-venv/
-.venv/
-venv-live/
-.venv-live/
-env/
-ENV/
+/venv/
+/.venv/
+/venv-live/
+/.venv-live/
+/env/
+/ENV/
 
 # Python cache
 __pycache__/
@@ -14,9 +14,9 @@ __pycache__/
 .Python
 
 # Distribution / packaging
-build/
+/build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
@@ -58,9 +58,10 @@ coverage.xml
 
 # Environments
 .env
+.env.local
 .venv
-env/
-venv/
+/env/
+/venv/
 
 # IDE
 .vscode/
@@ -89,16 +90,17 @@ exports/*.srt
 *.mkv
 *.webm
 *.flv
-video/
+/video/
 
 # Temporary files
-tmp/
-temp/
+/tmp/
+/temp/
 *.tmp
 *.log
+/logs/
 
 # Model cache
-models/
+/models/
 *.bin
 .cache/
 
