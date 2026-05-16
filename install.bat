@@ -98,13 +98,7 @@ if %errorlevel% NEQ 0 (
     echo %YELLOW%     Some packages failed to install. Continuing anyway...%RESET%
 )
 
-:: PyAudio Windows fallback via pipwin
-"%ROOT%\venv\Scripts\python.exe" -c "import pyaudio" >nul 2>&1
-if %errorlevel% NEQ 0 (
-    echo %YELLOW%     PyAudio not importable — trying pipwin fallback...%RESET%
-    "%ROOT%\venv\Scripts\pip.exe" install pipwin --quiet
-    "%ROOT%\venv\Scripts\pipwin.exe" install pyaudio --quiet
-)
+
 
 echo %GREEN%     Python dependencies installed.%RESET%
 
