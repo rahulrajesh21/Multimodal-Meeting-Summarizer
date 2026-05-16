@@ -91,10 +91,10 @@ if exist "%ROOT%\venv" (
 :PIP_INSTALL
 echo %CYAN%[4/5] Installing Python packages...%RESET%
 echo     Upgrading pip...
-"%ROOT%\venv\Scripts\python.exe" -m pip install --upgrade pip --quiet
+"%ROOT%\venv\Scripts\python.exe" -m pip install --upgrade pip --no-cache-dir --quiet
 
 echo     Installing packages from requirements.txt...
-"%ROOT%\venv\Scripts\pip.exe" install -r "%ROOT%\requirements.txt" --quiet
+"%ROOT%\venv\Scripts\pip.exe" install -r "%ROOT%\requirements.txt" --no-cache-dir --quiet
 if %errorlevel% NEQ 0 (
     echo %YELLOW%     Some packages failed to install. Continuing anyway...%RESET%
 )
