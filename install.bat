@@ -61,7 +61,7 @@ if %errorlevel% NEQ 0 (
 :INSTALL_DEPENDENCIES
 echo %CYAN%[2/5] Installing System Dependencies (Python, Node.js, FFmpeg) silently...%RESET%
 echo     This may take a few minutes. Please wait...
-choco install python nodejs ffmpeg -y
+choco install python --version=3.11.9 --allow-downgrade nodejs ffmpeg -y
 if %errorlevel% NEQ 0 (
     echo %RED%     Failed to install some system dependencies via Chocolatey.%RESET%
     pause
