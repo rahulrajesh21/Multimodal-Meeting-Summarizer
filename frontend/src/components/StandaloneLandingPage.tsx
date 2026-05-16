@@ -3,6 +3,8 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useRouter } from 'next/navigation';
+import { Show, SignInButton, SignUpButton } from '@clerk/nextjs';
 
 import { Text } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
@@ -763,6 +765,8 @@ const CapabilityCard = ({ category, heading, features, buttonLabel, isHighlighte
 
 export default function StandaloneLandingPage() {
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
+  
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -773,7 +777,10 @@ export default function StandaloneLandingPage() {
       <div className="relative z-10 max-w-[85vw] mx-auto flex flex-col min-h-screen">
         {/* Navbar */}
         <nav className="flex items-center justify-between h-[80px] flex-shrink-0">
-          <div className="font-sans font-medium tracking-tight text-lg flex items-center gap-2.5">
+          <div 
+            onClick={() => router.push('/')}
+            className="font-sans font-medium tracking-tight text-lg flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+          >
             <img src="/vela_logo.svg" alt="VelaAI" className="w-7 h-7" />
             VelaAI
           </div>
@@ -786,9 +793,30 @@ export default function StandaloneLandingPage() {
             ))}
           </div>
 
-          <button className="flex items-center justify-center bg-white text-black px-4 py-1.5 rounded-md text-[11px] font-mono font-bold hover:bg-gray-200 transition-colors">
-            Get Started
-          </button>
+          <div className="flex items-center gap-3">
+            <Show when="signed-in">
+              <button 
+                onClick={() => router.push('/')}
+                className="flex items-center justify-center bg-white text-black px-4 py-1.5 rounded-md text-[11px] font-mono font-bold hover:bg-gray-200 transition-colors cursor-pointer"
+              >
+                Dashboard
+              </button>
+            </Show>
+            
+            <Show when="signed-out">
+              <SignInButton mode="modal">
+                <button className="flex items-center justify-center bg-transparent text-white px-4 py-1.5 rounded-md text-[11px] font-mono font-bold hover:bg-white/10 transition-colors cursor-pointer border border-white/20">
+                  Sign In
+                </button>
+              </SignInButton>
+              
+              <SignUpButton mode="modal">
+                <button className="flex items-center justify-center bg-white text-black px-4 py-1.5 rounded-md text-[11px] font-mono font-bold hover:bg-gray-200 transition-colors cursor-pointer">
+                  Get Started
+                </button>
+              </SignUpButton>
+            </Show>
+          </div>
         </nav>
 
         {/* Hero Section */}
@@ -815,9 +843,21 @@ export default function StandaloneLandingPage() {
               <p className="text-[14px] text-white/80 mb-6 font-mono leading-[1.8] tracking-tight text-left">
                 Secure code, dependencies, containers, and<br />infrastructure from one platform.
               </p>
-              <button className="flex items-center justify-center bg-white text-black px-6 py-2.5 rounded-full text-[13px] font-mono font-bold hover:bg-gray-200 transition-colors min-w-[140px]">
-                Join Waitlist
-              </button>
+              <Show when="signed-out">
+                <SignUpButton mode="modal">
+                  <button className="flex items-center justify-center bg-white text-black px-6 py-2.5 rounded-full text-[13px] font-mono font-bold hover:bg-gray-200 transition-colors min-w-[140px] cursor-pointer">
+                    Join Waitlist
+                  </button>
+                </SignUpButton>
+              </Show>
+              <Show when="signed-in">
+                <button 
+                  onClick={() => router.push('/')}
+                  className="flex items-center justify-center bg-white text-black px-6 py-2.5 rounded-full text-[13px] font-mono font-bold hover:bg-gray-200 transition-colors min-w-[140px] cursor-pointer"
+                >
+                  Go to Dashboard
+                </button>
+              </Show>
             </div>
           </div>
         </div>
@@ -974,9 +1014,22 @@ export default function StandaloneLandingPage() {
             <p className="font-mono text-white/50 mb-6 leading-[1.6]" style={{ fontSize: '12.5px', maxWidth: '380px' }}>
               Automated summaries, immediate sharing, and intelligent organization to assist you in advancing projects.
             </p>
-            <button className="flex items-center gap-3 bg-white text-black px-5 py-2.5 rounded-md font-mono font-bold hover:bg-gray-100 transition-colors" style={{ fontSize: '13px' }}>
-              Get Started
-            </button>
+            <Show when="signed-out">
+              <SignUpButton mode="modal">
+                <button className="flex items-center gap-3 bg-white text-black px-5 py-2.5 rounded-md font-mono font-bold hover:bg-gray-100 transition-colors cursor-pointer" style={{ fontSize: '13px' }}>
+                  Get Started
+                </button>
+              </SignUpButton>
+            </Show>
+            <Show when="signed-in">
+              <button 
+                onClick={() => router.push('/')}
+                className="flex items-center gap-3 bg-white text-black px-5 py-2.5 rounded-md font-mono font-bold hover:bg-gray-100 transition-colors cursor-pointer" 
+                style={{ fontSize: '13px' }}
+              >
+                Go to Dashboard
+              </button>
+            </Show>
           </div>
 
           {/* Top-right crosshair decoration */}

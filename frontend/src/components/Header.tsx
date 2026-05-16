@@ -1,9 +1,11 @@
 'use client';
 import { useState } from 'react';
-import { Search, Upload, Bell, Shield, ArrowLeft, ArrowRight, Clock, HelpCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Search, Upload, Bell, ArrowLeft, ArrowRight, Clock, HelpCircle, Eye } from 'lucide-react';
 
 export default function Header() {
     const [uploadHovered, setUploadHovered] = useState(false);
+    const router = useRouter();
 
     return (
         <div style={{
@@ -87,6 +89,33 @@ export default function Header() {
 
             {/* Right section: User controls */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '20px', gap: '14px' }}>
+                {/* Preview Landing Page */}
+                <button 
+                    onClick={() => router.push('/landing-preview')}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        height: '28px', paddingLeft: '10px', paddingRight: '12px',
+                        borderRadius: '6px', background: 'transparent',
+                        border: '1px solid #E8E6E1', cursor: 'pointer',
+                        color: '#6B6A66', fontSize: '11px', fontWeight: 600,
+                        fontFamily: '"DM Sans", system-ui, sans-serif',
+                        transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { 
+                        (e.currentTarget as HTMLElement).style.background = '#F7F6F3'; 
+                        (e.currentTarget as HTMLElement).style.borderColor = '#D4D2CC';
+                        (e.currentTarget as HTMLElement).style.color = '#1A1A18'; 
+                    }}
+                    onMouseLeave={e => { 
+                        (e.currentTarget as HTMLElement).style.background = 'transparent'; 
+                        (e.currentTarget as HTMLElement).style.borderColor = '#E8E6E1';
+                        (e.currentTarget as HTMLElement).style.color = '#6B6A66'; 
+                    }}
+                >
+                    <Eye style={{ width: 14, height: 14 }} />
+                    Preview
+                </button>
+
                 {/* Notifications */}
                 <button style={{
                     position: 'relative', width: 28, height: 28,
@@ -107,6 +136,7 @@ export default function Header() {
 
                 {/* Help Icon */}
                 <HelpCircle style={{ width: 18, height: 18, color: '#9B9891', cursor: 'pointer' }} />
+
             </div>
         </div>
     );

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import { fetchMeetings, Job } from '@/lib/api';
 import UploadModal from '@/components/UploadModal';
@@ -229,6 +230,8 @@ export default function DashboardPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [showUpload, setShowUpload] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const router = useRouter();
+  const { user, isLoaded } = useUser();
 
   const refresh = useCallback(async () => {
     try { setJobs(await fetchMeetings()); } catch { }
@@ -260,6 +263,9 @@ export default function DashboardPage() {
   ];
   const displayCards = done.length > 0 ? done.slice(0, 3) : mockCards;
 
+  // Get user's first name or fallback to "there"
+  const userName = isLoaded && user ? (user.firstName || user.username || 'there') : 'there';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: warmBg, overflow: 'hidden' }}>
       {showUpload && <UploadModal onClose={() => { setShowUpload(false); refresh(); }} />}
@@ -282,7 +288,7 @@ export default function DashboardPage() {
               fontFamily: '"Instrument Serif", "Playfair Display", Georgia, serif',
               color: ink, letterSpacing: '-0.01em',
             }}>
-              Welcome back, Rahul
+              Welcome back, {userName}
             </h1>
 
           </motion.div>
