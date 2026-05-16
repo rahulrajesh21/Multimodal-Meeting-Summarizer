@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { fetchRoles, addRole, deleteRole, Participant } from '@/lib/api';
+import { fetchRoles, addRole, deleteRole, Participant } from '../../../lib/api';
 import { Search, Plus, Trash2, Users, Building, Globe, X } from 'lucide-react';
 
 const ink = '#1A1A18';

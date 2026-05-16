@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { fetchGraph, fetchThreads, GraphData, Thread } from '@/lib/api';
+import { fetchGraph, fetchThreads, GraphData, Thread } from '../../../lib/api';
 import * as d3 from 'd3';
 import { Maximize2, Plus, Minus, RotateCcw, Filter, ChevronDown, Search, ArrowUpDown } from 'lucide-react';
 

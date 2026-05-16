@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { chatWithGlobal, fetchModels, ChatMessage, AgentStep } from "@/lib/api";
+import { chatWithGlobal, fetchModels, ChatMessage, AgentStep } from "../../../lib/api";
 import ReactMarkdown from "react-markdown";
 import { MeetingWidget, MeetingData } from "@/components/MeetingWidget";
 import remarkGfm from "remark-gfm";

@@ -14,7 +14,7 @@ import {
     VttSegment,
     Job,
     TEAMS_API,
-} from '@/lib/api';
+} from '../../../../../lib/api';
 import Link from 'next/link';
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */

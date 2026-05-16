@@ -1,5 +1,5 @@
 'use client';
-import { Job } from '@/lib/api';
+import { Job } from '../lib/api';
 import Link from 'next/link';
 
 function statusColor(status: string) {

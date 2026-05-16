@@ -1,5 +1,5 @@
 'use client';
-import { AgentStep } from '@/lib/api';
+import { AgentStep } from '../lib/api';
 
 /**
  * Convert a list of AgentSteps from a completed turn into a deduplicated

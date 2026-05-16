@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { fetchTeamsMeetings, fetchMeetings, TeamsMeeting, Job } from '@/lib/api';
+import { fetchTeamsMeetings, fetchMeetings, TeamsMeeting, Job } from '../../../lib/api';
 import Link from 'next/link';
 import UploadModal from '@/components/UploadModal';
 import { motion } from 'framer-motion';

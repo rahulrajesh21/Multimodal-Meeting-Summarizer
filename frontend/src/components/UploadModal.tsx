@@ -1,7 +1,7 @@
 'use client';
 import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { createTeamsMeeting, uploadTeamsRecording, uploadTeamsTranscript } from '@/lib/api';
+import { createTeamsMeeting, uploadTeamsRecording, uploadTeamsTranscript } from '../lib/api';
 
 export default function UploadModal({ onClose }: { onClose: () => void }) {
     const router = useRouter();

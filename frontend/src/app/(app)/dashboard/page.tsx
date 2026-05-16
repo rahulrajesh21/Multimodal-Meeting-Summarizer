@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
-import { fetchMeetings, Job } from '@/lib/api';
+import { fetchMeetings, Job } from '../../../lib/api';
 import UploadModal from '@/components/UploadModal';
 import { format } from 'date-fns';
 import {

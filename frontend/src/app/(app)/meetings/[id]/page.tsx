@@ -10,7 +10,7 @@ import {
   Job,
   ChatMessage,
   AgentStep,
-} from "@/lib/api";
+} from "../../../../lib/api";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
