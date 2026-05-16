@@ -35,6 +35,15 @@ const layersData = [
   },
 ];
 
+/** Colors for each layer — gradient from cool blue (top) to warm indigo (bottom) */
+const layerColors = [
+  { border: '#60a5fa', glow: '#3b82f6', bg: 'from-[#0c1a35]/95 to-[#14305e]/95' },
+  { border: '#818cf8', glow: '#6366f1', bg: 'from-[#0f1535]/95 to-[#1e2660]/95' },
+  { border: '#a78bfa', glow: '#8b5cf6', bg: 'from-[#120f35]/95 to-[#251860]/95' },
+  { border: '#c084fc', glow: '#a855f7', bg: 'from-[#18102e]/95 to-[#2d1a5e]/95' },
+  { border: '#e879f9', glow: '#d946ef', bg: 'from-[#1e0f2e]/95 to-[#35185e]/95' },
+];
+
 export const AnimatedStack = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -43,7 +52,7 @@ export const AnimatedStack = () => {
     offset: ["start start", "end end"]
   });
 
-  const smoothProgress = useSpring(scrollYProgress, { stiffness: 40, damping: 15 });
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 50, damping: 18 });
 
   const [hoveredLayer, setHoveredLayer] = useState<number | null>(null);
   const [scrollActiveLayer, setScrollActiveLayer] = useState<number>(0);
@@ -66,18 +75,18 @@ export const AnimatedStack = () => {
     setMousePosition({ x, y });
   };
 
-  // Base isometric transforms
-  const baseRotateX = 60;
+  // Base isometric transforms — slightly less aggressive rotation for clarity
+  const baseRotateX = 55;
   const baseRotateZ = -45;
-  const tiltX = hoveredLayer !== null ? mousePosition.y * -15 : 0;
-  const tiltZ = hoveredLayer !== null ? mousePosition.x * 15 : 0;
+  const tiltX = hoveredLayer !== null ? mousePosition.y * -10 : 0;
+  const tiltZ = hoveredLayer !== null ? mousePosition.x * 10 : 0;
 
-  // Tighter Z translations for an elegant, constrained expansion
-  const z0 = useTransform(smoothProgress, [0, 0.8], [30, 240]);
-  const z1 = useTransform(smoothProgress, [0, 0.8], [22, 180]);
-  const z2 = useTransform(smoothProgress, [0, 0.8], [15, 120]);
-  const z3 = useTransform(smoothProgress, [0, 0.8], [7, 60]);
-  const z4 = useTransform(smoothProgress, [0, 0.8], [0, 0]);
+  // Much wider Z spacing so layers don't overlap
+  const z0 = useTransform(smoothProgress, [0, 0.8], [40,  320]);
+  const z1 = useTransform(smoothProgress, [0, 0.8], [28,  240]);
+  const z2 = useTransform(smoothProgress, [0, 0.8], [18,  160]);
+  const z3 = useTransform(smoothProgress, [0, 0.8], [8,   80]);
+  const z4 = useTransform(smoothProgress, [0, 0.8], [0,   0]);
 
   const zValues = [z0, z1, z2, z3, z4];
 
@@ -91,22 +100,27 @@ export const AnimatedStack = () => {
 
   const textOpacities = [getOp(0), getOp(1), getOp(2), getOp(3), getOp(4)];
 
-  // Global Y offset to keep the expanding stack perfectly centered in its space
-  const globalYShift = useTransform(smoothProgress, [0, 0.8], [0, 60]);
+  // Global Y offset to keep the expanding stack centered
+  const globalYShift = useTransform(smoothProgress, [0, 0.8], [0, 80]);
 
-  const getLayerClass = (index: number) => {
-    const isActive = activeLayer === index;
-    const isDimmed = activeLayer !== index;
-    return `absolute inset-0 rounded-[28px] border border-[#3b82f6]/30 flex items-center justify-center overflow-hidden backdrop-blur-md transition-all duration-500 shadow-[inset_0_0_20px_rgba(255,255,255,0.05),0_10px_40px_rgba(0,0,0,0.5)] bg-gradient-to-br from-[#0A1428]/90 to-[#112A5A]/90 ${isActive ? 'border-[#4F84FF]/70 shadow-[0_0_40px_rgba(79,132,255,0.4)]' : ''} ${isDimmed ? 'opacity-30' : 'opacity-100'}`;
+  const getLayerStyle = (index: number, isActive: boolean, isDimmed: boolean) => {
+    const color = layerColors[index];
+    return {
+      borderColor: isActive ? `${color.border}` : `${color.border}44`,
+      boxShadow: isActive 
+        ? `0 0 40px ${color.glow}55, inset 0 0 20px rgba(255,255,255,0.04), 0 12px 48px rgba(0,0,0,0.6)` 
+        : `inset 0 0 16px rgba(255,255,255,0.03), 0 8px 32px rgba(0,0,0,0.5)`,
+      opacity: isDimmed ? 0.15 : 1,
+    };
   };
 
   return (
     <div ref={containerRef} className="h-[300vh] w-full bg-[#000000] relative">
       
-      {/* Sticky viewport container with massive top padding for safety */}
+      {/* Sticky viewport */}
       <div className="sticky top-0 h-screen w-full flex flex-col items-center justify-start overflow-hidden pt-[20px] lg:pt-[40px]">
 
-        {/* Title Area - Reserved space */}
+        {/* Title */}
         <motion.div 
           className="w-full z-50 pointer-events-none pt-[60px] lg:pt-[80px] shrink-0"
           initial={{ opacity: 0, y: 20 }}
@@ -117,21 +131,22 @@ export const AnimatedStack = () => {
           <h3 className="text-4xl md:text-5xl font-mono font-bold text-center text-[#F5F5F5] drop-shadow-lg tracking-tight">How It Works</h3>
         </motion.div>
 
-        {/* Background Grid - Premium subtle touch */}
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-20" style={{
-            backgroundImage: `linear-gradient(#151515 1px, transparent 1px), linear-gradient(90deg, #151515 1px, transparent 1px)`,
+        {/* Background Grid */}
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.08]" style={{
+            backgroundImage: `linear-gradient(#222 1px, transparent 1px), linear-gradient(90deg, #222 1px, transparent 1px)`,
             backgroundSize: '80px 80px',
             backgroundPosition: 'center center'
         }} />
 
-        {/* Main Content Area - Forced down by heavy margin-top */}
+        {/* Content Area */}
         <div className="w-full max-w-[1200px] mx-auto flex flex-col lg:flex-row items-center justify-center flex-1 px-6 lg:px-12 relative mt-[40px] lg:mt-[60px] pb-12">
           
-          {/* Left: 3D Stage */}
+          {/* Left: 3D Stack Stage */}
           <div className="w-full lg:w-[50%] flex justify-center items-center h-[40vh] lg:h-full relative z-10">
             <motion.div 
-              className="relative w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] lg:w-[460px] lg:h-[460px]"
+              className="relative w-[260px] h-[260px] sm:w-[340px] sm:h-[340px] lg:w-[400px] lg:h-[400px]"
               style={{
+                perspective: '1200px',
                 transformStyle: "preserve-3d",
                 y: globalYShift
               }}
@@ -151,6 +166,9 @@ export const AnimatedStack = () => {
                 const currentLayer = layersData[reverseIndex];
                 const currentZ = zValues[reverseIndex];
                 const isTop = reverseIndex === 0;
+                const isActive = activeLayer === reverseIndex;
+                const isDimmed = activeLayer !== reverseIndex;
+                const color = layerColors[reverseIndex];
 
                 return (
                   <motion.div
@@ -162,49 +180,93 @@ export const AnimatedStack = () => {
                     }}
                     onMouseEnter={() => setHoveredLayer(reverseIndex)}
                   >
-                    {/* Continuous Float Wrapper */}
+                    {/* Floating animation wrapper */}
                     <motion.div
                       className="w-full h-full relative"
                       style={{ transformStyle: "preserve-3d" }}
-                      animate={{ z: [0, 8, 0] }}
-                      transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: reverseIndex * 0.4 }}
+                      animate={{ z: [0, 6, 0] }}
+                      transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: reverseIndex * 0.5 }}
                     >
-                      <div className={getLayerClass(reverseIndex)}>
+                      {/* Layer panel */}
+                      <div
+                        className={`absolute inset-0 rounded-[20px] border flex items-center justify-center overflow-hidden backdrop-blur-md transition-all duration-700 bg-gradient-to-br ${color.bg}`}
+                        style={getLayerStyle(reverseIndex, isActive, isDimmed)}
+                      >
+                        {/* Grid scanline on top/active layer */}
                         {isTop && (
                           <>
-                            <div className="absolute inset-0 pointer-events-none opacity-90" style={{
-                              backgroundImage: `linear-gradient(rgba(79,132,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(79,132,255,0.4) 1px, transparent 1px)`,
-                              backgroundSize: '40px 40px',
+                            <div className="absolute inset-0 pointer-events-none opacity-60" style={{
+                              backgroundImage: `linear-gradient(${color.border}33 1px, transparent 1px), linear-gradient(90deg, ${color.border}33 1px, transparent 1px)`,
+                              backgroundSize: '36px 36px',
                               backgroundPosition: 'center center'
                             }}>
                               <motion.div 
-                                className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#4F84FF]/30 to-transparent w-[200%] h-[200%]"
+                                className="absolute inset-0 w-[200%] h-[200%]"
+                                style={{
+                                  background: `linear-gradient(135deg, transparent 30%, ${color.glow}22 50%, transparent 70%)`,
+                                }}
                                 animate={{ x: ['-100%', '0%'], y: ['-100%', '0%'] }}
-                                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                                transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
                               />
                             </div>
                             <motion.div 
-                              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 bg-[#4F84FF] blur-[80px] rounded-full pointer-events-none"
-                              animate={{ opacity: [0.15, 0.4, 0.15], scale: [0.8, 1.1, 0.8] }}
+                              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full pointer-events-none"
+                              style={{ background: color.glow, filter: 'blur(70px)', mixBlendMode: 'screen' }}
+                              animate={{ opacity: [0.1, 0.3, 0.1], scale: [0.8, 1.1, 0.8] }}
                               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                              style={{ mixBlendMode: 'screen' }}
                             />
                           </>
                         )}
 
-                        <div className={`flex items-center justify-center gap-4 w-full h-full relative z-10 p-6 ${currentLayer.items.length > 2 ? 'grid grid-cols-2' : ''}`}>
+                        {/* Active layer glow pulse */}
+                        {isActive && !isTop && (
+                          <motion.div 
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full pointer-events-none"
+                            style={{ background: color.glow, filter: 'blur(60px)', mixBlendMode: 'screen' }}
+                            animate={{ opacity: [0.08, 0.2, 0.08] }}
+                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                          />
+                        )}
+
+                        {/* Layer label in top-left corner */}
+                        <span 
+                          className="absolute top-3 left-4 font-mono text-[9px] tracking-[0.3em] uppercase z-20 transition-opacity duration-500"
+                          style={{ color: color.border, opacity: isActive ? 0.9 : 0.5 }}
+                        >
+                          {currentLayer.label}
+                        </span>
+
+                        {/* Content cards */}
+                        <div className={`flex items-center justify-center gap-3 w-full h-full relative z-10 p-5 pt-8 ${currentLayer.items.length > 2 ? 'grid grid-cols-2' : ''}`}>
                           {currentLayer.items.map((item, i) => {
                             const Icon = item.icon;
                             return (
-                              <div key={i} className={`flex flex-col items-center flex-1 bg-[#000000]/70 rounded-[16px] p-4 border border-[#4F84FF]/20 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.4)] transition-all duration-300 ${currentLayer.items.length === 3 && i === 2 ? 'col-span-2' : ''}`}>
-                                <Icon size={22} className="text-[#8EA3C7] mb-3 transition-colors duration-300 group-hover:text-[#4F84FF]" />
-                                <span className="text-[11px] font-mono font-medium text-[#E2E8F0] tracking-wide text-center leading-relaxed">
+                              <div key={i} className={`flex flex-col items-center flex-1 rounded-[12px] p-3 backdrop-blur-xl transition-all duration-500 ${currentLayer.items.length === 3 && i === 2 ? 'col-span-2' : ''}`}
+                                style={{
+                                  background: 'rgba(0,0,0,0.55)',
+                                  border: `1px solid ${isActive ? `${color.border}40` : `${color.border}18`}`,
+                                  boxShadow: isActive ? `0 2px 16px ${color.glow}22` : '0 2px 12px rgba(0,0,0,0.3)',
+                                }}
+                              >
+                                <Icon size={20} className="mb-2 transition-colors duration-300" style={{ color: isActive ? color.border : '#6b7280' }} />
+                                <span className="text-[10px] font-mono font-medium text-center leading-snug transition-colors duration-300"
+                                  style={{ color: isActive ? '#e2e8f0' : '#94a3b8' }}
+                                >
                                   {item.name}
                                 </span>
                               </div>
                             );
                           })}
                         </div>
+
+                        {/* Edge highlight line (top) */}
+                        <div 
+                          className="absolute top-0 left-[10%] right-[10%] h-[1px] transition-opacity duration-500"
+                          style={{ 
+                            background: `linear-gradient(90deg, transparent, ${color.border}${isActive ? '66' : '22'}, transparent)`,
+                            opacity: isActive ? 1 : 0.4
+                          }}
+                        />
                       </div>
                     </motion.div>
                   </motion.div>
@@ -213,40 +275,59 @@ export const AnimatedStack = () => {
             </motion.div>
           </div>
 
-          {/* Right: Text Descriptions - Static 2D Layout */}
+          {/* Right: Text Descriptions */}
           <div className="w-full lg:w-[50%] flex flex-col justify-center h-[50vh] lg:h-full relative z-20 pl-4 lg:pl-16 mt-12 lg:mt-0">
             <div className="flex flex-col justify-center gap-6 lg:gap-8 w-full max-w-[480px]">
               {layersData.map((layer, index) => {
                 const currentOp = textOpacities[index];
                 const isActive = activeLayer === index;
+                const color = layerColors[index];
                 
                 // eslint-disable-next-line react-hooks/rules-of-hooks
                 const scrollOpacity = useTransform(currentOp, (op) => {
                   if (isActive) return 1;
-                  if (index < activeLayer) return 0.3;
+                  if (index < activeLayer) return 0.25;
                   return op;
                 });
 
                 return (
                   <motion.div 
                     key={layer.id}
-                    style={{ opacity: hoveredLayer !== null ? (hoveredLayer === index ? 1 : 0.2) : scrollOpacity }}
+                    style={{ opacity: hoveredLayer !== null ? (hoveredLayer === index ? 1 : 0.15) : scrollOpacity }}
                     className="flex flex-col gap-3 relative transition-all duration-500 cursor-pointer group"
                     onMouseEnter={() => setHoveredLayer(index)}
                     onMouseLeave={() => setHoveredLayer(null)}
                   >
-                    {/* Horizontal Connector Line pointing towards stack */}
-                    <div className={`absolute top-[10px] right-[100%] mr-6 h-[1px] bg-gradient-to-r from-transparent to-[#4F84FF] transition-all duration-500 hidden xl:block ${isActive ? 'w-[120px] opacity-100' : 'w-[40px] opacity-30'}`} />
+                    {/* Connector line */}
+                    <div 
+                      className={`absolute top-[10px] right-[100%] mr-6 h-[1px] transition-all duration-500 hidden xl:block ${isActive ? 'w-[120px] opacity-100' : 'w-[40px] opacity-20'}`}
+                      style={{ background: `linear-gradient(to right, transparent, ${color.border})` }}
+                    />
 
                     <div className="flex items-center gap-4">
-                      <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${isActive ? 'bg-[#4F84FF] shadow-[0_0_15px_#4F84FF] scale-125' : 'bg-[#334155]'}`} />
-                      <span className={`font-mono font-bold tracking-[0.25em] text-[13px] uppercase text-left transition-colors duration-500 ${isActive ? 'text-[#F5F5F5]' : 'text-[#64748B]'}`}>
+                      <div 
+                        className="w-2.5 h-2.5 rounded-full transition-all duration-500"
+                        style={{
+                          backgroundColor: isActive ? color.border : '#334155',
+                          boxShadow: isActive ? `0 0 15px ${color.glow}` : 'none',
+                          transform: isActive ? 'scale(1.25)' : 'scale(1)',
+                        }}
+                      />
+                      <span 
+                        className={`font-mono font-bold tracking-[0.25em] text-[13px] uppercase text-left transition-colors duration-500`}
+                        style={{ color: isActive ? '#f5f5f5' : '#64748b' }}
+                      >
                         {layer.label}
                       </span>
                     </div>
                     
-                    <div className="pl-6 border-l border-transparent transition-colors duration-500 group-hover:border-[#334155] py-1 ml-[5px]">
-                      <p className={`font-sans text-[15px] text-[#94A3B8] leading-relaxed transition-colors duration-500 ${isActive ? 'text-[#E2E8F0]' : ''}`}>
+                    <div 
+                      className="pl-6 border-l border-transparent transition-colors duration-500 group-hover:border-[#334155] py-1 ml-[5px]"
+                    >
+                      <p 
+                        className="font-sans text-[15px] leading-relaxed transition-colors duration-500"
+                        style={{ color: isActive ? '#e2e8f0' : '#94a3b8' }}
+                      >
                         {layer.tooltip}
                       </p>
                     </div>
