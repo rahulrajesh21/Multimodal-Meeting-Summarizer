@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
 
 export const metadata: Metadata = {
   title: 'Vela — Agent Platform',
@@ -19,16 +17,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body style={{ background: '#F7F6F3', margin: 0 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-          <Header />
-          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-            <Sidebar />
-            <main style={{ flex: 1, overflow: 'hidden', borderTop: '1px solid #E8E6E1' }}>
-              {children}
-            </main>
-          </div>
-        </div>
+      <body>
+        {children}
       </body>
     </html>
   );

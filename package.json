@@ -1,5 +1,10 @@
 {
   "dependencies": {
-    "@modelcontextprotocol/server-slack": "^2025.4.25"
+    "@modelcontextprotocol/server-slack": "^2025.4.25",
+    "@react-three/fiber": "^9.6.1",
+    "@shadergradient/react": "^2.4.20",
+    "camera-controls": "^3.1.2",
+    "three": "^0.184.0",
+    "three-stdlib": "^2.36.1"
   }
 }

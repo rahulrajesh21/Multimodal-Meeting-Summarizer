@@ -8,7 +8,12 @@
     "start": "next start"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@react-three/postprocessing": "^3.0.4",
+    "@shadergradient/react": "^2.4.20",
     "@types/d3": "^7.4.3",
+    "ai": "^3.1.25",
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
@@ -21,7 +26,8 @@
     "recharts": "^3.8.1",
     "remark-gfm": "^4.0.1",
     "simple-icons": "^16.18.0",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@types/node": "^20",

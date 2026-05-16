@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  transpilePackages: ['@shadergradient/react', 'three', '@react-three/fiber', '@react-three/drei'],
 };
 
 export default nextConfig;
