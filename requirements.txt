@@ -13,7 +13,7 @@ PyAudio>=0.2.14
 moviepy>=2.0.0
 
 # Transcription engines
-faster-whisper>=1.1.1
+faster-whisper
 whisperx>=3.0.0  # Optional: Advanced transcription with diarization
 openai>=1.0.0
 
