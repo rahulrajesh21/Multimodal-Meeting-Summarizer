@@ -62,13 +62,20 @@ if %errorlevel% NEQ 0 (
 echo %CYAN%[2/5] Installing System Dependencies (Python, Node.js, FFmpeg) silently...%RESET%
 echo     This may take a few minutes. Please wait...
 choco install python --version=3.11.9 --allow-downgrade -y
-choco install nodejs-lts ffmpeg -y
+
+node -v >nul 2>&1
 if %errorlevel% NEQ 0 (
-    echo %RED%     Failed to install some system dependencies via Chocolatey.%RESET%
-    pause
-    exit /b 1
+    choco install nodejs-lts -y
+) else (
+    echo %GREEN%     Node.js already installed, skipping.%RESET%
 )
-echo %GREEN%     System dependencies installed.%RESET%
+
+ffmpeg -version >nul 2>&1
+if %errorlevel% NEQ 0 (
+    choco install ffmpeg -y
+) else (
+    echo %GREEN%     FFmpeg already installed, skipping.%RESET%
+)
 
 :: Refresh path so Python, Node, and FFmpeg are available immediately
 call "%ALLUSERSPROFILE%\chocolatey\bin\RefreshEnv.cmd" >nul 2>&1
