@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableDelayedExpansion
-title Vela — Windows Installer
+title Vela — Windows Installer (Chocolatey)
 
 :: ============================================================
 ::  Vela — Multimodal Meeting Summarizer
-::  Windows Installation Script
+::  Windows Installation Script (Fully Automated via Chocolatey)
 ::  Run this once to set up the full project.
 ::  Requires: Windows 10/11, internet access
 :: ============================================================
@@ -32,77 +32,49 @@ goto :CHECK_ADMIN
 :CHECK_ADMIN
 net session >nul 2>&1
 if %errorlevel% NEQ 0 (
-    echo %RED%[!] This script requires Administrator privileges.%RESET%
+    echo %RED%[!] This script requires Administrator privileges to install Chocolatey and system packages.%RESET%
     echo     Right-click install.bat ^> "Run as administrator"
     pause
     exit /b 1
 )
 
 :: ────────────────────────────────────────────────────────────
-:CHECK_PYTHON
-echo %CYAN%[1/7] Checking Python 3.10+...%RESET%
-python --version >nul 2>&1
+:CHOCO_SETUP
+echo %CYAN%[1/5] Checking for Chocolatey Package Manager...%RESET%
+choco -v >nul 2>&1
 if %errorlevel% NEQ 0 (
-    echo %YELLOW%     Python not found. Opening download page...%RESET%
-    echo     Please install Python 3.10 or newer from https://www.python.org/downloads/
-    echo     IMPORTANT: Check "Add Python to PATH" during installation.
-    start https://www.python.org/downloads/
-    pause
-    exit /b 1
-)
-for /f "tokens=2 delims= " %%v in ('python --version 2^>^&1') do set "PY_VER=%%v"
-echo %GREEN%     Found Python %PY_VER%%RESET%
-
-:: ────────────────────────────────────────────────────────────
-:CHECK_NODE
-echo %CYAN%[2/7] Checking Node.js 20+...%RESET%
-node --version >nul 2>&1
-if %errorlevel% NEQ 0 (
-    echo %YELLOW%     Node.js not found. Opening download page...%RESET%
-    echo     Please install Node.js 20 LTS from https://nodejs.org/
-    start https://nodejs.org/en/download
-    pause
-    exit /b 1
-)
-for /f %%v in ('node --version') do set "NODE_VER=%%v"
-echo %GREEN%     Found Node.js %NODE_VER%%RESET%
-
-:: ────────────────────────────────────────────────────────────
-:CHECK_FFMPEG
-echo %CYAN%[3/7] Checking FFmpeg...%RESET%
-ffmpeg -version >nul 2>&1
-if %errorlevel% NEQ 0 (
-    echo %YELLOW%     FFmpeg not found.%RESET%
-    echo.
-    echo     Attempting to install FFmpeg via winget...
-    winget install --id Gyan.FFmpeg -e --silent >nul 2>&1
+    echo %YELLOW%     Chocolatey not found. Installing Chocolatey...%RESET%
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
     if !errorlevel! NEQ 0 (
-        echo %RED%     winget install failed. Please install FFmpeg manually:%RESET%
-        echo     1. Download from https://www.gyan.dev/ffmpeg/builds/ (ffmpeg-release-essentials.zip)
-        echo     2. Extract to C:\ffmpeg
-        echo     3. Add C:\ffmpeg\bin to your PATH environment variable
-        echo     4. Re-run this script
-        start https://www.gyan.dev/ffmpeg/builds/
+        echo %RED%     Failed to install Chocolatey. Please install manually from https://chocolatey.org/install%RESET%
         pause
         exit /b 1
     )
-    :: Refresh PATH after winget install
-    call RefreshEnv.cmd >nul 2>&1
-    ffmpeg -version >nul 2>&1
-    if !errorlevel! NEQ 0 (
-        echo %YELLOW%     FFmpeg installed but not yet on PATH.%RESET%
-        echo     Please restart your terminal and re-run this script, OR
-        echo     add FFmpeg to PATH manually, then continue.
-        pause
-    )
-    echo %GREEN%     FFmpeg installed successfully.%RESET%
+    echo %GREEN%     Chocolatey installed successfully.%RESET%
+    :: Refresh path in current session so choco is available immediately
+    call "%ALLUSERSPROFILE%\chocolatey\bin\RefreshEnv.cmd" >nul 2>&1
 ) else (
-    echo %GREEN%     FFmpeg found.%RESET%
+    echo %GREEN%     Chocolatey found.%RESET%
 )
 
 :: ────────────────────────────────────────────────────────────
+:INSTALL_DEPENDENCIES
+echo %CYAN%[2/5] Installing System Dependencies (Python, Node.js, FFmpeg) silently...%RESET%
+echo     This may take a few minutes. Please wait...
+choco install python nodejs ffmpeg -y
+if %errorlevel% NEQ 0 (
+    echo %RED%     Failed to install some system dependencies via Chocolatey.%RESET%
+    pause
+    exit /b 1
+)
+echo %GREEN%     System dependencies installed.%RESET%
+
+:: Refresh path so Python, Node, and FFmpeg are available immediately
+call "%ALLUSERSPROFILE%\chocolatey\bin\RefreshEnv.cmd" >nul 2>&1
+
+:: ────────────────────────────────────────────────────────────
 :VENV
-echo %CYAN%[4/7] Creating Python virtual environment...%RESET%
+echo %CYAN%[3/5] Creating Python virtual environment...%RESET%
 if exist "%ROOT%\venv" (
     echo %YELLOW%     venv already exists — skipping creation.%RESET%
 ) else (
@@ -116,20 +88,14 @@ if exist "%ROOT%\venv" (
 
 :: ────────────────────────────────────────────────────────────
 :PIP_INSTALL
-echo %CYAN%[5/7] Installing Python dependencies (this may take a few minutes)...%RESET%
+echo %CYAN%[4/5] Installing Python packages...%RESET%
 echo     Upgrading pip...
 "%ROOT%\venv\Scripts\python.exe" -m pip install --upgrade pip --quiet
 
 echo     Installing packages from requirements.txt...
 "%ROOT%\venv\Scripts\pip.exe" install -r "%ROOT%\requirements.txt" --quiet
 if %errorlevel% NEQ 0 (
-    echo %RED%     Some packages failed to install.%RESET%
-    echo     Common fixes:
-    echo       • PyAudio: install PortAudio via  pip install pipwin ^&^& pipwin install pyaudio
-    echo       • torch: visit https://pytorch.org/get-started/locally/ for GPU builds
-    echo     You can re-run this step with: venv\Scripts\pip install -r requirements.txt
-    echo.
-    echo     Continuing with remaining setup...
+    echo %YELLOW%     Some packages failed to install. Continuing anyway...%RESET%
 )
 
 :: PyAudio Windows fallback via pipwin
@@ -144,11 +110,11 @@ echo %GREEN%     Python dependencies installed.%RESET%
 
 :: ────────────────────────────────────────────────────────────
 :NPM_INSTALL
-echo %CYAN%[6/7] Installing frontend Node dependencies...%RESET%
+echo %CYAN%[5/5] Installing frontend Node dependencies...%RESET%
 cd /d "%ROOT%\frontend"
 call npm install --legacy-peer-deps
 if %errorlevel% NEQ 0 (
-    echo %RED%     npm install failed. Check Node.js version (requires 20+).%RESET%
+    echo %RED%     npm install failed. Check Node.js version.%RESET%
     cd /d "%ROOT%"
     pause & exit /b 1
 )
@@ -157,7 +123,7 @@ cd /d "%ROOT%"
 
 :: ────────────────────────────────────────────────────────────
 :ENV_SETUP
-echo %CYAN%[7/7] Setting up environment files...%RESET%
+echo %CYAN%[6/6] Setting up environment files...%RESET%
 
 :: Root .env
 if not exist "%ROOT%\.env" (
