@@ -129,3 +129,12 @@ $RECYCLE.BIN/
 
 # Google Credentials
 sheets.json
+
+# Node modules
+node_modules/
+/frontend/node_modules/
+
+# Agent/AI directories
+.gemini/
+.agent/
+.agents/
