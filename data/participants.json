@@ -17,19 +17,19 @@
   },
   "craig": {
     "display_name": "Craig",
-    "role": "Product Manager",
+    "role": "Attendee",
     "department": "",
     "is_external": false,
-    "authority_score": 0.7,
+    "authority_score": 0.5,
     "weights": {
-      "semantic": 0.375,
-      "tonal": 0.13,
-      "role": 0.29,
-      "temporal": 0.205
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
     },
     "weight_source": "formula",
-    "added_at": "2026-02-20T10:22:12.688634",
-    "updated_at": "2026-02-20T10:22:12.688636"
+    "added_at": "2026-05-18T19:01:43.992319",
+    "updated_at": "2026-05-18T19:01:43.992320"
   },
   "steve": {
     "display_name": "Steve",
@@ -494,6 +494,86 @@
     "weight_source": "formula",
     "added_at": "2026-04-18T15:41:28.981382",
     "updated_at": "2026-04-18T15:41:28.981385"
+  },
+  "andrew": {
+    "display_name": "Andrew",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-05-18T19:01:43.993335",
+    "updated_at": "2026-05-18T19:01:43.993337"
+  },
+  "laura": {
+    "display_name": "Laura",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-05-18T19:01:43.991674",
+    "updated_at": "2026-05-18T19:01:43.991679"
+  },
+  "david": {
+    "display_name": "David",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-05-18T19:01:43.992844",
+    "updated_at": "2026-05-18T19:01:43.992845"
+  },
+  "unknown": {
+    "display_name": "Unknown",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-05-18T18:59:19.438700",
+    "updated_at": "2026-05-18T18:59:19.438701"
+  },
+  "greg": {
+    "display_name": "Greg",
+    "role": "Attendee",
+    "department": "",
+    "is_external": false,
+    "authority_score": 0.5,
+    "weights": {
+      "semantic": 0.425,
+      "tonal": 0.15,
+      "role": 0.25,
+      "temporal": 0.175
+    },
+    "weight_source": "formula",
+    "added_at": "2026-05-18T18:52:02.349454",
+    "updated_at": "2026-05-18T18:52:02.349455"
   },
   "_speaker_id_mapping": {
     "SPEAKER_07": {

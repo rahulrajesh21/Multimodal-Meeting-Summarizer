@@ -634,6 +634,7 @@ Your primary focus should be on: {focus}
 
 Please summarize the following transcript chunk. Make sure the summary is concise, professional, and directly addresses the perspective of a {role}.
 Do not include any introductory filler text like "Here is the summary". Just provide the summary directly.
+Do not use any emojis or special unicode symbols in your response.
 
 CRITICAL INSTRUCTION:
 Use the provided Cross-Meeting Context (if any) to explain how today's discussion connects to past decisions or unresolved issues.
@@ -644,12 +645,9 @@ Transcript:
 """
         try:
             summary = self._call_ollama(prompt, temperature=0.3)
-            
-            # Prepend a small role header + any temporal alerts
-            header = f"[{role}] "
-            return header + temporal_prefix + summary.strip()
+            return _strip_emojis(summary.strip())
 
         except Exception as e:
             logger.error(f"Summarization failed: {e}")
             reason = str(e)
-            return temporal_prefix + f"[LLM unavailable — {reason}]"
+            return f"[LLM unavailable — {reason}]"

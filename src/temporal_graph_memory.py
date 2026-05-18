@@ -920,13 +920,29 @@ class TemporalGraphMemory:
         words = _re.sub(r'[^\w\s-]', '', text.lower()).split()
         content_words = [w for w in words if w not in stopwords and len(w) > 2]
 
-        if not content_words:
-            return []
+        # Score words by length (longer words tend to be more meaningful nouns)
+        # Prefer words ≥ 5 chars, skip pure numbers
+        scored = sorted(
+            [w for w in content_words if len(w) >= 4 and not w.isdigit()],
+            key=lambda w: len(w),
+            reverse=True,
+        )
 
-        # Build short phrases from consecutive content words (max 4 words)
-        # Simple approach: take the first meaningful chunk
-        result = " ".join(content_words[:4])
-        return [result] if result else []
+        if not scored:
+            # Last resort: take single longest content word
+            scored = sorted(content_words, key=len, reverse=True)
+
+        # Return up to 2 single-word labels (avoids nonsense multi-word phrases)
+        seen: set = set()
+        results = []
+        for w in scored:
+            if w not in seen:
+                seen.add(w)
+                results.append(w)
+            if len(results) >= 2:
+                break
+
+        return results
 
     def ingest_meeting_results(self, meeting_id: str, scored_segments: List, importance_threshold: float = 0.4, clear: bool = False):
         """

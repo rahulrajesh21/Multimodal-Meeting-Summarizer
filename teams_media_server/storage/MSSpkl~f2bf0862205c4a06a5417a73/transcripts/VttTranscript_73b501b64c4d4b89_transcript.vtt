@@ -1,0 +1,289 @@
+WEBVTT
+
+00:00:06.000 --> 00:00:17.000
+<v Laura>Oh yes, I forgot about that, okay. So, all right now, okay.</v>
+
+00:00:17.000 --> 00:00:22.000
+<v David>That's cool, someone turned these on. Sorry? Did someone turn these on? Great.</v>
+
+00:00:22.000 --> 00:00:32.000
+<v Laura>Okay, everybody, all set to start the meeting. Okay, we've got half an hour for this one to discuss the functional design.</v>
+
+00:00:32.000 --> 00:00:34.000
+<v Greg>Thanks.</v>
+
+00:00:34.000 --> 00:02:38.000
+<v Laura>Already to go, okay. So hopefully, if I was in working away, and I've put the minutes of the last meeting in the project folder. So I guess just to recap on what we did last time. Got to know each other a little bit and got familiar with all the equipment and started to discuss a bit about the project new cost-wise, how much money we have to spend. I just want to tell you that we have three new requirements, which is the first one, is that the company has decided that teletext is outdated because of how popular the internet is. Nobody uses teletext very much anymore, so we don't really need to consider that in the functionality of the remote control. They've also suggested that we only use the remote control to control the television, not the VCR or DVD or anything else. I think the worry is that if the project becomes too complex, it will affect how long it takes us to get it into production, the time to market. So we're just going to keep it simple and it'll just control the TV. And the other thing was that the company want the corporate color and slogan to be implemented in the new design. I'm not entirely sure what the the corporate color is, it might be yellow because there seems to be a lot of yellow everywhere.</v>
+
+00:02:38.000 --> 00:02:43.000
+<v David>And the slogan, like the actual written slogan, or just to embody the idea of the slogan?</v>
+
+00:02:43.000 --> 00:02:51.000
+<v Laura>Well that's the thing, I'm not sure. Because on the company website, what does it say?</v>
+
+00:02:51.000 --> 00:02:54.000
+<v David>That's pretty in the fashion in electronics.</v>
+
+00:02:54.000 --> 00:03:37.000
+<v Laura>Yeah, I mean, do they, is that something they want to actually written on it? Because it's quite long. Or yeah, just the idea that I'm not sure. So that's something we can discuss as well. So those are the three things, just not to worry about teletext, only control the TV and incorporate the colour and slogan of the company. So, is everybody okay with any of that? Or do you want me to recap at all? That time for presentations and he would I'd like to go first. I'd like to go first.</v>
+
+00:03:37.000 --> 00:03:39.000
+<v Greg>Okay, cool.</v>
+
+00:03:39.000 --> 00:03:41.000
+<v Laura>Alright, can I steal us from the back of your laptop?</v>
+
+00:03:41.000 --> 00:06:26.000
+<v Greg>Oh, yeah, of course. Good, go ahead. So, the technical function design. Alright, I'm going to do the design. I've had a look online. I've had a look at the homepage, which has given us some inspiration from previous products. I've had a look at the previous products to see what they offer. I would like to ask you guys for your ideas about the design at the end of the meeting. Unfortunately, we're not allowed to talk outside the meeting. Have you looked at the existing products? I found out that it tends to come into two extremes. There's either a very complicated one that's got lots of buttons, lots of colours, very confusing. You don't know what you're doing. In that case, the labeling tends to be very bad. There's an example of sure at the end. I'm not sure if you had a look at the other control in that example, it's a very simple one, it's got only the basic functions, but the same size as the hard to use one, it's a bit clunky. They're very big and not very much used for active buttons. It's very hard to access the advanced functions. There's nothing for instance for a slow motion button. My own preferences, I prefer the clunky one. It's very easy to use, but unfortunately it does lack the advanced functions, which I quite like having on the controls. I believe that the advanced functions should and she may be hidden in the drawer, I don't know if it's cool to have a bomb on it. Now that I've got few year preferences, and I'm not sure how long we'll go.</v>
+
+00:06:28.000 --> 00:06:34.000
+<v Laura>I would try to wait for five minutes or so, I think, at most, just a couple of minutes anyway.</v>
+
+00:06:34.000 --> 00:06:52.000
+<v David>Yeah, like a lot of what I've read and prepared for this meeting fits and re-closely with what Craig's just gone over. So in part, I could give you some of my personal preferences, but I could also add some to this, which is just about, sort of, the market research. But anyway.</v>
+
+00:06:52.000 --> 00:06:55.000
+<v Laura>So you'll stick to kind of your area.</v>
+
+00:06:55.000 --> 00:07:01.000
+<v David>The click of one is the one in the right. Clunky in what sense? Like heavier or larger?</v>
+
+00:07:01.000 --> 00:07:14.000
+<v Greg>I think it's supposed to be the same size, but it's got much fewer buns. It's, I see, it's more spread out of the base, I know. Yeah. Right, okay. You get the idea of this size. Yeah, got very few buns on it, and sure.</v>
+
+00:07:14.000 --> 00:07:37.000
+<v Laura>Well, I think at a valid point, I mean, like, The one on the left looks quite complicated, and that PROG thing is incredibly confusing. So I see why you, you know, you might prefer the simpler design, but yeah, you don't want to lose sight on, you know, what it does. So maybe, you know, you know, you get a lot of remote controls where you kind of feel the thing open. I think that's a good idea.</v>
+
+00:07:37.000 --> 00:07:51.000
+<v Greg>I think it's a good idea. Do we have any functions that we'd want on it? So far, I've got on and off, switch the channel up and down, and put the volume up and down. They're just the very basics you could use by TV.</v>
+
+00:07:51.000 --> 00:07:55.000
+<v Laura>And then actual numbers for channels as well, yeah.</v>
+
+00:07:55.000 --> 00:08:01.000
+<v Greg>And you see that's how the required one are requested one. Which was that? The channels, like the numbers.</v>
+
+00:08:01.000 --> 00:08:03.000
+<v David>The numbers are the up, yeah.</v>
+
+00:08:03.000 --> 00:08:27.000
+<v Laura>But I would say that's required. I mean, there's no way anybody's going to buy a remote control these days so if she can't actually individually select channels, I mean, would anybody disagree with that? So don't need to worry about tally text, don't need to worry about PCR, any kind of like display controls at all, do you think we need to worry about, you know, like brightness</v>
+
+00:08:27.000 --> 00:08:46.000
+<v David>and contrast. Well I think essentially what we're doing right now is we're categorizing, we're saying well we want this to be a product that offers all the sort of the more tricky features but we want them to be in another area. Is that right? Is that what we're doing? And who are kind of like sorting them? Or are we actually eliminating things we just don't want the product to have?</v>
+
+00:08:46.000 --> 00:08:50.000
+<v Laura>I think are you maybe kind of thinking what we absolutely have to have and what would be nice?</v>
+
+00:08:50.000 --> 00:08:57.000
+<v Greg>To start with, we need to find the exactly what we have to have, not that we can add things if they're possible.</v>
+
+00:08:57.000 --> 00:09:08.000
+<v Laura>Okay, right. Well, do you want to maybe just at this point decide on what we absolutely must have as a function of this? So, so far, just to recap,</v>
+
+00:09:08.000 --> 00:09:13.000
+<v Greg>We've got volume and channel control and skip to certain channels with the numbers.</v>
+
+00:09:13.000 --> 00:09:21.000
+<v Laura>Right, okay.</v>
+
+00:09:21.000 --> 00:10:16.000
+<v David>One way I would look at this would be that we approach the different controls in terms of like control types so that for the user it's very clear what they want to do where they go and also think maybe a little bit about what would just want to be easily accessible. For example, if we had audio controls, those could be something people set up very rarely. Maybe they're in a little area, but cover it up. Things like channel and volume are used all the time, so we just have them right out on top, very sort of self-explanatory. So maybe we need to think about having three or more groupings of controls, like one which are just the, the habitual ones that should be right within your natural grip and others that are also available and then others that are concealed.</v>
+
+00:10:16.000 --> 00:11:00.000
+<v Laura>Okay, and we're just to wrap up quickly on this little section, I don't know, do you think maybe that's the only kind of essential requirements and there may be just things that would be nice if it could do, would be things like audio, set up and display, set things like that, maybe like a mute button, that's sort of saying, any of the answer to that at all? No? Okay, right. Okay, if we can move on to the next presentation then please. Can this reach, can this plug come across? Probably not, actually. So why don't I just pick up and</v>
+
+00:11:00.000 --> 00:11:27.000
+<v David>Yeah, I'll just, can you go behind me? I'm complicated. I'm all alone.</v>
+
+00:11:27.000 --> 00:11:29.000
+<v Laura>You know everything is wireless, isn't it?</v>
+
+00:11:29.000 --> 00:11:30.000
+<v David>Okay.</v>
+
+00:11:30.000 --> 00:11:36.000
+<v Laura>Right.</v>
+
+00:11:36.000 --> 00:12:19.000
+<v David>So I can, I can say already, I don't know whether this is for good or for bad, but there'll be a lot of kind of redundancy in the, in the, the issues in the, the, uh... Oh, like overlap between what you said. Not necessarily a bad thing, but what I've already started doing is I created a slide in my presentation here, so that we kind of think what's the cumulative effect of what we've taken from your ideas and mine because certainly I have a hard time separating things completely. It's hard to know where you just told me where you've just told me impact a lot on what like market research that I've been So how do I how do I get this up?</v>
+
+00:12:20.000 --> 00:12:22.000
+<v Laura>Yeah</v>
+
+00:13:02.000 --> 00:17:02.000
+<v David>Okay. Just before I bring this up, what I'll just say is what I've done is try to collect some information so that I can then relay this to you guys so that it's now becomes a collective thing and then kind of lead us in the direction of deciding, okay, what are our options? What should we decide? And do you know what I mean? So. Okay. Right. Okay. All right. Okay. So that makes sense. So what I basically got is I've just looked into some information and sort of tried to think about how we could review it and what kind of decisions we could take away from it. And then maybe by the end of just looking at some of these things, we can think about what are our priorities because certainly there's lots of different information to go through. So I'm thinking here about primarily about customer needs that we start with the customer and what they want and what are issues with existing products. I just think about trends and also about try and connect that as you see with the company vision which is about fashion and electronics and then as I say we'd like to prioritize our design features from this and okay so this is what I found here a lot of this is new to me, so we'll just read two together. Users dislike the look and feel of current remote control, so if I find them ugly, most people find them ugly, the vast majority would spend more money for it to look fancy as well. We'll see later, vast majority people would spend more money for it, slightly more intuitive controls, such as voice recognition, okay, I'm going to look at that in a second. people use only a very slim portion of all the controls. So I guess what we're looking at here is people want this technology. They tend to use the most simple controls and overall they find remote controls to be something they don't, doesn't really appeal to them. So I think what we're doing is we're trying to take like, for me this is sort of like three different, different inspirations. You know, one is that we want something that's high but we want it to seem easy and in spite of the primitive side of it and the very high-tech side we want it to just be an appealing piece of equipment in people's hands. Frustrations, they get lost a lot as it came up in our last meeting, takes time to learn how to use them. This is why I mentioned Craig was showing us some ideas that we actually try and group control so it doesn't just look like a big panel Kind of like when you you look at you know a new computer keyboard or something that it's quite Explanatory if you want audio if you want visual and you have those and I will admit. I don't know what RSI stands for Did not come up at all So here here's another Sort of a review here of the main things also found that most people would Adults at least would pay more for voice recognition now apparently we do have access to all the tech cutting-edge technology and remote control So I don't know if that's possible. We might consider getting into it and And again here as we sort of move Sort of things starting about how we want to sell and market this I think a recurring theme here is the company wants it to be Want us to make something that's fashionable and sleek and trendy people additionally aren't liking the appearance of their products so we want to think about as we take all the sort of the techy features how we can put that into a unit which is which people like you know they like the aesthetics and</v>
+
+00:17:02.000 --> 00:17:07.000
+<v Laura>the ergonomics. So once in a year it looks good and it's easy to use big</v>
+
+00:17:07.000 --> 00:17:40.000
+<v David>priorities yeah so you know just looking at what Craig Craig's ideas there sort of tell me that maybe what we want to do is try and separate the different things that we want to include in this. If we do say, well, we want there to be all the technology, but we try and make that almost be like optional technology. You know, it's like, like I find a lot of TVs these days, something really nice about them is, if you want to just turn them on and off you can, but they have little panels where you click, and there's just like tons of features, you go through.</v>
+
+00:17:40.000 --> 00:17:44.000
+<v Laura>You go through. You go through. So you want a great pull, the different types of functions to gather.</v>
+
+00:17:44.000 --> 00:18:19.000
+<v David>You know, that's what I am going to say. That's sort of, but I hope here is that I am putting out this information so we can then say, okay, well, how do we collectively move on with that? Yes. I haven't brought out one specific marketing idea. Although my sense is that what we should try and think about is what are the current trends and materials, and shapes, and styles, and then use that, but not let that confine us technologically. Okay. Right. All right. Any comments on all of that?</v>
+
+00:18:19.000 --> 00:18:40.000
+<v Laura>Well, one of the things that we have to decide on by the end of the meeting is who we're going to be, who's our target audience or target market. So if we want something that looks good and it's easy to use but has it's fairly powerful product or whatever, who do we really want to aim that at?</v>
+
+00:18:40.000 --> 00:18:42.000
+<v David>Where's the money?</v>
+
+00:18:42.000 --> 00:19:03.000
+<v Laura>Yeah, who would have the money to spend, well if like 25 euro is our selling price and you can imagine, well I don't, I'm not really sure how much that will retail at, but you want, it's somebody who's not going to just use the remote that comes with their tele, I suppose they're going to actually go out and buy one. So who do you think we're aiming this up?</v>
+
+00:19:03.000 --> 00:19:36.000
+<v Andrew>I think it'll be the mid-range to the high end market in terms of people, because 25 euros for a remote. How much is that, the opening cost? It's about 16, 17 points, I think. Is that a lot of money to buy an extra remote for a little bit of my remote? OK. So maybe not the high end range, but maybe middle, middle, upish. OK. I know. I don't know, I guess you'd be like 10 or more, like a simple replacement. I mean, if you've lost your remote and the first thing you just want to go on yet,</v>
+
+00:19:36.000 --> 00:19:54.000
+<v David>this kind of touches on your comments, David. These are the age groups which we have information on. And this is a table of what people would pay more for a certain feature, just give us a rough idea of where the will to spend money on TV equipment is, mostly focused around the 25 age group.</v>
+
+00:19:54.000 --> 00:19:57.000
+<v Laura>Yeah, so do you think we're aiming at a fairly young market then?</v>
+
+00:19:58.000 --> 00:20:00.000
+<v David>Sort of young professional.</v>
+
+00:20:00.000 --> 00:20:12.000
+<v Laura>Yeah, okay. Do you think then voice recognition is something we should really seriously consider? What do you think Craig?</v>
+
+00:20:12.000 --> 00:20:20.000
+<v Greg>Well, you don't say it was the adults that were going for the white recognition. Yeah, yeah.</v>
+
+00:20:20.000 --> 00:20:24.000
+<v David>It does fit with the market that we're sort of identifying in terms of that.</v>
+
+00:20:24.000 --> 00:20:50.000
+<v Laura>I think we are going to have to narrow it down so let's target these people and give them what they want because you know there needs to be some kind of selling point to it. So anybody anything to add just kind of young professionals, like if we are going to include speech recognition it's kind of between 15 and 35, it seems to be like a really high response to that. So we could say that was our target.</v>
+
+00:20:50.000 --> 00:20:58.000
+<v Andrew>35 to 35 is fair to add that in and out because that's more than half your group of people who are willing to at least try to use your thing on you.</v>
+
+00:20:58.000 --> 00:21:05.000
+<v Laura>Okay, so 15 to 35 look fairly young, you know, they have a bit of expandable income, expand on this sort of thing.</v>
+
+00:21:05.000 --> 00:21:33.000
+<v Andrew>I think perhaps that age group is significant as well because those are people who use the computer who are familiar with computers in their everyday work. I think people who are ABBO, I wouldn't say 35, but people are on a foundation above now would not be so dependent and reliant on a career or a mobile phone or something like that. So people who are gadget-y, growing up used to, you know, in schools and universities, they go and do their work in life or board.</v>
+
+00:21:33.000 --> 00:21:47.000
+<v Laura>So they're not shy away from something quite high-tech, that's a good point. Okay, so shall we make the decision to include speech recognition?</v>
+
+00:21:47.000 --> 00:22:05.000
+<v Andrew>If we can, if we can, I think one thing we should try not to avoid is not to say we have to use speech recognition right now. Okay, why is that? Based on what you've got everybody saying that you want something simple, you want basic stuff and you want something that's easy. You speech recognition might not be the simplest thing. Right.</v>
+
+00:22:05.000 --> 00:22:10.000
+<v David>Okay. Could it be an on-off thing? Like, if you want it. We can activate it and deactivate it.</v>
+
+00:22:10.000 --> 00:22:33.000
+<v Andrew>We can kind of lock ourselves into a particular kind of technology. Yeah, other than focusing on exactly what are the features that we're going to say, you know, say speech recognition is good for this speech recognition is not good for this. Okay. I suggest that we think about speech recognition. Sure. It's something that can be used to fulfill a function, but I didn't know that day we don't look at the technology, but we'll get the function first.</v>
+
+00:22:33.000 --> 00:22:43.000
+<v Laura>Okay. Okay well do you want to give us your presentation and then we can I might have been a good idea to all deliver our presentations and then discuss but this is a hybrid.</v>
+
+00:22:43.000 --> 00:22:46.000
+<v David>Good to get ideas out while the direction mine.</v>
+
+00:22:46.000 --> 00:22:57.000
+<v Laura>Exactly and suddenly it's just occurred to me as well as if we make it a speech recognition if we incorporate speech recognition that's appealing to people maybe with physical</v>
+
+00:22:57.000 --> 00:23:18.000
+<v David>disability as well yeah and not losing and also it helps in terms of people not losing this you know they they're saying oh it I lose it in the couch yeah like we're kind of what we're sort of getting into here is meeting different design features together one problem the speech recognition is</v>
+
+00:23:18.000 --> 00:23:27.000
+<v Greg>I've actually seen one of them used and the technology it was not one wasn't So you end up yelling at control for hours, right? I've already seen one before.</v>
+
+00:23:27.000 --> 00:23:42.000
+<v Laura>Do you think maybe we need, like, further advances in that kind of area until it's worthwhile to incorporate it in? I think it will be quite expensive to... There you go.</v>
+
+00:23:42.000 --> 00:26:32.000
+<v Andrew>This is just the working design. Well, this is just how I would go about it. I guess I try to define what we're doing now. Try to define what we're trying to get done. in a practical way. We kind of know what it is. We've used it, we're familiar with it, but we haven't narrowed down exactly what other things we're trying to fulfill. We've designed the basics. I think back in the back of our minds, we know what the basics are. This is a changed channel, this is changed volume, but in like specifics, which one of the basics are you trying to target? Are there certain parts of the basics that are more important or less important than the basics? And I just, the idea is just to get everybody to have a design as a basic, so you know, things that just start everything going. But I guess everybody does have some ideas and I think you can use that. Okay, this finding thing is a little bit confusing, so I'll go into that again. It just explains how the process goes through from the basic technology point one of you, the basic steps that you need in the diagram, this like probably works better. Okay, you need some power source, get batteries, and that power source is important because it ties you down to how long the device will last. It ties you down perhaps a bit later on in terms of technologies. How far you can transmit the signal or the complexity of the functions that you want. Like, for example, voice recognition, right? that might be constrained because that you might need to power microphone, you might need to power other things. And that's one kind of constraint. OK, the basic thing is there's a user interface where people punch a button or talk into it, or smile to it, blink their eyes, whatever. And that picks up an input from the user. A series of logic has to decide what the user is telling the device, and the device has to, based on the push button A, so I would do something with button A, it's a power button. And then it needs to be able to send it to the device itself, which is what you see right here. And I think that's, you know, it's fairly general. And I guess the purpose of this is also not to restrict you. In the way you're thinking, like, voice recognition, right? If it's something which is important, then we just add more power rather than having a thing that we don't have enough power So I guess the rest of it. I think we should maybe want to go back to what the functions are. I think that's</v>
+
+00:26:34.000 --> 00:26:39.000
+<v Laura>Well, do you want to finish up your your presentation? Are you all done?</v>
+
+00:26:39.000 --> 00:26:50.000
+<v Andrew>Oh, it's just putting the rest of it into words, but it's essentially something you have a transmitter and it's loaded to a screen.</v>
+
+00:26:50.000 --> 00:27:04.000
+<v David>Okay. And like, on the, I mean, since we're on the topic of the technology, are there any like, what are our options? What's, what is in, is this the only way that we go about it, or are there, are there</v>
+
+00:27:04.000 --> 00:27:25.000
+<v Andrew>other? These aren't technology options, in that sense. This is just a basic principle of, of course, and basic components that I need it, for example, if you need it to add a voice recognition, then you use it in the base. We'll be spoken down a little more in terms of, right, if you have a microphone or VR or something like that.</v>
+
+00:27:25.000 --> 00:27:28.000
+<v Laura>So it's just how we're kind of modularizing the whole thing,</v>
+
+00:27:28.000 --> 00:28:02.000
+<v Andrew>OK? So each component represents one function. But I think the basic functions are logic, the transmitter, and the receiver and the power are things that you won't have to care about. And those are things that, based on what your user interface requires and will add more functionality to it, there might be one other consideration which would be the transmission between the remote control and the TV, for example. OK. Are we going to restrict ourselves to using the traditional technologies and then the data? OK. Because that's something you need to actually</v>
+
+00:28:02.000 --> 00:28:25.000
+<v Laura>Well, a worry that was expressed in the new requirements was that if we made this too complex, it would affect how long it took us to get this to market. So, as a suspect, it might be a good idea to restrict our creative influence on this on the user interface and not worry so much about how we transmit it, because I mean, it's</v>
+
+00:28:25.000 --> 00:29:05.000
+<v Andrew>tried and tested and for ADD, so it might be a little firm with the transmission in particular and now since we're talking about voice recognition. If somebody's going to talk to the device, you really want them to hold it to them. If you may not require that, you know, it's something very natural, I guess, you know, to hold it, signal to the user and push a button maybe to start talking about it. Then you need to send a signal out. So if you're using infrared, the line of sight, say the TV is at that chair and I'm standing in front of here and the transmitter is here, in that sense there's not really a restriction, but there's something you may have to think about later on in the close end.</v>
+
+00:29:05.000 --> 00:29:22.000
+<v David>And just to clarification before we finish this, is our controller, have the option of being on a standard frequency as all of the other equipment, so that the one controller can control several pieces of equipment?</v>
+
+00:29:22.000 --> 00:29:31.000
+<v Andrew>information, but I think that one indication of infrared means that you're just targeting traditional devices. Yeah. Because infrared is something that you've been having.</v>
+
+00:29:31.000 --> 00:29:50.000
+<v Laura>Well, we've, in the new requirements spec, they said just to focus on a TV, so that's what we should do for now, I think. Something I was wondering about with the power, is it worth considering, like having a charging unit as opposed to just regular batteries? I mean, is that something really want to go into, do you think, or should we just consider running on regular batteries?</v>
+
+00:29:50.000 --> 00:30:20.000
+<v Andrew>From a component point of view, there's added complexity, you add cost to it, and then there's probably the fact that you need another physical component, you need a docking cradle for example, put it into charge, but you need to get the user to plug it in. So most users are already used to the idea of buying batteries and putting it in. Yeah. Unless the controller is going to consume a lot of batteries. Like, it's going to run through batteries a month. Then I don't think you're charged about something.</v>
+
+00:30:20.000 --> 00:31:00.000
+<v Laura>Okay, so just stick to regular. Okay. Um, right. So, busy. I'm just going to just recap when I said at the start. was that the whole point of this meeting was to absolutely finalize who we're going to aim this at and what exactly the product's going to do. So just to recap on are we all happy about the idea of aiming the product at the 15 to 35 bracket and also the the actual functions of what it's going to do. Do you want</v>
+
+00:31:00.000 --> 00:31:11.000
+<v Greg>a recap on that, Craig. I think we used to say it was going to be the most busiest that possible, on and off, up and down the channel, up and down the volume, and</v>
+
+00:31:11.000 --> 00:31:19.000
+<v David>skip to the channel. Is it going to include any of the more advanced features, or are we</v>
+
+00:31:19.000 --> 00:31:26.000
+<v Greg>going to eliminate those? I think we include mute, but apart from that, I think we just</v>
+
+00:31:26.000 --> 00:31:34.000
+<v David>and go for the simplest, okay? Is it not an option still that we include some things just as a sort of under, like sort of under a door?</v>
+
+00:31:34.000 --> 00:31:37.000
+<v Laura>Yeah, it's as optional function.</v>
+
+00:31:37.000 --> 00:31:56.000
+<v David>What I'd be a bit worried about is if someone was, had previously developed habits of expecting to control surround sound, or this and that, with their controller, and then they, you know, they get ours, it doesn't have that. I don't know if that would be a problem.</v>
+
+00:31:56.000 --> 00:32:45.000
+<v Andrew>Another thing that you're saying about telegarizing the people, maybe I could suggest to be break them down into three simple categories. One would be audio controls, one would be video control, you don't want to be a device. This may not match very well to advanced functionality especially, but I think that from a manufacturer's point of view, the person designing the device, but I think from the point of view of the person using the device, You know, a TV is something you see and something you hear and it's something they do like those things to like turn it on and turn it off. Yeah. Right. So what we could have is like two buckets where you could scroll things into like if you want to speak to that space. Yeah. And then from there this item is basic but non basic. Okay, okay. I might help with the visualisation. Okay. And it would actually help with the component building. Okay.</v>
+
+00:32:45.000 --> 00:33:42.000
+<v Laura>Okay. Great. Right. Okay, well, I've got a kind of got five minutes to wrap up now. I don't know. Next thing we're doing is having lunch and then we're going to have 30 minutes of working on the next stage. So I'll be pulling the minutes of this meeting into the project documents folder. So I guess just to confirm that we know what we're doing in the 30 minutes after lunch anyway. For our industrial designer you're going to be thinking about the components concept, user interface designer, you're going to be thinking about our user interface and marketing, you're going to be thinking about trend watching, and you'll get specific instructions as well. So I know just to ask now if you've got anything else, you still have to buy it while we've been talking. And do you want to start with David, anything else to say at all?</v>
+
+00:33:43.000 --> 00:34:01.000
+<v David>No, okay. Yeah, I just wanted to ask then before we wrap up, should we agree for sake of sort of clarity and when we resume that we'll use this idea David's proposal we think of these three sort of buckets and yeah we're talking about</v>
+
+00:34:01.000 --> 00:34:07.000
+<v Greg>this yeah just about the three buckets and what would go on the device</v>
+
+00:34:07.000 --> 00:34:44.000
+<v Andrew>functions one things like all of because they don't have anything to do with what you see, I mean in terms of picture and the entertainment value, you know, so in channel. In channel, because the on-off also goes, you know, like on-off like power, not on-off sound. Yeah. Although you don't turn off some TV on your TV, but you might want to, you know, turn off the sound so you want to pick up the phone and mute button. Okay. You have a choice of putting it on to other devices, basically anything which we can't get agrarized.</v>
+
+00:34:44.000 --> 00:35:08.000
+<v Laura>Okay, so you're gonna have audio, which is gonna be like, you know, you base settings and actual volume. Anything to do with what you hear, right? Okay. Put that into audio. Okay, and then visual. There's anything that you can see. Okay, so brightness, contrast, things like that. And then just actual device things, like what channel you're watching, turning on and off, stuff like that. OK.</v>
+
+00:35:08.000 --> 00:35:19.000
+<v David>I suppose quite likely what would happen is in the device category, there might be some which are just like the habitual standard and then others, which are maybe a bit more random, which we can go to other places to push here.</v>
+
+00:35:19.000 --> 00:35:31.000
+<v Andrew>We need it somewhere there. Even if it doesn't matter very clearly, what happens is that people at least have some in their mind. It's easy to use. I think that's one thing that, and I guess from the corner point of view, as well,</v>
+
+00:35:31.000 --> 00:36:02.000
+<v Laura>Okay, so yeah, I guess just things to think about are you know like the fact that's got a lit good because if you were it were you know targeting this up, something maybe kind of quirky and design maybe make it kind of ergonomic kind of to hold you know things like that. So I guess I guess that's it, the meeting over.</v>
+
+00:36:02.000 --> 00:36:06.000
+<v David>and then we get to go find out what was picked up for lunch for us.</v>

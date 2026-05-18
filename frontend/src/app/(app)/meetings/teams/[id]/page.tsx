@@ -196,8 +196,9 @@ export default function TeamsMeetingDetailPage() {
                 transcript_id: selectedTranscript?.id,
                 recording_id: selectedRecording?.id,
             });
+            setProcessingJobId(result.job_id);
             // Redirect to Dashboard so user sees the job in the processing queue
-            router.push('/');
+            router.push('/dashboard');
         } catch (e: any) {
             setProcessError(e.message || 'Failed to start processing');
         }
@@ -301,27 +302,34 @@ export default function TeamsMeetingDetailPage() {
     return (
         <>
             {/* ── Topbar ── */}
-            <div className="topbar" style={{ gap: '0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+            <div style={{
+                display: 'flex', flexDirection: 'row', alignItems: 'center',
+                flexWrap: 'nowrap', gap: '12px',
+                padding: '0 20px', height: '56px', flexShrink: 0,
+                borderBottom: '1px solid var(--border)',
+                background: 'var(--bg-surface)',
+            }}>
+                {/* Left: back + title + badges */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, overflow: 'hidden' }}>
                     <Link href="/meetings"><button className="btn btn-secondary btn-sm">←</button></Link>
-                    <div>
-                        <div style={{ fontWeight: 700, fontSize: '16px' }}>{meeting.subject}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 700, fontSize: '16px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meeting.subject}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                             {fmtDate(meeting.startDateTime)} &nbsp;·&nbsp; {meeting.organizer.displayName}
                             &nbsp;·&nbsp;
-                            <span style={{ color: 'var(--accent2)' }}>
-                                Teams Server
-                            </span>
+                            <span style={{ color: 'var(--accent2)' }}>Teams Server</span>
                         </div>
                     </div>
-                    <span className="badge badge-purple" style={{ marginLeft: '4px' }}>
+                    <span className="badge badge-purple" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                         {meeting.transcripts?.length ?? 0} transcript{meeting.transcripts?.length !== 1 ? 's' : ''}
                     </span>
-                    <span className="badge badge-green" style={{ marginLeft: '4px' }}>
+                    <span className="badge badge-green" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                         {meeting.recordings?.length ?? 0} recording{meeting.recordings?.length !== 1 ? 's' : ''}
                     </span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+
+                {/* Right: action buttons — always pinned to the right */}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                     {selectedTranscript && (
                         <a
                             href={teamsTranscriptUrl(meeting.id, selectedTranscript.id)}
@@ -363,7 +371,7 @@ export default function TeamsMeetingDetailPage() {
                             {isProcessing ? (
                                 <><span className="spinner" style={{ width: 14, height: 14 }} /> Processing…</>
                             ) : (
-                                '🚀 Process Meeting'
+                                'Process Meeting'
                             )}
                         </button>
                     )}
@@ -423,11 +431,11 @@ export default function TeamsMeetingDetailPage() {
                             <div style={{
                                 height: 220, display: 'flex', alignItems: 'center',
                                 justifyContent: 'center', flexDirection: 'column', gap: '10px',
-                                color: 'var(--text-muted)',
+                                color: '#aaa',
                             }}>
                                 <span style={{ fontSize: '36px' }}>🎬</span>
-                                <div style={{ fontSize: '14px' }}>No recording attached</div>
-                                <div style={{ fontSize: '12px' }}>Upload a recording in the Teams Media Server UI</div>
+                                <div style={{ fontSize: '14px', color: '#ccc', fontWeight: 500 }}>No recording attached</div>
+                                <div style={{ fontSize: '12px', color: '#888' }}>Upload a recording in the Teams Media Server UI</div>
                             </div>
                         )}
                     </div>

@@ -44,6 +44,7 @@ DATA_DIR    = ROOT / "data"
 MEMORY_DIR  = DATA_DIR / "temporal_memory"
 JOBS_FILE   = DATA_DIR / "jobs.json"
 ROLES_FILE  = DATA_DIR / "participants.json"
+FEED_FILE   = DATA_DIR / "feed.json"  # persistent activity log
 
 for d in [UPLOADS_DIR, DATA_DIR, MEMORY_DIR]:
     d.mkdir(parents=True, exist_ok=True)
@@ -90,6 +91,35 @@ def get_context_store():
         context_store = ContextStore(storage_root=str(ROOT), text_analyzer=ta)
     return context_store
 
+# ── persistent activity feed ──────────────────────────────────────────────────
+_FEED_MAX = 200  # keep last 200 entries on disk
+
+def _load_feed() -> list:
+    if FEED_FILE.exists():
+        try:
+            with open(FEED_FILE, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+def _append_feed(msg: str, job_id: str = "", title: str = ""):
+    """Append one entry to the persistent feed log."""
+    entries = _load_feed()
+    entries.insert(0, {
+        "ts": datetime.now().isoformat(),
+        "msg": msg,
+        "job_id": job_id,
+        "title": title,
+    })
+    # Trim to max
+    entries = entries[:_FEED_MAX]
+    try:
+        with open(FEED_FILE, "w", encoding="utf-8") as f:
+            json.dump(entries, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        logger.warning(f"Could not save feed: {e}")
+
 # ── job store (in-memory + persisted) ────────────────────────────────────────
 _jobs: Dict[str, Dict] = {}
 
@@ -111,6 +141,7 @@ def _save_jobs():
 
 _jobs = _load_jobs()
 
+
 # ── job processing ────────────────────────────────────────────────────────────
 _processing_semaphore = asyncio.Semaphore(1)   # one meeting at a time
 
@@ -129,10 +160,11 @@ async def process_meeting_job(job_id: str):
             _set("status", "processing")
             _set("progress", 5)
             _set("stage", "Initializing models…")
-
+            meeting_title = job.get("title", "Untitled Meeting")
             video_path = job["video_path"]
             participants = job.get("participants", [])
-            meeting_title = job.get("title", "Untitled Meeting")
+            _append_feed(f"Started processing: {meeting_title}", job_id, meeting_title)
+
 
             # ── register participants ─────────────────────────────────────────
             pstore = get_participant_store()
@@ -178,6 +210,8 @@ async def process_meeting_job(job_id: str):
 
             _set("progress", 20)
             _set("stage", "Transcribing audio…")
+            _append_feed(f"Transcribing audio for: {meeting_title}", job_id, meeting_title)
+
 
             # ── transcription ─────────────────────────────────────────────────
             segments = []
@@ -231,6 +265,8 @@ async def process_meeting_job(job_id: str):
             _set("transcript", transcript_text)
             _set("progress", 40)
             _set("stage", "Scoring segments…")
+            _append_feed(f"Transcribed {len(segments)} segments — scoring…", job_id, meeting_title)
+
 
             # ── fusion scoring ────────────────────────────────────────────────
             from src.fusion_layer import FusionLayer
@@ -304,11 +340,47 @@ async def process_meeting_job(job_id: str):
                 summaries = {}
 
             _set("summaries", summaries)
+
+            # ── overall meeting summary ────────────────────────────────────────
+            overall_summary = ""
+            try:
+                from src.llm_summarizer import LLMSummarizer
+                llm = LLMSummarizer()
+                top_overall = sorted(scored, key=lambda s: s.fused_score, reverse=True)[:15]
+                top_overall = sorted(top_overall, key=lambda s: s.start_time)
+                overall_block = "\n".join(
+                    f"[{s.speaker}] {s.text}" for s in top_overall if s.text.strip()
+                )
+                if llm.is_ready and overall_block.strip():
+                    loop = asyncio.get_event_loop()
+                    overall_summary = await loop.run_in_executor(
+                        None,
+                        lambda: llm.summarize(
+                            overall_block,
+                            role="overall meeting",
+                            focus="what the meeting was about, key topics discussed, and any decisions made",
+                        )
+                    )
+                elif top_overall:
+                    overall_summary = " ".join(
+                        s.text.strip() for s in top_overall[:3] if s.text.strip()
+                    )
+            except Exception as e:
+                logger.warning(f"Overall summary failed: {e}")
+
+            _set("overall_summary", overall_summary)
+
             _set("scored_count", len(scored))
             _set("progress", 100)
             _set("stage", "Complete")
             _set("status", "done")
             _set("completed_at", datetime.now().isoformat())
+            n_decisions = sum(1 for s in summaries)
+            _append_feed(
+                f"Completed: {meeting_title} — {len(scored)} segments, {len(summaries)} speaker summaries",
+                job_id, meeting_title
+            )
+
 
             # Index into ChromaDB for RAG retrieval
             try:
@@ -324,6 +396,8 @@ async def process_meeting_job(job_id: str):
             _set("status", "error")
             _set("error", str(e))
             _set("stage", f"Error: {e}")
+            _append_feed(f"Error processing {job.get('title','')}: {str(e)[:80]}", job_id, job.get("title",""))
+
 
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
@@ -536,7 +610,7 @@ def list_meetings():
     tm = get_temporal_memory()
     result = []
     for j in jobs:
-        item = {k: v for k, v in j.items() if k != "transcript"}  # omit big fields
+        item = {k: v for k, v in j.items() if k not in ("transcript", "graph_events")}  # omit big fields
         # attach temporal memory stats if available
         mid = j.get("meeting_id")
         if mid and j["status"] == "done":
@@ -547,9 +621,30 @@ def list_meetings():
                        for ev in tm.events_by_entity.get(eid, [])
                        if ev in tm.events)
             )
+            # First decision event for dashboard card preview
+            # Filter: skip short summaries, questions, and filler-starting text
+            _filler_starts = ("i ", "um ", "uh ", "so ", "well ", "yeah ", "okay ", "ok ", "right ", "like ")
+            def _is_good_decision(s: str) -> bool:
+                s = s.strip()
+                return (
+                    len(s) >= 25
+                    and not s.endswith("?")
+                    and not any(s.lower().startswith(f) for f in _filler_starts)
+                )
+            _dec_events = [
+                tm.events[eid]
+                for eid in tm.events_by_meeting.get(mid, [])
+                if eid in tm.events
+                and tm.events[eid].event_type == "decision"
+                and getattr(tm.events[eid], "summary", None)
+                and _is_good_decision(tm.events[eid].summary)
+            ]
+            _dec_events.sort(key=lambda e: e.confidence, reverse=True)
+            item["first_decision"] = _dec_events[0].summary if _dec_events else None
         else:
             item["events"] = 0
             item["topics"] = 0
+            item["first_decision"] = None
         result.append(item)
     return result
 
@@ -566,10 +661,97 @@ def get_meeting(job_id: str):
     if mid:
         tm = get_temporal_memory()
         events = [tm.events[eid].to_dict()
-                  for eid in tm.events_by_meeting.get(mid, [])\
+                  for eid in tm.events_by_meeting.get(mid, [])
                   if eid in tm.events]
         result["graph_events"] = events[:100]
+
     return result
+
+
+def _is_error_summary(text: str) -> bool:
+    """Returns True if the text looks like an LLM error string, not a real summary."""
+    lowered = text.strip().lower()
+    return (
+        not text.strip()
+        or lowered.startswith("[llm")
+        or lowered.startswith("[error")
+        or lowered.startswith("error:")
+        or "bad request" in lowered
+        or "client error" in lowered
+    )
+
+
+@app.post("/api/meetings/{job_id}/generate-overview")
+async def generate_meeting_overview(job_id: str):
+    """Generate and persist the overall_summary for a meeting. Safe to call on any done meeting."""
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Meeting not found")
+    if job.get("status") != "done":
+        raise HTTPException(400, "Meeting is not done yet")
+
+    # Already have a good summary — return immediately
+    existing = job.get("overall_summary", "")
+    if existing.strip() and not _is_error_summary(existing):
+        return {"overall_summary": existing, "cached": True}
+
+    # Gather text — transcript first, fall back to graph events
+    transcript = job.get("transcript", "")
+    if not transcript:
+        mid = job.get("meeting_id")
+        if mid:
+            tm = get_temporal_memory()
+            events = [tm.events[eid].to_dict()
+                      for eid in tm.events_by_meeting.get(mid, [])
+                      if eid in tm.events]
+            transcript = "\n".join(
+                f"[{e.get('speaker','?')}] {e.get('summary','')}"
+                for e in events[:60] if e.get("summary", "").strip()
+            )
+
+    if not transcript.strip():
+        raise HTTPException(422, "No transcript content available to summarise")
+
+    lines = [l.strip() for l in transcript.splitlines() if l.strip()]
+    block = "\n".join(lines[:60])  # ~60 lines of context
+
+    from src.llm_summarizer import LLMSummarizer
+    llm = LLMSummarizer()
+
+    loop = asyncio.get_event_loop()
+    if llm.is_ready:
+        summary = await loop.run_in_executor(
+            None,
+            lambda: llm.summarize(
+                block,
+                role="overall meeting",
+                focus="what the meeting was about, key topics discussed, and any decisions made",
+            )
+        )
+    else:
+        # LM Studio offline — build from top events
+        mid = job.get("meeting_id")
+        if mid:
+            tm = get_temporal_memory()
+            events_raw = [
+                tm.events[eid]
+                for eid in tm.events_by_meeting.get(mid, [])
+                if eid in tm.events
+            ]
+            priority = sorted(
+                [e for e in events_raw if e.event_type in ("decision", "update", "idea")],
+                key=lambda e: e.confidence, reverse=True
+            )[:5]
+            summary = " ".join(e.summary for e in priority if e.summary.strip())
+        else:
+            summary = ""
+
+    if _is_error_summary(summary):
+        raise HTTPException(503, f"LLM returned an error: {summary}")
+
+    _jobs[job_id]["overall_summary"] = summary
+    _save_jobs()
+    return {"overall_summary": summary, "cached": False}
 
 
 @app.patch("/api/meetings/{job_id}/speakers")
@@ -2007,3 +2189,47 @@ def health():
         "time": datetime.now().isoformat(),
         "jobs": len(_jobs),
     }
+
+@app.get("/api/health/llm")
+async def health_llm():
+    """Check LM Studio and BERT classifier availability."""
+    lmstudio_ok = False
+    lmstudio_model = None
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get("http://127.0.0.1:1234/v1/models")
+            if r.status_code == 200:
+                data = r.json()
+                models = data.get("data", [])
+                if models:
+                    lmstudio_ok = True
+                    lmstudio_model = models[0].get("id", "unknown")
+    except Exception:
+        pass
+
+    bert_ok = False
+    try:
+        from src.topic_classifier import TopicClassifier
+        tc = TopicClassifier()
+        bert_ok = tc.is_ready
+    except Exception:
+        pass
+
+    warnings = []
+    if not lmstudio_ok:
+        warnings.append("LM Studio is offline — role summaries and node classification are degraded.")
+    if not bert_ok and not lmstudio_ok:
+        warnings.append("No classifier available — all graph nodes will be labelled as Discussion.")
+
+    return {
+        "lmstudio": {"ok": lmstudio_ok, "model": lmstudio_model},
+        "bert_classifier": {"ok": bert_ok},
+        "warnings": warnings,
+        "degraded": not lmstudio_ok,
+    }
+
+@app.get("/api/feed")
+def get_feed(limit: int = 50):
+    """Return the last N activity feed entries, persisted across restarts."""
+    entries = _load_feed()
+    return entries[:limit]

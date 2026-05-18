@@ -3,7 +3,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useUser, useClerk } from '@clerk/nextjs';
+
 import {
     LayoutDashboard, Video, Network, Settings,
     Zap, Moon, Plus, MoreHorizontal, Blocks, LogOut, UserCog
@@ -20,8 +20,10 @@ export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const [mounted, setMounted] = React.useState(false);
-    const { user, isLoaded } = useUser();
-    const { signOut } = useClerk();
+    // Static user — Clerk auth removed
+    const user = { firstName: 'User', lastName: '', username: 'user', imageUrl: null as string | null, primaryEmailAddress: { emailAddress: '' } };
+    const isLoaded = true;
+    const signOut = (cb?: () => void) => { if (cb) cb(); };
     const [profileMenuOpen, setProfileMenuOpen] = React.useState(false);
     const profileRef = React.useRef<HTMLDivElement>(null);
     const profilePopoverRef = React.useRef<HTMLDivElement>(null);

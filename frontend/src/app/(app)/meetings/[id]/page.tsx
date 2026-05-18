@@ -950,10 +950,47 @@ function ChatPanel({
 }
 
 /* ══ MAIN PAGE ══ */
+const renderMarkdownLine = (line: string) => {
+  const parts = line.split(/(\*\*.*?\*\*|\*.*?\*|\([^)]+\))/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith('(') && part.endsWith(')')) {
+      // Check if it's a citation (contains a timestamp like 1:23 or meeting ID like ES2002a)
+      const isCitation = /\b\d+:\d{2}\b/.test(part) || /\b[A-Z]{2}\d{4}[a-z]?\b/.test(part);
+      if (isCitation) {
+        return (
+          <span 
+            key={i} 
+            style={{ 
+              color: BRAND, 
+              background: `${BRAND}15`, 
+              padding: "0 6px", 
+              borderRadius: 6,
+              fontSize: "0.9em",
+              fontWeight: 500,
+              display: "inline-block",
+              transform: "translateY(-1px)",
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
 export default function MeetingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
+  const [overviewLoading, setOverviewLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"summary" | "transcript" | "chat">(
     "summary",
   );
@@ -965,6 +1002,7 @@ export default function MeetingDetailPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [extractingVideo, setExtractingVideo] = useState(false);
+  const overviewFiredRef = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -984,6 +1022,25 @@ export default function MeetingDetailPage() {
       if (pollRef.current) clearTimeout(pollRef.current);
     };
   }, [load]);
+
+  // Generate overview for legacy meetings that don't have one yet
+  useEffect(() => {
+    if (
+      job?.status === "done" &&
+      !job?.overall_summary?.trim() &&
+      !overviewFiredRef.current
+    ) {
+      overviewFiredRef.current = true;
+      setOverviewLoading(true);
+      fetch(`${API_BASE}/api/meetings/${id}/generate-overview`, { method: "POST" })
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(data => {
+          setJob(prev => prev ? { ...prev, overall_summary: data.overall_summary } : prev);
+        })
+        .catch(() => { /* silent — fallback text already shown */ })
+        .finally(() => setOverviewLoading(false));
+    }
+  }, [job?.status, job?.overall_summary, id]);
 
   const events = useMemo(() => job?.graph_events || [], [job]);
   const summaries = job?.summaries || {};
@@ -1383,7 +1440,7 @@ export default function MeetingDetailPage() {
                     />
                   </div>
                 </div>
-              ) : videoSrc ? (
+              ) : videoSrc && !/\.(mp3|wav|m4a|ogg|flac|aac|opus)$/i.test(job.video_filename || '') ? (
                 <video
                   ref={videoRef}
                   controls
@@ -1395,77 +1452,124 @@ export default function MeetingDetailPage() {
                   }}
                   src={videoSrc}
                 />
-              ) : (
-                /* Styled audio-only empty state — never a plain black box */
-                <div
-                  style={{
-                    height: 240,
-                    background: "#1C1C1E",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 14,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: "50%",
-                      border: "1.5px solid rgba(255,255,255,0.25)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Music
+              ) : videoSrc ? (
+                /* Audio file player */
+                <div style={{
+                  background: '#1C1C1E',
+                  padding: '28px 24px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 20,
+                }}>
+                  <div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 40 }}>
+                    {[40, 60, 80, 50, 70, 90, 55, 75, 45, 65, 85, 50, 60].map((h, i) => (
+                      <div key={i} style={{
+                        width: 3,
+                        height: h * 0.45,
+                        background: `rgba(83,74,183,${0.4 + (i % 3) * 0.2})`,
+                        borderRadius: 2,
+                        animation: `pulse ${0.8 + (i % 4) * 0.2}s ease-in-out ${i * 0.1}s infinite alternate`,
+                      }} />
+                    ))}
+                  </div>
+                  <div style={{ textAlign: 'center', width: '100%' }}>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 12 }}>
+                      Audio Recording
+                    </div>
+                    <audio
+                      ref={videoRef as React.RefObject<HTMLAudioElement>}
+                      controls
+                      src={videoSrc}
                       style={{
-                        width: 22,
-                        height: 22,
-                        color: "rgba(255,255,255,0.5)",
+                        width: '100%',
+                        maxWidth: 480,
+                        borderRadius: 8,
+                        outline: 'none',
+                        accentColor: '#534AB7',
                       }}
                     />
                   </div>
-                  <div style={{ textAlign: "center" }}>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        color: "rgba(255,255,255,0.7)",
-                        fontWeight: 500,
-                      }}
-                    >
-                      Audio only
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "rgba(255,255,255,0.35)",
-                        marginTop: 4,
-                      }}
-                    >
-                      No video available
-                    </div>
-                  </div>
-                  {/* Simple waveform bars animation */}
-                  <div
-                    style={{ display: "flex", gap: 3, alignItems: "center" }}
-                  >
-                    {[40, 60, 80, 50, 70, 90, 55, 75, 45, 65].map((h, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          width: 3,
-                          height: h * 0.4,
-                          background: `rgba(83,74,183,${0.4 + (i % 3) * 0.2})`,
-                          borderRadius: 2,
-                          animation: `pulse ${0.8 + (i % 4) * 0.2}s ease-in-out ${i * 0.1}s infinite alternate`,
-                        }}
-                      />
-                    ))}
-                  </div>
                 </div>
+
+              ) : (
+                /* Audio-only or no-file state */
+                (() => {
+                  const filename = (job.video_filename || job.video_path || '').toLowerCase();
+                  const isAudioFile = /\.(mp3|wav|m4a|ogg|flac|aac|opus)$/.test(filename);
+                  const audioSrc = job.video_path
+                    ? `${API_BASE}/api/meetings/${job.job_id}/video`
+                    : null;
+
+                  if (audioSrc) {
+                    return (
+                      <div style={{
+                        background: '#1C1C1E',
+                        padding: '28px 24px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 20,
+                      }}>
+                        {/* Waveform animation */}
+                        <div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 40 }}>
+                          {[40, 60, 80, 50, 70, 90, 55, 75, 45, 65, 85, 50, 60].map((h, i) => (
+                            <div key={i} style={{
+                              width: 3,
+                              height: h * 0.45,
+                              background: `rgba(83,74,183,${0.4 + (i % 3) * 0.2})`,
+                              borderRadius: 2,
+                              animation: `pulse ${0.8 + (i % 4) * 0.2}s ease-in-out ${i * 0.1}s infinite alternate`,
+                            }} />
+                          ))}
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 12 }}>
+                            {isAudioFile ? 'Audio Recording' : 'Audio Playback'}
+                          </div>
+                          <audio
+                            ref={videoRef as React.RefObject<HTMLAudioElement>}
+                            controls
+                            src={audioSrc}
+                            style={{
+                              width: '420px',
+                              maxWidth: '100%',
+                              borderRadius: 8,
+                              outline: 'none',
+                              accentColor: '#534AB7',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div style={{
+                      height: 240, background: '#1C1C1E',
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center', gap: 14,
+                    }}>
+                      <div style={{
+                        width: 52, height: 52, borderRadius: '50%',
+                        border: '1.5px solid rgba(255,255,255,0.25)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Music style={{ width: 22, height: 22, color: 'rgba(255,255,255,0.5)' }} />
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
+                          No media available
+                        </div>
+                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>
+                          Upload a video or audio file to enable playback
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()
               )}
+
             </div>
 
             {/* Tab Bar */}
@@ -1512,28 +1616,34 @@ export default function MeetingDetailPage() {
             {/* ── Summary Tab ── */}
             {activeTab === "summary" && (
               <div>
-                {/* Meeting Purpose */}
+                {/* Meeting Overview */}
                 <div style={{ ...card, marginBottom: 20 }}>
-                  <h3
-                    style={{
-                      fontSize: 16,
-                      fontWeight: 700,
-                      color: TEXT_PRIMARY,
-                      marginBottom: 10,
-                    }}
-                  >
-                    Meeting Purpose
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: TEXT_PRIMARY, marginBottom: 10 }}>
+                    Meeting Overview
                   </h3>
-                  <p style={{ fontSize: 14, color: TEXT_SEC, lineHeight: 1.7 }}>
-                    This meeting involved {participants.length} participant
-                    {participants.length !== 1 ? "s" : ""}
-                    {topics.length > 0
-                      ? ` discussing ${topics.join(", ")}.`
-                      : "."}
-                    {events.length > 0 &&
-                      ` ${events.length} events were captured across the session.`}
-                  </p>
+                  {job.overall_summary && !overviewLoading ? (
+                    <div>
+                      {String(job.overall_summary).split('\n').filter(Boolean).map((line: string, i: number) => (
+                        <p key={i} style={{ fontSize: 14, color: TEXT_SEC, lineHeight: 1.75, marginBottom: 8 }}>
+                          {renderMarkdownLine(line)}
+                        </p>
+                      ))}
+                    </div>
+                  ) : overviewLoading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: TEXT_MUTED, fontSize: 14 }}>
+                      <span className="spinner" style={{ width: 16, height: 16, flexShrink: 0 }} />
+                      Generating overview…
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 14, color: TEXT_MUTED, lineHeight: 1.7, fontStyle: 'italic' }}>
+                      {participants.length > 0
+                        ? `${participants.length} participant${participants.length !== 1 ? 's' : ''} · ${events.length} events captured`
+                        : 'Overall summary will appear here once the meeting is processed.'}
+                    </p>
+                  )}
                 </div>
+
+
                 {/* Per-person summaries */}
                 {Object.keys(summaries).length === 0 ? (
                   <div
@@ -1649,7 +1759,7 @@ export default function MeetingDetailPage() {
                                 .filter(Boolean)
                                 .map((l, i) => (
                                   <p key={i} style={{ marginBottom: 10 }}>
-                                    {l}
+                                    {renderMarkdownLine(l)}
                                   </p>
                                 ))}
                             </div>
