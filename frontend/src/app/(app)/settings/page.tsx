@@ -128,6 +128,7 @@ export default function SettingsPage() {
               >
                 <option value="lmstudio">LM Studio (Local)</option>
                 <option value="openrouter">Open Router</option>
+                <option value="cerebras">Cerebras</option>
               </select>
             </div>
             <div>

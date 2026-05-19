@@ -335,9 +335,19 @@ function ChatPanel({
         { id: "openai/gpt-oss-120b:free" },
         { id: "google/gemma-4-31b-it:free" },
         { id: "qwen/qwen3-coder:free" },
+        { id: "nvidia/nemotron-3-nano-30b-a3b:free" },
       ];
       setModels(orModels);
       setSelectedModel(orModels[1].id);
+    } else if (llmBackend === "cerebras") {
+      const cbModels = [
+        { id: "llama3.1-8b" },
+        { id: "gpt-oss-120b" },
+        { id: "qwen-3-235b-a22b-instruct-2507" },
+        { id: "zai-glm-4.7" },
+      ];
+      setModels(cbModels);
+      setSelectedModel(cbModels[0].id);
     } else {
       fetchModels()
         .then((m) => {
@@ -1000,9 +1010,38 @@ export default function MeetingDetailPage() {
   const [activeEvent, setActiveEvent] = useState<number | null>(null);
   const [hoveredEvent, setHoveredEvent] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const [boost, setBoost] = useState(1);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [extractingVideo, setExtractingVideo] = useState(false);
   const overviewFiredRef = useRef(false);
+
+  useEffect(() => {
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = boost;
+    }
+  }, [boost]);
+
+  const handleMediaPlay = () => {
+    if (!audioCtxRef.current && videoRef.current) {
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        const ctx = new AudioContext();
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = boost;
+        
+        const source = ctx.createMediaElementSource(videoRef.current);
+        source.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        audioCtxRef.current = ctx;
+        gainNodeRef.current = gainNode;
+      } catch (e) {
+        console.error("Audio API error:", e);
+      }
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -1205,10 +1244,14 @@ export default function MeetingDetailPage() {
       </div>
     );
 
+  const isAmi = job.title?.includes("AMI") || /^ES20/i.test(job.title || '');
+  const isAudioFile = isAmi || /\.(mp3|wav|m4a|ogg|flac|aac|opus)$/i.test(job.video_filename || job.video_path || '');
+  const hasLocalMedia = job.video_filename || job.video_path || isAmi;
+
   const videoSrc =
     job.teams_meeting_id && job.teams_recording_id
       ? teamsVideoUrl(job.teams_meeting_id, job.teams_recording_id)
-      : job.video_filename
+      : hasLocalMedia
         ? `${API_BASE}/api/meetings/${job.job_id}/video`
         : null;
   const decisions = filteredEvents.filter(
@@ -1440,10 +1483,12 @@ export default function MeetingDetailPage() {
                     />
                   </div>
                 </div>
-              ) : videoSrc && !/\.(mp3|wav|m4a|ogg|flac|aac|opus)$/i.test(job.video_filename || '') ? (
+              ) : videoSrc && !isAudioFile ? (
                 <video
                   ref={videoRef}
                   controls
+                  onPlay={handleMediaPlay}
+                  crossOrigin="anonymous"
                   style={{
                     width: "100%",
                     maxHeight: 320,
@@ -1480,6 +1525,8 @@ export default function MeetingDetailPage() {
                     <audio
                       ref={videoRef as React.RefObject<HTMLAudioElement>}
                       controls
+                      onPlay={handleMediaPlay}
+                      crossOrigin="anonymous"
                       src={videoSrc}
                       style={{
                         width: '100%',
@@ -1489,6 +1536,26 @@ export default function MeetingDetailPage() {
                         accentColor: '#534AB7',
                       }}
                     />
+                    
+                    <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%', maxWidth: 280, margin: '24px auto 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <span>Volume Boost</span>
+                        <span style={{ color: boost > 1 ? '#FCA5A5' : 'inherit' }}>{boost.toFixed(1)}x</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="5" 
+                        step="0.1" 
+                        value={boost} 
+                        onChange={(e) => setBoost(parseFloat(e.target.value))}
+                        style={{
+                          width: '100%',
+                          accentColor: '#534AB7',
+                          cursor: 'pointer',
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 

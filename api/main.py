@@ -784,12 +784,27 @@ async def update_speaker_map(job_id: str, body: dict, background_tasks: Backgrou
 
 @app.get("/api/meetings/{job_id}/video")
 def stream_video(job_id: str):
-    """Serve the uploaded video file."""
+    """Serve the uploaded video file or fallback to AMI audio."""
     job = _jobs.get(job_id)
     if not job:
         raise HTTPException(404, "Job not found")
-    path = Path(job["video_path"])
-    if not path.exists():
+    
+    path_str = job.get("video_path", "")
+    
+    if not path_str:
+        # Fallback for AMI corpus meetings
+        title = job.get("title", "")
+        import re
+        match = re.search(r'(ES20[0-9a-zA-Z]+)', title)
+        if match:
+            ami_id = match.group(1)
+            ami_path = Path(f"dataset/amicorpus/{ami_id}/audio/{ami_id}.Mix-Headset.wav")
+            if ami_path.exists():
+                return FileResponse(str(ami_path), media_type="audio/wav", filename=f"{ami_id}.wav")
+        raise HTTPException(404, "Video file not found")
+
+    path = Path(path_str)
+    if not path.exists() or path.is_dir():
         raise HTTPException(404, "Video file not found")
     return FileResponse(str(path), media_type="video/mp4",
                         filename=job.get("video_filename", "meeting.mp4"))
@@ -1415,7 +1430,7 @@ async def chat_global(body: dict):
     try:
         from src.llm_summarizer import LLMSummarizer
         llm = LLMSummarizer()
-        if llm_backend != "openrouter" and not llm.is_ready:
+        if llm_backend not in ["openrouter", "cerebras"] and not llm.is_ready:
             raise HTTPException(503, "LLM (LM Studio) is not available")
     except Exception as e:
         if not isinstance(e, HTTPException):
@@ -1751,7 +1766,7 @@ async def chat_with_meeting(job_id: str, body: dict):
     try:
         from src.llm_summarizer import LLMSummarizer
         llm = LLMSummarizer()
-        if llm_backend != "openrouter" and not llm.is_ready:
+        if llm_backend not in ["openrouter", "cerebras"] and not llm.is_ready:
             raise HTTPException(503, "LLM (LM Studio) is not available")
     except Exception as e:
         if not isinstance(e, HTTPException):

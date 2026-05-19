@@ -138,9 +138,19 @@ export default function GlobalAIPage() {
         { id: "openai/gpt-oss-120b:free" },
         { id: "google/gemma-4-31b-it:free" },
         { id: "qwen/qwen3-coder:free" },
+        { id: "nvidia/nemotron-3-nano-30b-a3b:free" },
       ];
       setModels(orModels);
       setSelectedModel(orModels[1].id);
+    } else if (llmBackend === "cerebras") {
+      const cbModels = [
+        { id: "llama3.1-8b" },
+        { id: "gpt-oss-120b" },
+        { id: "qwen-3-235b-a22b-instruct-2507" },
+        { id: "zai-glm-4.7" },
+      ];
+      setModels(cbModels);
+      setSelectedModel(cbModels[0].id);
     } else {
       fetchModels()
         .then((m) => {

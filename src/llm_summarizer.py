@@ -146,13 +146,20 @@ class LLMSummarizer:
         import re as _re
         import os
         
-        # Determine backend and model
         if llm_backend == "openrouter":
             if not model_name:
                 model_name = "google/gemini-2.5-flash" # Fast, cheap fallback for OpenRouter
             api_endpoint = "https://openrouter.ai/api/v1/chat/completions"
             api_headers = {
                 "Authorization": f"Bearer {os.environ.get('OPENROUTER_API_KEY', '')}",
+                "Content-Type": "application/json"
+            }
+        elif llm_backend == "cerebras":
+            if not model_name:
+                model_name = "llama3.1-8b"
+            api_endpoint = "https://api.cerebras.ai/v1/chat/completions"
+            api_headers = {
+                "Authorization": f"Bearer {os.environ.get('CEREBRAS_API_KEY', '')}",
                 "Content-Type": "application/json"
             }
         else:
