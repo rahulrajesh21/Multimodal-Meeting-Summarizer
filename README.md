@@ -1,103 +1,160 @@
-# Vela
+# Multimodal Meeting Summarizer
 
-**Agentic Meeting Intelligence Platform**
+**Neural multimodal fusion pipeline for automated meeting transcription, speaker diarization, and personalized highlight extraction.**
 
-An open-source multimodal meeting summarization and automation platform that moves beyond passive transcription — capturing audio and visual streams, maintaining a persistent memory of organizational knowledge, and acting on it autonomously via an integrated AI agent.
-
----
-
-## About the Project
-
-Vela is not a transcription tool. It is a reasoning layer placed on top of your meetings.
-
-While most tools hand you a wall of text after a call, Vela captures what was said, what was shown on screen, who said it, and what decisions were made — then acts on that information directly inside your existing workspace. Documents are drafted, sheets are updated, calendar context is applied, and Slack messages are dispatched, all without manual intervention.
-
-It is designed to run locally. Your meeting data stays on your infrastructure. No vendor lock-in. No cloud dependency. If you stop using Vela, your Google Workspace and Slack remain exactly as you left them.
+Combines acoustic prosody, contextual visual cues, and semantic text representations into a unified scoring model to identify key discussions, decisions, and action items from recorded or live meetings.
 
 ---
 
-## Key Features
+## Architecture Overview
 
-**Multimodal Extraction Pipeline**
-Combines `faster-whisper` / `WhisperX` for accurate audio transcription and speaker diarization with robust visual modeling to detect screen shares and perform OCR on presentation slides.
-
-**Temporal Knowledge Graph**
-A persistent graph that maps entities — decisions, topics, projects — across multiple meetings, preserving context over time rather than treating each session in isolation.
-
-**Agentic Automation via MCP**
-Utilizes the Model Context Protocol (MCP) to communicate with external tools autonomously. The agent can read and draft Google Docs, manipulate Google Sheets, query your Google Calendar, and send messages or notifications in Slack.
-
-**Warm Light Dashboard**
-A Next.js user interface built on Cosmic Glassmorphism design principles for intuitive meeting review and live agent monitoring.
-
-**Local-Priority LLM Inference**
-Designed to run reasoning models locally via LM Studio to ensure data privacy without sacrificing capability.
+```
+                      ┌──────────────────────────────────────┐
+                      │        Meeting Input Stream          │
+                      │       (Audio + Video / Slides)       │
+                      └──────────────────┬───────────────────┘
+                                         │
+         ┌───────────────────────────────┼───────────────────────────────┐
+         │                               │                               │
+         ▼                               ▼                               ▼
+┌──────────────────┐           ┌──────────────────┐           ┌──────────────────┐
+│  Acoustic Stream │           │  Textual Stream  │           │  Visual Stream   │
+├──────────────────┤           ├──────────────────┤           ├──────────────────┤
+│ • faster-whisper │           │ • DistilBERT     │           │ • ResNet-50      │
+│ • pyannote audio │           │ • Sentence-BERT  │           │ • Screen/Slide   │
+│ • MFCC prosody   │           │ • Sentiment & NER│           │   detection+OCR  │
+└────────┬─────────┘           └────────┬─────────┘           └────────┬─────────┘
+         │                               │                               │
+         └───────────────────────┬───────┴───────────────────────────────┘
+                                 │
+                                 ▼
+                 ┌───────────────────────────────┐
+                 │    Multimodal Fusion Layer    │
+                 │      (`fusion_model.pth`)     │
+                 │   Cross-modal attention &     │
+                 │   importance score ranking    │
+                 └───────────────┬───────────────┘
+                                 │
+                 ┌───────────────┴───────────────┐
+                 ▼                               ▼
+┌─────────────────────────────────┐   ┌─────────────────────────────────┐
+│     Temporal Knowledge Graph    │   │     Actionable Highlights       │
+│  4-layer entity & decision map  │   │  Automated video clips, notes,  │
+│  persisting context over time   │   │  and structured action items    │
+└─────────────────────────────────┘   └─────────────────────────────────┘
+```
 
 ---
 
-## Tech Stack
+## Key Components
 
-| Layer | Technologies |
-|---|---|
-| Backend / Pipeline | Python, FastAPI, Uvicorn, SQLite, ChromaDB |
-| Frontend / Client | React, Next.js, Tailwind CSS, Lucide Icons, Simple Icons |
-| ML Models | Whisper, Sentence-Transformers, pyannote.audio, DistilBERT |
-| Integration Layer | Model Context Protocol (MCP) |
+### 1. Acoustic & Diarization Pipeline
+- **Transcription**: Accelerated inference using `faster-whisper` across multiple model tiers (`base`, `small`, `medium`).
+- **Speaker Diarization**: Turn-level speaker tracking powered by `pyannote.audio`.
+- **Prosodic Feature Extraction**: Extracts MFCCs, energy envelopes, and pitch contours to capture vocal emphasis and urgency during discussions.
+
+### 2. Semantic & Visual Context
+- **Textual Embeddings**: Token- and segment-level embeddings generated with DistilBERT and Sentence-Transformers to score semantic density and identify intent.
+- **Visual Scene Analysis**: Frame-sampling pipeline with a fine-tuned `ResNet-50` backbone and OCR to incorporate slide presentations, screen shares, and whiteboard transitions into the timeline.
+
+### 3. Neural Multimodal Fusion (`src/fusion_layer.py`)
+- Evaluates segment relevance by combining semantic significance, vocal emphasis, and visual changes.
+- Supports weighted linear, multiplicative, and gated cross-attention fusion strategies with per-speaker role calibration.
+
+### 4. 4-Layer Temporal Knowledge Graph (`src/temporal_graph_memory.py`)
+- **Layer 0 (Ingestion)**: Segment filtering and backchannel suppression.
+- **Layer 1 (Event Extraction)**: Structured extraction of decisions, blockers, risks, and milestones.
+- **Layer 2 (Canonicalization)**: Dual-pass entity resolution combining cosine similarity over embeddings with Levenshtein lexical matching.
+- **Layer 3 (Temporal Graph)**: Inter-meeting event graph linking topics and participants across recurring syncs.
 
 ---
 
-## Installation
+## Repository Structure
 
-### Prerequisites
+```
+.
+├── api/                    # FastAPI backend endpoints & streaming handlers
+│   └── main.py
+├── src/                    # Core processing modules
+│   ├── audio_analysis.py   # MFCC extraction & acoustic prosody
+│   ├── live_transcription.py # Whisper transcription & diarization
+│   ├── text_analysis.py    # DistilBERT embeddings & NER
+│   ├── visual_analysis.py  # ResNet-50 visual features & slide OCR
+│   ├── fusion_layer.py     # Multimodal fusion neural network
+│   ├── temporal_graph_memory.py # 4-layer temporal knowledge graph
+│   └── video_processing.py # Automated highlight clipping via MoviePy
+├── tools/                  # Distillation datasets & evaluation scripts
+├── tests/                  # Unit and integration test suites
+├── evaluate_ami_results.py # Quantitative evaluation on AMI Corpus
+├── calculate_metrics.py    # Precision, recall, and ROUGE scoring
+└── requirements.txt        # Python dependencies
+```
 
-- Python 3.8+
-- Node.js 18+
-- FFmpeg (required for audio processing)
-- A local LLM server such as [LM Studio](https://lmstudio.ai) running on the default port
+---
 
-### Backend Setup
+## Evaluation & Benchmarks
+
+The fusion model and extraction pipeline are evaluated on the **AMI Meeting Corpus** (`load_ami_corpus.py`):
 
 ```bash
-# Create and activate a virtual environment
+# Run quantitative benchmark on AMI meeting test partitions
+python evaluate_ami_results.py
+
+# Compute summarization and alignment metrics
+python calculate_metrics.py
+```
+
+---
+
+## Installation & Setup
+
+### Prerequisites
+- Python 3.9+
+- FFmpeg (required for audio demuxing and clip generation)
+- Node.js 18+ (optional, for Next.js web client)
+
+### 1. Environment Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/rahulrajesh21/Multimodal-Meeting-Summarizer.git
+cd Multimodal-Meeting-Summarizer
+
+# Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+```
 
-# Start the FastAPI server
+### 2. Run Backend Server
+
+```bash
 uvicorn api.main:app --reload --port 8000
 ```
 
-### Frontend Setup
+### 3. Run Streamlit Inspection Dashboard
 
 ```bash
-cd frontend
-
-# Install UI packages
-npm install
-
-# Start the Next.js dashboard
-npm run dev
+streamlit run streamlit_app.py
 ```
 
-The dashboard will be available at `http://localhost:3000`.
+### 4. Run Test Suite
+
+```bash
+pytest tests/
+```
 
 ---
 
-## Architectural Highlights
+## Hardware Optimization
 
-**Active Workflows**
-Unlike standard transcription tools that produce static summaries, Vela connects via MCP directly to your Google Workspace and Slack, turning spoken decisions into dispatched tickets and structured project specifications in real time.
-
-**Server-Sent Events (SSE)**
-A streaming architecture connects the frontend directly to the agent's reasoning chain and tool usage as it happens, so you can observe every step the agent takes during a session.
-
-**Hardware Optimization**
-Tested and natively accelerated for Apple Silicon via MPS. Runs efficiently on consumer hardware without requiring a dedicated GPU server.
+- **Apple Silicon (MPS)**: PyTorch MPS acceleration is natively supported and enabled by default for local inference on macOS.
+- **CUDA**: Automatically detected for GPU-accelerated transcription and feature extraction.
 
 ---
 
 ## License
 
-Open source and available for educational and commercial use.
+MIT License. See [LICENSE](LICENSE) for details.
